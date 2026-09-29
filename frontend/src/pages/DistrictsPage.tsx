@@ -1,0 +1,284 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import DashboardLayout from '../components/layout/DashboardLayout';
+import TopDistrictsTable from '../components/charts/TopDistrictsTable';
+import LoadingState from '../components/common/LoadingState';
+import ErrorState from '../components/common/ErrorState';
+import { analyticsApi, geographyApi } from '../api';
+import type {
+  TopDistrictsResponse,
+  StateItem,
+  DistrictItem,
+  DistrictDetailResponse,
+} from '../types';
+import { MapPin, Users, BookOpen, Briefcase, Award } from 'lucide-react';
+
+export const DistrictsPage: React.FC = () => {
+  const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
+  const [selectedStateId, setSelectedStateId] = useState<number | undefined>();
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
+
+  const [states, setStates] = useState<StateItem[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
+  const [districtDetail, setDistrictDetail] = useState<DistrictDetailResponse | null>(null);
+  const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);
+
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load States
+  useEffect(() => {
+    const loadStates = async () => {
+      try {
+        const res = await geographyApi.getStates();
+        setStates(res.items);
+      } catch (err) {
+        console.error('Failed to load states:', err);
+      }
+    };
+    loadStates();
+  }, []);
+
+  // Load Districts when state changes
+  useEffect(() => {
+    const loadDistricts = async () => {
+      if (!selectedStateId) {
+        setDistricts([]);
+        return;
+      }
+      try {
+        const res = await geographyApi.getDistricts(selectedStateId);
+        setDistricts(res.items);
+      } catch (err) {
+        console.error('Failed to load districts:', err);
+      }
+    };
+    loadDistricts();
+  }, [selectedStateId]);
+
+  // Load District Detail with Demographics
+  useEffect(() => {
+    const loadDetail = async () => {
+      if (!selectedDistrictId) {
+        setDistrictDetail(null);
+        return;
+      }
+      setLoadingDetail(true);
+      try {
+        const res = await geographyApi.getDistrictDetail(selectedDistrictId);
+        setDistrictDetail(res);
+      } catch (err) {
+        console.error('Failed to load district detail:', err);
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+    loadDetail();
+  }, [selectedDistrictId]);
+
+  // Load Top Districts ranking
+  const fetchTopDistricts = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    setError(null);
+    try {
+      const data = await analyticsApi.getTopDistricts({
+        metric,
+        limit: 20,
+        state_id: selectedStateId,
+      });
+      setTopDistricts(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load district risk data.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [metric, selectedStateId]);
+
+  useEffect(() => {
+    fetchTopDistricts();
+  }, [fetchTopDistricts]);
+
+  return (
+    <DashboardLayout
+      title="Jurisdiction Risk & Demographics Intelligence"
+      subtitle="Census 2011 normalized crime intensity across 640 administrative districts"
+      onRefresh={() => fetchTopDistricts(true)}
+      isRefreshing={isRefreshing}
+    >
+      {/* State & District Lookup Filter */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 shadow-md backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Filter By State:
+            </span>
+            <select
+              value={selectedStateId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                setSelectedStateId(val);
+                setSelectedDistrictId(undefined);
+              }}
+              className="rounded-lg border border-slate-700 bg-slate-800 py-1.5 px-3 text-xs font-medium text-white shadow-sm focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">All States & UTs (35)</option>
+              {states.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.state_name}
+                </option>
+              ))}
+            </select>
+
+            {selectedStateId && (
+              <select
+                value={selectedDistrictId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                  setSelectedDistrictId(val);
+                }}
+                className="rounded-lg border border-slate-700 bg-slate-800 py-1.5 px-3 text-xs font-medium text-white shadow-sm focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="">Select District Profile ({districts.length})</option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.district_name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {selectedStateId && (
+            <button
+              onClick={() => {
+                setSelectedStateId(undefined);
+                setSelectedDistrictId(undefined);
+              }}
+              className="text-xs text-rose-400 hover:underline"
+            >
+              Clear State Filter
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Selected District Census Demographics Card */}
+      {selectedDistrictId && (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-5 shadow-lg">
+          <div className="flex items-center gap-2 border-b border-indigo-500/20 pb-3">
+            <MapPin className="h-4 w-4 text-indigo-400" />
+            <h3 className="text-sm font-bold text-white">
+              Census Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
+              {districtDetail?.state_name}
+            </h3>
+          </div>
+
+          {loadingDetail ? (
+            <div className="py-6 text-center text-xs text-indigo-300">
+              Loading Census metrics from district_demographics table...
+            </div>
+          ) : districtDetail?.demographics ? (
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <Users className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-[11px]">Total Population</span>
+                </div>
+                <p className="mt-1 text-lg font-bold text-white">
+                  {districtDetail.demographics.total_population.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  Male: {districtDetail.demographics.male_population.toLocaleString()} | Female:{' '}
+                  {districtDetail.demographics.female_population.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <BookOpen className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-[11px]">Literacy Count</span>
+                </div>
+                <p className="mt-1 text-lg font-bold text-emerald-400">
+                  {districtDetail.demographics.literate_population.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {(
+                    (districtDetail.demographics.literate_population /
+                      (districtDetail.demographics.total_population || 1)) *
+                    100
+                  ).toFixed(1)}
+                  % literacy rate
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <Briefcase className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="text-[11px]">Working Workforce</span>
+                </div>
+                <p className="mt-1 text-lg font-bold text-amber-400">
+                  {districtDetail.demographics.total_workers.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {(
+                    (districtDetail.demographics.total_workers /
+                      (districtDetail.demographics.total_population || 1)) *
+                    100
+                  ).toFixed(1)}
+                  % workforce participation
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <Award className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="text-[11px]">Census Code</span>
+                </div>
+                <p className="mt-1 text-lg font-mono font-bold text-purple-400">
+                  #{districtDetail.census_district_code ?? 'N/A'}
+                </p>
+                <p className="text-[10px] text-slate-500">Census Year: 2011</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-400">
+              No demographic record found for this district.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Main Ranking Table */}
+      {isLoading && !topDistricts && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-12">
+          <LoadingState message="Ranking districts based on Census demographics..." />
+        </div>
+      )}
+
+      {error && (
+        <ErrorState
+          title="Ranking Fetch Error"
+          message={error}
+          onRetry={() => fetchTopDistricts()}
+        />
+      )}
+
+      {!isLoading && !error && topDistricts && (
+        <TopDistrictsTable
+          districts={topDistricts.items}
+          metric={metric}
+          onMetricChange={(newMetric) => setMetric(newMetric)}
+          isLoading={isRefreshing}
+        />
+      )}
+    </DashboardLayout>
+  );
+};
+
+export default DistrictsPage;

@@ -1,5 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Cpu, Database, Activity, CheckCircle2, Layers, ArrowRight } from 'lucide-react';
+import {
+  Shield,
+  Cpu,
+  Database,
+  Activity,
+  CheckCircle2,
+  Layers,
+  ArrowRight,
+  LayoutDashboard,
+  TrendingUp,
+  MapPin,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { checkHealth } from '../services/api';
 
 export const LandingPage: React.FC = () => {
@@ -38,7 +50,7 @@ export const LandingPage: React.FC = () => {
 
           <div className="flex items-center space-x-3 text-xs">
             <span className="px-2.5 py-1 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800 font-medium">
-              Phase 1: Project Foundation
+              Phase 5: Analytics Dashboard
             </span>
             <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700">
               <span
@@ -59,10 +71,10 @@ export const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-5xl mx-auto px-6 py-16 flex-1 flex flex-col justify-center items-center text-center">
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-medium mb-8 shadow-inner">
+      <main className="max-w-5xl mx-auto px-6 py-12 flex-1 flex flex-col justify-center items-center text-center">
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-medium mb-6 shadow-inner">
           <Activity className="w-3.5 h-3.5 text-indigo-400" />
-          <span>System Architecture & Scaffold Active</span>
+          <span>191,679 Verified Crime Records &bull; 640 Districts</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-4xl leading-tight">
@@ -73,11 +85,39 @@ export const LandingPage: React.FC = () => {
           with AI-Based Resource Optimization
         </p>
 
-        <p className="mt-6 text-slate-400 max-w-2xl text-base sm:text-lg leading-relaxed">
-          An incremental intelligence framework designed for aggregate crime analytics, risk assessment, police resource planning, and budget estimation.
+        <p className="mt-5 text-slate-400 max-w-2xl text-base sm:text-lg leading-relaxed">
+          Operational intelligence framework consuming real MySQL data via FastAPI for longitudinal crime trends, domain breakdown, diurnal patrol curves, and Census-normalized jurisdiction risk.
         </p>
 
-        {/* Phase 1 Verification Pillars */}
+        {/* Primary Call-to-Action to Launch Dashboard */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2.5 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950 transition-all hover:scale-105"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            <span>Launch Intelligence Dashboard</span>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+
+          <Link
+            to="/trends"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-5 py-3.5 text-sm font-medium text-slate-300 hover:border-slate-700 hover:text-white transition-all"
+          >
+            <TrendingUp className="h-4 w-4 text-indigo-400" />
+            <span>View Temporal Trends</span>
+          </Link>
+
+          <Link
+            to="/districts"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-5 py-3.5 text-sm font-medium text-slate-300 hover:border-slate-700 hover:text-white transition-all"
+          >
+            <MapPin className="h-4 w-4 text-emerald-400" />
+            <span>Jurisdiction Risk</span>
+          </Link>
+        </div>
+
+        {/* Architecture & Engineering Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mt-14 text-left">
           <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition">
             <div className="p-2.5 w-fit rounded-lg bg-indigo-950/60 border border-indigo-800/50 text-indigo-400 mb-4">
@@ -85,17 +125,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <h3 className="font-semibold text-slate-100 text-base mb-2">Clean Architecture</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Decoupled layers: API Routes → Domain Services → Repositories → SQLAlchemy ORM → MySQL.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition">
-            <div className="p-2.5 w-fit rounded-lg bg-sky-950/60 border border-sky-800/50 text-sky-400 mb-4">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-slate-100 text-base mb-2">Isolated ML Pipeline</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Dedicated preprocessing, feature engineering, and inference engine isolated from the web layer.
+              Strictly decoupled: React UI → FastAPI Routes → Services → Repositories → MySQL 8.0.
             </p>
           </div>
 
@@ -103,28 +133,41 @@ export const LandingPage: React.FC = () => {
             <div className="p-2.5 w-fit rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 mb-4">
               <Database className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-100 text-base mb-2">Selective Storage</h3>
+            <h3 className="font-semibold text-slate-100 text-base mb-2">Frozen Relational Schema</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Schema intentionally deferred to Phase 2 to ensure only standardized, necessary attributes are ingested.
+              17 normalized tables storing 191,679 verified incidents with 0% mock data and full Census 2011 linkage.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition">
+            <div className="p-2.5 w-fit rounded-lg bg-sky-950/60 border border-sky-800/50 text-sky-400 mb-4">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <h3 className="font-semibold text-slate-100 text-base mb-2">Descriptive Intelligence</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Live SQL aggregations: clearance rates, diurnal patrol hours, weapon types, and per-capita rates.
             </p>
           </div>
         </div>
 
-        {/* Next Step Banner */}
+        {/* Phase Status Banner */}
         <div className="mt-12 w-full max-w-4xl p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-left">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-white">Foundation Ready</div>
-              <div className="text-xs text-slate-400">Awaiting Phase 2: Crime Dataset Requirements & Schema Design</div>
+              <div className="text-sm font-semibold text-white">Phase 5 Complete: Frontend Analytics Dashboard</div>
+              <div className="text-xs text-slate-400">Consuming real Phase 4 REST APIs with full filter cascading</div>
             </div>
           </div>
-          <div className="flex items-center space-x-1.5 text-xs font-medium text-indigo-400">
-            <span>Phase 2 Next</span>
+          <Link
+            to="/dashboard"
+            className="flex items-center space-x-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+          >
+            <span>Open Dashboard</span>
             <ArrowRight className="w-4 h-4" />
-          </div>
+          </Link>
         </div>
       </main>
 
@@ -135,3 +178,5 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
+
+export default LandingPage;
