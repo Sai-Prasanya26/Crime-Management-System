@@ -12,6 +12,8 @@ import type {
 } from '../types';
 import { MapPin, Users, BookOpen, Briefcase, Award } from 'lucide-react';
 import OfficialNcrbCard from '../components/common/OfficialNcrbCard';
+import DataFreshnessBanner from '../components/common/DataFreshnessBanner';
+import StateCoverageCard from '../components/common/StateCoverageCard';
 
 export const DistrictsPage: React.FC = () => {
   const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
@@ -108,10 +110,13 @@ export const DistrictsPage: React.FC = () => {
   return (
     <DashboardLayout
       title="Jurisdiction Risk & Demographics Intelligence"
-      subtitle="Census 2011 normalized crime intensity across 640 administrative districts"
+      subtitle="Census 2011 population baseline & 2026 administrative geography across 789 districts"
       onRefresh={() => fetchTopDistricts(true)}
       isRefreshing={isRefreshing}
     >
+      {/* Academic Disclosures & Data Freshness Banner */}
+      <DataFreshnessBanner />
+
       {/* State & District Lookup Filter */}
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -285,6 +290,9 @@ export const DistrictsPage: React.FC = () => {
             onMetricChange={(newMetric) => setMetric(newMetric)}
             isLoading={isRefreshing}
           />
+
+          {/* India Crime Data Coverage (All 36 States/UTs) */}
+          <StateCoverageCard />
 
           {/* Official NCRB Published Crime Statistics */}
           <OfficialNcrbCard />

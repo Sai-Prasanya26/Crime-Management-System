@@ -154,6 +154,71 @@ export interface OfficialCrimeStatisticListResponse {
   items: OfficialCrimeStatisticItem[];
 }
 
+export interface StateCoverageItem {
+  state_id: number;
+  state_name: string;
+  entity_type: 'STATE' | 'UT';
+  district_count: number;
+  historical_incident_count: number;
+  official_record_count: number;
+  latest_official_crime_year?: number | null;
+  latest_official_cases?: number | null;
+  official_data_available: boolean;
+  data_status: string;
+  coverage_status: 'COMPLETE' | 'PARTIAL' | 'HISTORICAL_ONLY' | 'OFFICIAL_BENCHMARK_ONLY' | 'NO_OFFICIAL_DATA_FOUND';
+  data_source: string;
+  data_freshness: string;
+  has_crime_information: boolean;
+  notes?: string | null;
+}
+
+export interface StateCoverageListResponse {
+  total_entities: number;
+  states_count: number;
+  uts_count: number;
+  total_current_districts: number;
+  total_historical_incidents: number;
+  coverage_summary: Record<string, number>;
+  items: StateCoverageItem[];
+}
+
+export interface DataFreshnessResponse {
+  historical_incident_dataset: string;
+  latest_nationwide_official_benchmark: string;
+  latest_official_nationwide_year: number;
+  population_baseline: string;
+  current_administrative_geography: string;
+  total_active_states: number;
+  total_active_uts: number;
+  total_current_districts: number;
+  total_census_2011_districts: number;
+  total_historical_incidents: number;
+  total_official_records: number;
+  notes: string[];
+}
+
+export interface DistrictCoverageItem {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_census_2011: boolean;
+  is_current_admin: boolean;
+  has_historical_incidents: boolean;
+  historical_incident_count: number;
+  has_official_statistics: boolean;
+  latest_data_year?: number | null;
+  data_source: string;
+  notes?: string | null;
+}
+
+export interface DistrictCoverageListResponse {
+  total: number;
+  items: DistrictCoverageItem[];
+}
+
 // ============================================================================
 // Crime Analytics Types
 // ============================================================================

@@ -1,9 +1,14 @@
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from backend.app.repositories.official_crime_repository import OfficialCrimeRepository
 from backend.app.schemas.official_crime import (
     OfficialCrimeStatisticListResponse,
     OfficialCrimeStatisticItem,
+    StateCoverageListResponse,
+    StateCoverageItem,
+    DataFreshnessResponse,
+    DistrictCoverageListResponse,
+    DistrictCoverageItem,
 )
 
 
@@ -56,3 +61,34 @@ class OfficialCrimeService:
     @staticmethod
     def get_available_years(db: Session) -> List[int]:
         return OfficialCrimeRepository.get_available_years(db)
+
+    @staticmethod
+    def get_state_coverage(db: Session) -> StateCoverageListResponse:
+        data = OfficialCrimeRepository.get_state_coverage(db)
+        items = [StateCoverageItem(**i) for i in data["items"]]
+        return StateCoverageListResponse(
+            total_entities=data["total_entities"],
+            states_count=data["states_count"],
+            uts_count=data["uts_count"],
+            total_current_districts=data["total_current_districts"],
+            total_historical_incidents=data["total_historical_incidents"],
+            coverage_summary=data["coverage_summary"],
+            items=items,
+        )
+
+    @staticmethod
+    def get_district_coverage(
+        db: Session,
+        state_id: Optional[int] = None,
+    ) -> DistrictCoverageListResponse:
+        data = OfficialCrimeRepository.get_district_coverage(db, state_id=state_id)
+        items = [DistrictCoverageItem(**i) for i in data["items"]]
+        return DistrictCoverageListResponse(
+            total=data["total"],
+            items=items,
+        )
+
+    @staticmethod
+    def get_data_freshness_metadata(db: Session) -> DataFreshnessResponse:
+        metadata = OfficialCrimeRepository.get_data_freshness_metadata(db)
+        return DataFreshnessResponse(**metadata)

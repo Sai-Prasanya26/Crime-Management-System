@@ -1,5 +1,10 @@
 import apiClient from './client';
-import type { OfficialCrimeStatisticListResponse } from '../types';
+import type {
+  OfficialCrimeStatisticListResponse,
+  StateCoverageListResponse,
+  DataFreshnessResponse,
+  DistrictCoverageListResponse,
+} from '../types';
 
 export const officialCrimeApi = {
   /**
@@ -23,6 +28,33 @@ export const officialCrimeApi = {
    */
   getAvailableYears: async (): Promise<number[]> => {
     const response = await apiClient.get<number[]>('/official-crime/years');
+    return response.data;
+  },
+
+  /**
+   * Fetch complete data coverage audit across all 36 active Indian States and UTs.
+   */
+  getStateCoverage: async (): Promise<StateCoverageListResponse> => {
+    const response = await apiClient.get<StateCoverageListResponse>('/official-crime/coverage');
+    return response.data;
+  },
+
+  /**
+   * Fetch system-wide data freshness, census baselines, and temporal metadata.
+   */
+  getDataFreshness: async (): Promise<DataFreshnessResponse> => {
+    const response = await apiClient.get<DataFreshnessResponse>('/official-crime/freshness');
+    return response.data;
+  },
+
+  /**
+   * Fetch district coverage audit with historical Census-2011 parent lineage.
+   */
+  getDistrictCoverage: async (stateId?: number): Promise<DistrictCoverageListResponse> => {
+    const response = await apiClient.get<DistrictCoverageListResponse>(
+      '/official-crime/district-coverage',
+      { params: { state_id: stateId } }
+    );
     return response.data;
   },
 };

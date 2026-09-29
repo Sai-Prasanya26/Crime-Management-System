@@ -45,7 +45,7 @@ CREATE TABLE `districts` (
   KEY `fk_districts_parent` (`parent_district_id`),
   CONSTRAINT `districts_ibfk_1` FOREIGN KEY (`state_id`) REFERENCES `states` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_districts_parent` FOREIGN KEY (`parent_district_id`) REFERENCES `districts` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=802 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=806 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `district_demographics`
 DROP TABLE IF EXISTS `district_demographics`;
@@ -301,7 +301,7 @@ CREATE TABLE `audit_logs` (
   PRIMARY KEY (`id`),
   KEY `idx_audit_user_date` (`user_id`,`created_at`),
   CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `generated_reports`
 DROP TABLE IF EXISTS `generated_reports`;
@@ -342,7 +342,7 @@ CREATE TABLE `district_geography_mapping` (
   KEY `ix_dgm_current` (`current_district_id`),
   CONSTRAINT `fk_dgm_current` FOREIGN KEY (`current_district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_dgm_historical` FOREIGN KEY (`historical_district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1182 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1184 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `official_crime_statistics`
 DROP TABLE IF EXISTS `official_crime_statistics`;
@@ -373,6 +373,6 @@ CREATE TABLE `official_crime_statistics` (
   KEY `fk_ocs_district` (`district_id`),
   CONSTRAINT `fk_ocs_district` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_ocs_state` FOREIGN KEY (`state_id`) REFERENCES `states` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

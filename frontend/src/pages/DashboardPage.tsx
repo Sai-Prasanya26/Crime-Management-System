@@ -19,6 +19,7 @@ import HourlyDistributionChart from '../components/charts/HourlyDistributionChar
 import VictimDemographicsChart from '../components/charts/VictimDemographicsChart';
 import WeaponDistributionChart from '../components/charts/WeaponDistributionChart';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
+import DataFreshnessBanner from '../components/common/DataFreshnessBanner';
 
 import { analyticsApi } from '../api';
 import type {
@@ -125,6 +126,9 @@ export const DashboardPage: React.FC = () => {
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
+      {/* Academic Disclosures & Data Freshness Banner */}
+      <DataFreshnessBanner />
+
       {/* Global Filter Bar */}
       <DashboardFilters
         filters={filters}
@@ -163,16 +167,16 @@ export const DashboardPage: React.FC = () => {
           {/* Key Performance Indicators (StatCards) */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
-              title="Total Reported Crimes"
+              title="Historical Project Incidents"
               value={overview.total_incidents.toLocaleString()}
-              subtext={`Period: ${overview.earliest_incident_date} to ${overview.latest_incident_date}`}
+              subtext="Historical Project Dataset: 2020–2025"
               icon={FileText}
               color="indigo"
             />
             <StatCard
               title="Case Clearance Rate"
               value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
-              subtext={`${overview.cases.closed.toLocaleString()} resolved cases`}
+              subtext={`${overview.cases.closed.toLocaleString()} resolved cases (2020–2025)`}
               icon={CheckCircle2}
               color="emerald"
             />
@@ -186,7 +190,7 @@ export const DashboardPage: React.FC = () => {
             <StatCard
               title="Jurisdictions Covered"
               value={overview.total_districts.toLocaleString()}
-              subtext={`Across ${overview.total_states} Indian States & UTs`}
+              subtext={`Census 2011 districts (${overview.total_states} States/UTs)`}
               icon={Globe2}
               color="blue"
             />

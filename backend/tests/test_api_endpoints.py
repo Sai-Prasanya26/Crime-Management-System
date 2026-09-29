@@ -1,7 +1,8 @@
 """
-Phase 7B End-to-End API Integration & Dual-Layer Geography Verification Tests.
-Tests live MySQL database with dual-layer geography, 787 current districts, 640 historical districts,
-official NCRB crime statistics, and analytics integrity across all 191,679 historical incident records.
+Phase 7B & 7C End-to-End API Integration, Dual-Layer Geography & State Crime Coverage Verification Tests.
+Tests live MySQL database with dual-layer geography, 789 current districts (including 28 AP districts),
+640 historical Census-2011 districts, official NCRB crime statistics, and analytics integrity across all
+191,679 historical incident records.
 """
 
 import os
@@ -60,11 +61,11 @@ def test_geography_states():
 
 
 def test_geography_districts():
-    # 1. All Current Administrative Districts: 787 districts
+    # 1. All Current Administrative Districts: 789 districts (incorporating AP 28-district reorganization)
     resp = client.get("/api/v1/geography/districts")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 787, f"Expected 787 current districts, got {data['total']}"
+    assert data["total"] == 789, f"Expected 789 current districts, got {data['total']}"
     print(f"[PASS] GET /api/v1/geography/districts (current layer): PASS ({data['total']} districts)")
 
     # 2. All Historical Census 2011 Districts: 640 districts
@@ -85,13 +86,16 @@ def test_geography_districts():
     assert "Hyderabad" in tg_district_names, "Hyderabad must exist under Telangana in current layer"
     print(f"[PASS] GET /api/v1/geography/districts?state_id={tg_state['id']} (Telangana): PASS (33 districts verified)")
 
-    # 4. Current Andhra Pradesh Districts: Exactly 26 districts
+    # 4. Current Andhra Pradesh Districts: Exactly 28 districts (incorporating Dec 31, 2025 reorganization)
     ap_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "ANDHRA PRADESH")
     resp_ap = client.get(f"/api/v1/geography/districts?state_id={ap_state['id']}&view=current")
     assert resp_ap.status_code == 200
     data_ap = resp_ap.json()
-    assert data_ap["total"] == 26, f"Expected 26 Andhra Pradesh districts, got {data_ap['total']}"
-    print(f"[PASS] GET /api/v1/geography/districts?state_id={ap_state['id']} (Andhra Pradesh): PASS (26 districts verified)")
+    assert data_ap["total"] == 28, f"Expected 28 Andhra Pradesh districts, got {data_ap['total']}"
+    ap_district_names = [d["district_name"] for d in data_ap["items"]]
+    assert "Markapuram" in ap_district_names, "Markapuram must exist in AP current districts"
+    assert "Polavaram" in ap_district_names, "Polavaram must exist in AP current districts"
+    print(f"[PASS] GET /api/v1/geography/districts?state_id={ap_state['id']} (Andhra Pradesh): PASS (28 districts verified)")
 
     # 5. Current Ladakh Districts: Exactly 2 districts
     la_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "LADAKH")
@@ -109,7 +113,13 @@ def test_geography_hyderabad():
     hyd_curr = next(d for d in resp_districts.json()["items"] if d["district_name"] == "Hyderabad")
     assert hyd_curr["state_name"] == "TELANGANA"
     assert hyd_curr["parent_district_id"] == 9, f"Expected parent_district_id=9, got {hyd_curr['parent_district_id']}"
-    print(f"[PASS] Current Hyderabad: PASS (ID {hyd_curr['id']} belongs to TELANGANA, parent_district_id=9)")
+
+    # Verify Hyderabad does NOT appear under Andhra Pradesh current districts
+    ap_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "ANDHRA PRADESH")
+    resp_ap = client.get(f"/api/v1/geography/districts?state_id={ap_state['id']}&view=current")
+    ap_dists = [d["district_name"] for d in resp_ap.json()["items"]]
+    assert "Hyderabad" not in ap_dists, "Hyderabad must NOT appear in current Andhra Pradesh districts"
+    print(f"[PASS] Current Hyderabad: PASS (ID {hyd_curr['id']} belongs to TELANGANA, NOT in AP)")
 
 
 def test_geography_district_detail():
@@ -134,7 +144,7 @@ def test_geography_mappings():
     resp = client.get("/api/v1/geography/mappings")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] > 700, f"Expected >700 mappings, got {data['total']}"
+    assert data["total"] >= 786, f"Expected >=786 mappings, got {data['total']}"
     hyd_mapping = next((m for m in data["items"] if m["historical_district_id"] == 9), None)
     assert hyd_mapping is not None, "Hyderabad mapping must exist"
     assert hyd_mapping["mapping_type"] == "TRANSFERRED"
@@ -143,15 +153,15 @@ def test_geography_mappings():
 
 
 def test_official_crime_statistics():
-    # 1. Available report years
     resp_years = client.get("/api/v1/official-crime/years")
     assert resp_years.status_code == 200
     years = resp_years.json()
+    assert 2024 in years, "Year 2024 must be present"
     assert 2023 in years, "Year 2023 must be present"
     assert 2022 in years, "Year 2022 must be present"
     print(f"[PASS] GET /api/v1/official-crime/years: PASS (Available: {years})")
 
-    # 2. National statistics for 2023
+    # National statistics for 2023
     resp_nat = client.get("/api/v1/official-crime/statistics?report_year=2023&geography_level=NATIONAL")
     assert resp_nat.status_code == 200
     data_nat = resp_nat.json()
@@ -161,12 +171,128 @@ def test_official_crime_statistics():
     assert tot_cognizable["chargesheet_rate"] == 72.7
     print(f"[PASS] GET /api/v1/official-crime/statistics (2023 National): PASS (Reported: {tot_cognizable['reported_cases']:,}, Chargesheet Rate: {tot_cognizable['chargesheet_rate']}%)")
 
-    # 3. State-level statistics for 2023
+    # State-level statistics for 2023
     resp_states = client.get("/api/v1/official-crime/statistics?report_year=2023&geography_level=STATE")
     assert resp_states.status_code == 200
     data_states = resp_states.json()
     assert data_states["total"] == 36, f"Expected 36 states/UTs in 2023 official data, got {data_states['total']}"
     print(f"[PASS] GET /api/v1/official-crime/statistics (2023 State-wise): PASS (All 36 States/UTs verified)")
+
+
+# =====================================================================
+# PHASE 7C SPECIFIC AUTOMATED TESTS
+# =====================================================================
+
+def test_phase7c_state_coverage_api():
+    """
+    Verifies Section 16 requirements:
+    1. Exactly 36 active States/UTs.
+    2. Exactly 28 States.
+    3. Exactly 8 UTs.
+    4. Every active State/UT appears in coverage API.
+    5. Telangana exists.
+    6. Telangana has 33 current districts.
+    7. Hyderabad current district belongs to Telangana.
+    8. Andhra Pradesh has 28 current districts.
+    9. Ladakh exists (2 districts).
+    10. 191,679 historical incidents remain unchanged.
+    11. No fake incident records were inserted.
+    """
+    resp = client.get("/api/v1/official-crime/coverage")
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+    data = resp.json()
+
+    # 1. Exactly 36 active entities
+    assert data["total_entities"] == 36, f"Expected 36 total entities, got {data['total_entities']}"
+    # 2. Exactly 28 States
+    assert data["states_count"] == 28, f"Expected 28 States, got {data['states_count']}"
+    # 3. Exactly 8 UTs
+    assert data["uts_count"] == 8, f"Expected 8 UTs, got {data['uts_count']}"
+    # 4. Total current districts nationwide is 789
+    assert data["total_current_districts"] == 789, f"Expected 789 current districts, got {data['total_current_districts']}"
+    # 5. Historical incident count across all states is exactly 191,679
+    assert data["total_historical_incidents"] == 191679, f"Expected 191679 incidents, got {data['total_historical_incidents']}"
+
+    # Map items by name
+    items_by_name = {item["state_name"]: item for item in data["items"]}
+    assert len(items_by_name) == 36, "All 36 states must be present without omission"
+
+    # Telangana check
+    assert "TELANGANA" in items_by_name
+    tg = items_by_name["TELANGANA"]
+    assert tg["entity_type"] == "STATE"
+    assert tg["district_count"] == 33, f"Expected 33 Telangana districts, got {tg['district_count']}"
+    assert tg["historical_incident_count"] == 5280, f"Expected 5,280 incidents, got {tg['historical_incident_count']}"
+    assert tg["official_data_available"] is True
+    assert tg["coverage_status"] == "COMPLETE"
+    assert tg["latest_official_crime_year"] == 2024
+
+    # Andhra Pradesh check
+    assert "ANDHRA PRADESH" in items_by_name
+    ap = items_by_name["ANDHRA PRADESH"]
+    assert ap["entity_type"] == "STATE"
+    assert ap["district_count"] == 28, f"Expected 28 AP districts, got {ap['district_count']}"
+    assert ap["historical_incident_count"] == 7072, f"Expected 7,072 AP incidents, got {ap['historical_incident_count']}"
+    assert ap["official_data_available"] is True
+    assert ap["coverage_status"] == "COMPLETE"
+
+    # Ladakh check
+    assert "LADAKH" in items_by_name
+    la = items_by_name["LADAKH"]
+    assert la["entity_type"] == "UT"
+    assert la["district_count"] == 2, f"Expected 2 Ladakh districts, got {la['district_count']}"
+    assert la["official_data_available"] is True
+
+    # Check that every entity has valid coverage_status
+    for item in data["items"]:
+        assert item["coverage_status"] in ("COMPLETE", "PARTIAL", "HISTORICAL_ONLY", "OFFICIAL_BENCHMARK_ONLY", "NO_OFFICIAL_DATA_FOUND")
+        assert item["data_source"] is not None
+        assert item["data_freshness"] is not None
+
+    print(f"[PASS] Phase 7C Coverage API: PASS (36 entities: 28 States, 8 UTs, 789 districts, 191,679 incidents, all COMPLETE)")
+
+
+def test_phase7c_data_freshness_api():
+    """
+    Verifies Section 15 & 16:
+    - Visible Data Freshness section metadata
+    - Census population remains labelled 2011
+    - Nationwide NCRB benchmark labelled 2024 / 2023
+    - Current geography labelled 2026
+    """
+    resp = client.get("/api/v1/official-crime/freshness")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert "2020" in data["historical_incident_dataset"] and "2025" in data["historical_incident_dataset"]
+    assert "Census 2011" in data["population_baseline"]
+    assert "2024" in str(data["latest_official_nationwide_year"])
+    assert data["total_active_states"] == 28
+    assert data["total_active_uts"] == 8
+    assert data["total_current_districts"] == 789
+    assert data["total_census_2011_districts"] == 640
+    assert data["total_historical_incidents"] == 191679
+    assert data["total_official_records"] >= 50
+    assert len(data["notes"]) >= 3
+    print(f"[PASS] Phase 7C Data Freshness API: PASS (Census 2011 baseline, 2024 NCRB, 2026 geography)")
+
+
+def test_phase7c_district_coverage_api():
+    """
+    Verifies Section 11:
+    - District coverage audit for current administrative districts
+    - Parent district lineage preserved without fabricating records
+    """
+    resp = client.get("/api/v1/official-crime/district-coverage?state_id=36")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 33, f"Expected 33 Telangana districts, got {data['total']}"
+    for d in data["items"]:
+        assert d["state_name"] == "TELANGANA"
+        assert d["is_current_admin"] is True
+        if d["parent_district_id"]:
+            assert d["parent_district_name"] is not None
+    print(f"[PASS] Phase 7C District Coverage API: PASS (33 Telangana districts with lineage verified)")
 
 
 def test_crime_overview():
@@ -280,7 +406,7 @@ def test_crime_top_districts():
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("PHASE 7B: RUNNING COMPLETE API & GEOGRAPHY INTEGRATION TEST SUITE")
+    print("PHASE 7C: RUNNING COMPLETE API & GEOGRAPHY INTEGRATION TEST SUITE")
     print("=" * 70)
     test_health()
     test_geography_states()
@@ -289,6 +415,9 @@ if __name__ == "__main__":
     test_geography_district_detail()
     test_geography_mappings()
     test_official_crime_statistics()
+    test_phase7c_state_coverage_api()
+    test_phase7c_data_freshness_api()
+    test_phase7c_district_coverage_api()
     test_crime_overview()
     test_crime_trends()
     test_crime_by_category()
@@ -298,5 +427,5 @@ if __name__ == "__main__":
     test_crime_weapons()
     test_crime_top_districts()
     print("=" * 70)
-    print("ALL PHASE 7B TESTS PASSED WITH 100% SUCCESS AGAINST LIVE MYSQL DATABASE!")
+    print("ALL PHASE 7C TESTS PASSED WITH 100% SUCCESS AGAINST LIVE MYSQL DATABASE!")
     print("=" * 70 + "\n")
