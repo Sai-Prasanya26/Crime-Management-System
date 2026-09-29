@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Building, RotateCcw, Filter } from 'lucide-react';
+import { MapPin, Building, RotateCcw, Filter, Globe } from 'lucide-react';
 import { geographyApi } from '../../api';
 import type { StateItem, DistrictItem, FilterParams } from '../../types';
 import DateRangeFilter from './DateRangeFilter';
@@ -15,18 +15,19 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   onFilterChange,
   isLoading,
 }) => {
+  const [geoView, setGeoView] = useState<'current' | 'historical'>('current');
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
 
-  // Load all 35 States on mount
+  // Load States whenever geoView changes
   useEffect(() => {
     let isMounted = true;
     const loadStates = async () => {
       setLoadingStates(true);
       try {
-        const data = await geographyApi.getStates();
+        const data = await geographyApi.getStates(geoView);
         if (isMounted) {
           setStates(data.items);
         }
@@ -40,9 +41,9 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [geoView]);
 
-  // Load districts when selected state changes
+  // Load districts when selected state changes or geoView changes
   useEffect(() => {
     let isMounted = true;
     const loadDistricts = async () => {
@@ -52,7 +53,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       }
       setLoadingDistricts(true);
       try {
-        const data = await geographyApi.getDistricts(filters.state_id);
+        const data = await geographyApi.getDistricts(filters.state_id, geoView);
         if (isMounted) {
           setDistricts(data.items);
         }
@@ -66,7 +67,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [filters.state_id]);
+  }, [filters.state_id, geoView]);
 
   const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
@@ -97,18 +98,39 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     onFilterChange({});
   };
 
+  const toggleGeoView = () => {
+    const nextView = geoView === 'current' ? 'historical' : 'current';
+    setGeoView(nextView);
+    onFilterChange({
+      ...filters,
+      state_id: undefined,
+      district_id: undefined,
+    });
+  };
+
   const hasActiveFilters = Boolean(
     filters.state_id || filters.district_id || filters.start_date || filters.end_date
   );
 
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Left: Geography Controls */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#0F172A]">
             <Filter className="h-4 w-4 text-[#4F46E5]" />
             <span>Filters</span>
           </div>
+
+          {/* Geography Layer Switcher */}
+          <button
+            onClick={toggleGeoView}
+            className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-[11px] font-semibold text-[#4F46E5] hover:bg-indigo-100 transition-colors shadow-2xs"
+            title="Click to toggle between Current Administrative and Census 2011 Historical Geography"
+          >
+            <Globe className="h-3 w-3" />
+            {geoView === 'current' ? 'Current Admin (36 States/UTs)' : 'Historical (Census 2011)'}
+          </button>
 
           {/* State Selector */}
           <div className="relative min-w-[200px]">
@@ -121,10 +143,14 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               disabled={loadingStates || isLoading}
               className="w-full rounded-lg border border-[#E2E8F0] bg-white py-1.5 pl-8 pr-4 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none focus:ring-1 focus:ring-[#4F46E5] disabled:opacity-60"
             >
-              <option value="">All States & UTs (35)</option>
+              <option value="">
+                {geoView === 'current'
+                  ? `All States & UTs (${states.length || 36})`
+                  : `All Census 2011 States (${states.length || 35})`}
+              </option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.state_name}
+                  {s.state_name} {s.entity_type ? `(${s.entity_type})` : ''}
                 </option>
               ))}
             </select>
@@ -157,7 +183,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           </div>
         </div>
 
-        {/* Date Range Picker & Reset */}
+        {/* Right: Date Range Picker & Reset */}
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter
             startDate={filters.start_date}

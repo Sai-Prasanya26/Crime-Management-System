@@ -68,3 +68,10 @@ desktop.ini
 # Output Reports
 reports/generated/
 *.pdf
+
+# Database Backups
+database/backups/*
+!database/backups/.gitkeep
+
+# Temporary scratch scripts
+scratch/

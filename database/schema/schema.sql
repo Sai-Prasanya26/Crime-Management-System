@@ -16,9 +16,13 @@ CREATE TABLE `states` (
   `id` int NOT NULL AUTO_INCREMENT,
   `state_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `state_code` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `entity_type` enum('STATE','UT') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'STATE',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_states_state_name` (`state_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `districts`
 DROP TABLE IF EXISTS `districts`;
@@ -27,13 +31,21 @@ CREATE TABLE `districts` (
   `state_id` int NOT NULL,
   `district_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `census_district_code` int DEFAULT NULL,
+  `lgd_code` int DEFAULT NULL,
+  `is_census_2011` tinyint(1) NOT NULL DEFAULT '0',
+  `is_current_admin` tinyint(1) NOT NULL DEFAULT '1',
+  `parent_district_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_state_district` (`state_id`,`district_name`),
   UNIQUE KEY `census_district_code` (`census_district_code`),
   KEY `ix_districts_state_id` (`state_id`),
   KEY `ix_districts_district_name` (`district_name`),
-  CONSTRAINT `districts_ibfk_1` FOREIGN KEY (`state_id`) REFERENCES `states` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fk_districts_parent` (`parent_district_id`),
+  CONSTRAINT `districts_ibfk_1` FOREIGN KEY (`state_id`) REFERENCES `states` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_districts_parent` FOREIGN KEY (`parent_district_id`) REFERENCES `districts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=802 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `district_demographics`
 DROP TABLE IF EXISTS `district_demographics`;
@@ -50,7 +62,7 @@ CREATE TABLE `district_demographics` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `district_id` (`district_id`),
   CONSTRAINT `district_demographics_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=641 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `crime_categories`
 DROP TABLE IF EXISTS `crime_categories`;
@@ -60,7 +72,7 @@ CREATE TABLE `crime_categories` (
   `severity_weight` decimal(3,2) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `category_name` (`category_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `crime_types`
 DROP TABLE IF EXISTS `crime_types`;
@@ -74,7 +86,7 @@ CREATE TABLE `crime_types` (
   UNIQUE KEY `crime_code` (`crime_code`),
   KEY `ix_crime_types_category_id` (`category_id`),
   CONSTRAINT `crime_types_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `crime_categories` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `crime_incidents`
 DROP TABLE IF EXISTS `crime_incidents`;
@@ -102,7 +114,7 @@ CREATE TABLE `crime_incidents` (
   KEY `ix_crime_incidents_crime_type_id` (`crime_type_id`),
   CONSTRAINT `crime_incidents_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `crime_incidents_ibfk_2` FOREIGN KEY (`crime_type_id`) REFERENCES `crime_types` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=191680 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `resource_types`
 DROP TABLE IF EXISTS `resource_types`;
@@ -114,7 +126,7 @@ CREATE TABLE `resource_types` (
   `is_active` tinyint(1) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `resource_name` (`resource_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `resource_costs`
 DROP TABLE IF EXISTS `resource_costs`;
@@ -130,7 +142,7 @@ CREATE TABLE `resource_costs` (
   KEY `ix_resource_costs_resource_type_id` (`resource_type_id`),
   KEY `idx_cost_resource_active` (`resource_type_id`,`is_active`),
   CONSTRAINT `resource_costs_ibfk_1` FOREIGN KEY (`resource_type_id`) REFERENCES `resource_types` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `district_resources`
 DROP TABLE IF EXISTS `district_resources`;
@@ -273,7 +285,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_users_username` (`username`),
   UNIQUE KEY `ix_users_email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `audit_logs`
 DROP TABLE IF EXISTS `audit_logs`;
@@ -289,7 +301,7 @@ CREATE TABLE `audit_logs` (
   PRIMARY KEY (`id`),
   KEY `idx_audit_user_date` (`user_id`,`created_at`),
   CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `generated_reports`
 DROP TABLE IF EXISTS `generated_reports`;
@@ -311,5 +323,56 @@ CREATE TABLE `generated_reports` (
   CONSTRAINT `generated_reports_ibfk_1` FOREIGN KEY (`generated_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `generated_reports_ibfk_2` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table structure for table `district_geography_mapping`
+DROP TABLE IF EXISTS `district_geography_mapping`;
+CREATE TABLE `district_geography_mapping` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `historical_district_id` int NOT NULL,
+  `current_district_id` int NOT NULL,
+  `mapping_type` enum('SAME','SPLIT','MERGED','TRANSFERRED','RENAMED','REORGANIZED') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mapping_percentage` decimal(5,2) DEFAULT NULL,
+  `effective_from` date NOT NULL,
+  `effective_to` date DEFAULT NULL,
+  `source` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_dgm_historical` (`historical_district_id`),
+  KEY `ix_dgm_current` (`current_district_id`),
+  CONSTRAINT `fk_dgm_current` FOREIGN KEY (`current_district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_dgm_historical` FOREIGN KEY (`historical_district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1182 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table structure for table `official_crime_statistics`
+DROP TABLE IF EXISTS `official_crime_statistics`;
+CREATE TABLE `official_crime_statistics` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `state_id` int DEFAULT NULL,
+  `district_id` int DEFAULT NULL,
+  `report_year` smallint NOT NULL,
+  `geography_level` enum('NATIONAL','STATE','DISTRICT','CITY') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `entity_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `crime_head` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `crime_category` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reported_cases` int NOT NULL,
+  `chargesheeted_cases` int DEFAULT NULL,
+  `chargesheet_rate` decimal(5,2) DEFAULT NULL,
+  `conviction_rate` decimal(5,2) DEFAULT NULL,
+  `source_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_report` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_url` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `publication_date` date DEFAULT NULL,
+  `data_status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OFFICIAL_PUBLISHED',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_ocs_year` (`report_year`),
+  KEY `ix_ocs_geo_level` (`geography_level`),
+  KEY `ix_ocs_state_id` (`state_id`),
+  KEY `fk_ocs_district` (`district_id`),
+  CONSTRAINT `fk_ocs_district` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ocs_state` FOREIGN KEY (`state_id`) REFERENCES `states` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

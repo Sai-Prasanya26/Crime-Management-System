@@ -1,6 +1,7 @@
 """
-Phase 4 End-to-End API Integration & Verification Tests.
-Tests all geography and crime analytics endpoints against live MySQL database.
+Phase 7B End-to-End API Integration & Dual-Layer Geography Verification Tests.
+Tests live MySQL database with dual-layer geography, 787 current districts, 640 historical districts,
+official NCRB crime statistics, and analytics integrity across all 191,679 historical incident records.
 """
 
 import os
@@ -30,28 +31,85 @@ def test_health():
 
 
 def test_geography_states():
+    # 1. Current Administrative Master: 36 Entities (28 States + 8 UTs)
     resp = client.get("/api/v1/geography/states")
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
     data = resp.json()
-    assert data["total"] == 35, f"Expected 35 states, got {data['total']}"
-    assert len(data["items"]) == 35
-    print(f"[PASS] GET /api/v1/geography/states: PASS ({data['total']} states verified)")
+    assert data["total"] == 36, f"Expected 36 current states/UTs, got {data['total']}"
+    assert len(data["items"]) == 36
+
+    state_names = [s["state_name"] for s in data["items"]]
+    assert "TELANGANA" in state_names, "Telangana must exist in current states"
+    assert "LADAKH" in state_names, "Ladakh must exist in current UTs"
+    assert "ODISHA" in state_names, "Odisha must replace Orissa"
+    assert "PUDUCHERRY" in state_names, "Puducherry must replace Pondicherry"
+    assert "DADRA AND NAGAR HAVELI AND DAMAN AND DIU" in state_names, "Dadra & Nagar Haveli and Daman & Diu must be unified"
+
+    states_count = sum(1 for s in data["items"] if s.get("entity_type") == "STATE")
+    uts_count = sum(1 for s in data["items"] if s.get("entity_type") == "UT")
+    assert states_count == 28, f"Expected 28 States, got {states_count}"
+    assert uts_count == 8, f"Expected 8 UTs, got {uts_count}"
+    print(f"[PASS] GET /api/v1/geography/states (current): PASS ({data['total']} entities: 28 States, 8 UTs)")
+
+    # 2. Historical Baseline: 35 Entities (Census 2011)
+    resp_hist = client.get("/api/v1/geography/states?view=historical")
+    assert resp_hist.status_code == 200
+    data_hist = resp_hist.json()
+    assert data_hist["total"] == 35, f"Expected 35 historical states, got {data_hist['total']}"
+    print(f"[PASS] GET /api/v1/geography/states?view=historical: PASS (35 Census 2011 states)")
 
 
 def test_geography_districts():
-    # All districts
+    # 1. All Current Administrative Districts: 787 districts
     resp = client.get("/api/v1/geography/districts")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 640, f"Expected 640 districts, got {data['total']}"
-    print(f"[PASS] GET /api/v1/geography/districts (all): PASS ({data['total']} districts)")
+    assert data["total"] == 787, f"Expected 787 current districts, got {data['total']}"
+    print(f"[PASS] GET /api/v1/geography/districts (current layer): PASS ({data['total']} districts)")
 
-    # Filtered by state_id=1
-    resp_filtered = client.get("/api/v1/geography/districts?state_id=1")
-    assert resp_filtered.status_code == 200
-    data_filt = resp_filtered.json()
-    assert data_filt["total"] > 0
-    print(f"[PASS] GET /api/v1/geography/districts?state_id=1: PASS ({data_filt['total']} districts in state 1)")
+    # 2. All Historical Census 2011 Districts: 640 districts
+    resp_hist = client.get("/api/v1/geography/districts?view=historical")
+    assert resp_hist.status_code == 200
+    data_hist = resp_hist.json()
+    assert data_hist["total"] == 640, f"Expected 640 historical districts, got {data_hist['total']}"
+    print(f"[PASS] GET /api/v1/geography/districts?view=historical: PASS ({data_hist['total']} Census 2011 districts)")
+
+    # 3. Current Telangana Districts: Exactly 33 districts
+    resp_states = client.get("/api/v1/geography/states")
+    tg_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "TELANGANA")
+    resp_tg = client.get(f"/api/v1/geography/districts?state_id={tg_state['id']}&view=current")
+    assert resp_tg.status_code == 200
+    data_tg = resp_tg.json()
+    assert data_tg["total"] == 33, f"Expected 33 Telangana districts, got {data_tg['total']}"
+    tg_district_names = [d["district_name"] for d in data_tg["items"]]
+    assert "Hyderabad" in tg_district_names, "Hyderabad must exist under Telangana in current layer"
+    print(f"[PASS] GET /api/v1/geography/districts?state_id={tg_state['id']} (Telangana): PASS (33 districts verified)")
+
+    # 4. Current Andhra Pradesh Districts: Exactly 26 districts
+    ap_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "ANDHRA PRADESH")
+    resp_ap = client.get(f"/api/v1/geography/districts?state_id={ap_state['id']}&view=current")
+    assert resp_ap.status_code == 200
+    data_ap = resp_ap.json()
+    assert data_ap["total"] == 26, f"Expected 26 Andhra Pradesh districts, got {data_ap['total']}"
+    print(f"[PASS] GET /api/v1/geography/districts?state_id={ap_state['id']} (Andhra Pradesh): PASS (26 districts verified)")
+
+    # 5. Current Ladakh Districts: Exactly 2 districts
+    la_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "LADAKH")
+    resp_la = client.get(f"/api/v1/geography/districts?state_id={la_state['id']}&view=current")
+    assert resp_la.status_code == 200
+    data_la = resp_la.json()
+    assert data_la["total"] == 2, f"Expected 2 Ladakh districts, got {data_la['total']}"
+    print(f"[PASS] GET /api/v1/geography/districts?state_id={la_state['id']} (Ladakh): PASS (2 districts verified)")
+
+
+def test_geography_hyderabad():
+    resp_states = client.get("/api/v1/geography/states")
+    tg_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "TELANGANA")
+    resp_districts = client.get(f"/api/v1/geography/districts?state_id={tg_state['id']}&view=current")
+    hyd_curr = next(d for d in resp_districts.json()["items"] if d["district_name"] == "Hyderabad")
+    assert hyd_curr["state_name"] == "TELANGANA"
+    assert hyd_curr["parent_district_id"] == 9, f"Expected parent_district_id=9, got {hyd_curr['parent_district_id']}"
+    print(f"[PASS] Current Hyderabad: PASS (ID {hyd_curr['id']} belongs to TELANGANA, parent_district_id=9)")
 
 
 def test_geography_district_detail():
@@ -72,6 +130,45 @@ def test_geography_district_detail():
     print("[PASS] GET /api/v1/geography/districts/99999 (404 Not Found): PASS")
 
 
+def test_geography_mappings():
+    resp = client.get("/api/v1/geography/mappings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] > 700, f"Expected >700 mappings, got {data['total']}"
+    hyd_mapping = next((m for m in data["items"] if m["historical_district_id"] == 9), None)
+    assert hyd_mapping is not None, "Hyderabad mapping must exist"
+    assert hyd_mapping["mapping_type"] == "TRANSFERRED"
+    assert hyd_mapping["current_state_name"] == "TELANGANA"
+    print(f"[PASS] GET /api/v1/geography/mappings: PASS ({data['total']} verified boundary mappings, Hyderabad: TRANSFERRED to Telangana)")
+
+
+def test_official_crime_statistics():
+    # 1. Available report years
+    resp_years = client.get("/api/v1/official-crime/years")
+    assert resp_years.status_code == 200
+    years = resp_years.json()
+    assert 2023 in years, "Year 2023 must be present"
+    assert 2022 in years, "Year 2022 must be present"
+    print(f"[PASS] GET /api/v1/official-crime/years: PASS (Available: {years})")
+
+    # 2. National statistics for 2023
+    resp_nat = client.get("/api/v1/official-crime/statistics?report_year=2023&geography_level=NATIONAL")
+    assert resp_nat.status_code == 200
+    data_nat = resp_nat.json()
+    assert data_nat["total"] >= 5, f"Expected at least 5 national crime heads, got {data_nat['total']}"
+    tot_cognizable = next(item for item in data_nat["items"] if item["crime_head"] == "Total Cognizable Crimes")
+    assert tot_cognizable["reported_cases"] == 6244792
+    assert tot_cognizable["chargesheet_rate"] == 72.7
+    print(f"[PASS] GET /api/v1/official-crime/statistics (2023 National): PASS (Reported: {tot_cognizable['reported_cases']:,}, Chargesheet Rate: {tot_cognizable['chargesheet_rate']}%)")
+
+    # 3. State-level statistics for 2023
+    resp_states = client.get("/api/v1/official-crime/statistics?report_year=2023&geography_level=STATE")
+    assert resp_states.status_code == 200
+    data_states = resp_states.json()
+    assert data_states["total"] == 36, f"Expected 36 states/UTs in 2023 official data, got {data_states['total']}"
+    print(f"[PASS] GET /api/v1/official-crime/statistics (2023 State-wise): PASS (All 36 States/UTs verified)")
+
+
 def test_crime_overview():
     resp = client.get("/api/v1/analytics/overview")
     assert resp.status_code == 200
@@ -82,6 +179,20 @@ def test_crime_overview():
     assert data["earliest_incident_date"] is not None
     assert data["latest_incident_date"] is not None
     print(f"[PASS] GET /api/v1/analytics/overview: PASS (Total: {data['total_incidents']:,}, Closed: {data['cases']['closed']:,}, Open: {data['cases']['open']:,}, Clearance: {data['cases']['clearance_rate_pct']}%, Date Range: {data['earliest_incident_date']} to {data['latest_incident_date']})")
+
+    # Test state-level filtering for Telangana (State ID 36)
+    resp_tg_ov = client.get("/api/v1/analytics/overview?state_id=36")
+    assert resp_tg_ov.status_code == 200
+    data_tg = resp_tg_ov.json()
+    assert data_tg["total_incidents"] == 5280, f"Expected 5,280 Telangana incidents, got {data_tg['total_incidents']}"
+    print(f"[PASS] GET /api/v1/analytics/overview?state_id=36 (Telangana): PASS ({data_tg['total_incidents']:,} incidents across 10 parent districts)")
+
+    # Test state-level filtering for Andhra Pradesh (State ID 2)
+    resp_ap_ov = client.get("/api/v1/analytics/overview?state_id=2")
+    assert resp_ap_ov.status_code == 200
+    data_ap = resp_ap_ov.json()
+    assert data_ap["total_incidents"] == 7072, f"Expected 7,072 AP incidents, got {data_ap['total_incidents']}"
+    print(f"[PASS] GET /api/v1/analytics/overview?state_id=2 (Andhra Pradesh): PASS ({data_ap['total_incidents']:,} incidents across 13 parent districts)")
 
 
 def test_crime_trends():
@@ -169,12 +280,15 @@ def test_crime_top_districts():
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("PHASE 4: RUNNING COMPLETE API VERIFICATION TEST SUITE")
+    print("PHASE 7B: RUNNING COMPLETE API & GEOGRAPHY INTEGRATION TEST SUITE")
     print("=" * 70)
     test_health()
     test_geography_states()
     test_geography_districts()
+    test_geography_hyderabad()
     test_geography_district_detail()
+    test_geography_mappings()
+    test_official_crime_statistics()
     test_crime_overview()
     test_crime_trends()
     test_crime_by_category()
@@ -184,5 +298,5 @@ if __name__ == "__main__":
     test_crime_weapons()
     test_crime_top_districts()
     print("=" * 70)
-    print("ALL API ENDPOINTS PASSED WITH 100% SUCCESS AGAINST LIVE MYSQL DATABASE!")
+    print("ALL PHASE 7B TESTS PASSED WITH 100% SUCCESS AGAINST LIVE MYSQL DATABASE!")
     print("=" * 70 + "\n")

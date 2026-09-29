@@ -3,11 +3,48 @@ from sqlalchemy import func, case, text, desc
 from typing import List, Dict, Any, Optional
 from datetime import date
 from backend.app.models.crime import CrimeIncident, CrimeType, CrimeCategory
-from backend.app.models.geography import District, State
+from backend.app.models.geography import District, State, DistrictGeographyMapping
 from backend.app.models.demographics import DistrictDemographics
 
 
 class CrimeRepository:
+    @staticmethod
+    def resolve_filter_district_ids(
+        db: Session,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+    ) -> Optional[List[int]]:
+        """
+        Resolves historical Census 2011 district IDs corresponding to filter parameters.
+        Ensures dual-layer compatibility:
+        - Modern child districts (e.g. current Hyderabad ID 644) resolve to historical parent (ID 9).
+        - Modern state filters (e.g. Telangana State ID 36) resolve to historical parent districts (IDs: 4, 9, 10, ...).
+        - Modern AP (State ID 2) resolves to the 13 true AP historical districts (excluding Telangana).
+        """
+        if district_id is not None:
+            dist = db.query(District).filter(District.id == district_id).first()
+            if dist and dist.parent_district_id and not dist.is_census_2011:
+                return [dist.parent_district_id]
+            return [district_id]
+        elif state_id is not None:
+            mapped_ids = (
+                db.query(DistrictGeographyMapping.historical_district_id)
+                .join(District, DistrictGeographyMapping.current_district_id == District.id)
+                .filter(District.state_id == state_id)
+                .distinct()
+                .all()
+            )
+            if mapped_ids:
+                return [r[0] for r in mapped_ids]
+            else:
+                dist_ids = (
+                    db.query(District.id)
+                    .filter(District.state_id == state_id, District.is_census_2011 == True)
+                    .all()
+                )
+                return [r[0] for r in dist_ids]
+        return None
+
     @staticmethod
     def get_overview(
         db: Session,
@@ -26,13 +63,9 @@ class CrimeRepository:
             func.max(CrimeIncident.incident_date).label("latest_date"),
         )
 
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         if start_date is not None:
             query = query.filter(CrimeIncident.incident_date >= start_date)
@@ -45,10 +78,8 @@ class CrimeRepository:
         states_count_query = db.query(func.count(func.distinct(District.state_id))).join(
             CrimeIncident, District.id == CrimeIncident.district_id
         )
-        if district_id is not None:
-            states_count_query = states_count_query.filter(District.id == district_id)
-        elif state_id is not None:
-            states_count_query = states_count_query.filter(District.state_id == state_id)
+        if filter_ids is not None:
+            states_count_query = states_count_query.filter(CrimeIncident.district_id.in_(filter_ids))
         if start_date is not None:
             states_count_query = states_count_query.filter(CrimeIncident.incident_date >= start_date)
         if end_date is not None:
@@ -59,10 +90,8 @@ class CrimeRepository:
         categories_count_query = db.query(func.count(func.distinct(CrimeType.category_id))).join(
             CrimeIncident, CrimeType.id == CrimeIncident.crime_type_id
         )
-        if state_id is not None:
-            categories_count_query = categories_count_query.join(District, CrimeIncident.district_id == District.id).filter(District.state_id == state_id)
-        if district_id is not None:
-            categories_count_query = categories_count_query.filter(CrimeIncident.district_id == district_id)
+        if filter_ids is not None:
+            categories_count_query = categories_count_query.filter(CrimeIncident.district_id.in_(filter_ids))
         if start_date is not None:
             categories_count_query = categories_count_query.filter(CrimeIncident.incident_date >= start_date)
         if end_date is not None:
@@ -108,13 +137,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("incident_count"),
         )
 
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         if start_date is not None:
             query = query.filter(CrimeIncident.incident_date >= start_date)
@@ -143,13 +168,9 @@ class CrimeRepository:
             .join(CrimeIncident, CrimeType.id == CrimeIncident.crime_type_id)
         )
 
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         if start_date is not None:
             query = query.filter(CrimeIncident.incident_date >= start_date)
@@ -198,13 +219,9 @@ class CrimeRepository:
         if category_id is not None:
             query = query.filter(CrimeType.category_id == category_id)
 
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         if start_date is not None:
             query = query.filter(CrimeIncident.incident_date >= start_date)
@@ -248,13 +265,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("incident_count"),
         )
 
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         rows = query.group_by(hour_expr).order_by(hour_expr.asc()).all()
         total = sum(r.incident_count for r in rows) or 1
@@ -273,54 +286,49 @@ class CrimeRepository:
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
     ) -> Dict[str, Any]:
-        # Gender counts
-        gender_query = db.query(
+        query = db.query(
             CrimeIncident.victim_gender,
-            func.count(CrimeIncident.id),
+            CrimeIncident.victim_age,
+            func.count(CrimeIncident.id).label("count"),
         )
-        if state_id is not None or district_id is not None:
-            gender_query = gender_query.join(District, CrimeIncident.district_id == District.id)
-        if district_id is not None:
-            gender_query = gender_query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            gender_query = gender_query.filter(District.state_id == state_id)
-        gender_rows = gender_query.group_by(CrimeIncident.victim_gender).all()
-        gender_dist = {r[0]: r[1] for r in gender_rows}
 
-        # Age bins & avg
-        age_bins_expr = case(
-            (CrimeIncident.victim_age <= 18, "0-18"),
-            (CrimeIncident.victim_age <= 35, "19-35"),
-            (CrimeIncident.victim_age <= 50, "36-50"),
-            (CrimeIncident.victim_age <= 65, "51-65"),
-            else_="65+",
-        )
-        age_query = db.query(
-            age_bins_expr.label("age_group"),
-            func.count(CrimeIncident.id),
-        ).filter(CrimeIncident.victim_age.isnot(None))
-        if state_id is not None or district_id is not None:
-            age_query = age_query.join(District, CrimeIncident.district_id == District.id)
-        if district_id is not None:
-            age_query = age_query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            age_query = age_query.filter(District.state_id == state_id)
-        age_rows = age_query.group_by(age_bins_expr).all()
-        age_dist = {r[0]: r[1] for r in age_rows}
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
-        avg_age_query = db.query(func.avg(CrimeIncident.victim_age))
-        if state_id is not None or district_id is not None:
-            avg_age_query = avg_age_query.join(District, CrimeIncident.district_id == District.id)
-        if district_id is not None:
-            avg_age_query = avg_age_query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            avg_age_query = avg_age_query.filter(District.state_id == state_id)
-        avg_age = avg_age_query.scalar()
+        rows = query.group_by(CrimeIncident.victim_gender, CrimeIncident.victim_age).all()
+
+        gender_counts: Dict[str, int] = {}
+        age_groups = {"0-18": 0, "19-35": 0, "36-50": 0, "51-65": 0, "65+": 0}
+        total_age = 0
+        age_count = 0
+
+        for r in rows:
+            g = r.victim_gender or "UNKNOWN"
+            cnt = r.count
+            gender_counts[g] = gender_counts.get(g, 0) + cnt
+
+            age = r.victim_age
+            if age is not None:
+                total_age += age * cnt
+                age_count += cnt
+                if age <= 18:
+                    age_groups["0-18"] += cnt
+                elif age <= 35:
+                    age_groups["19-35"] += cnt
+                elif age <= 50:
+                    age_groups["36-50"] += cnt
+                elif age <= 65:
+                    age_groups["51-65"] += cnt
+                else:
+                    age_groups["65+"] += cnt
+
+        avg_age = round(total_age / age_count, 1) if age_count > 0 else 0.0
 
         return {
-            "gender_distribution": gender_dist,
-            "age_distribution": age_dist,
-            "average_age": round(float(avg_age), 1) if avg_age else None,
+            "average_age": avg_age,
+            "gender_distribution": gender_counts,
+            "age_distribution": age_groups,
         }
 
     @staticmethod
@@ -329,17 +337,15 @@ class CrimeRepository:
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        wp_expr = func.coalesce(CrimeIncident.weapon_used, "UNKNOWN")
+        wp_expr = func.coalesce(func.nullif(CrimeIncident.weapon_used, ""), "UNKNOWN")
         query = db.query(
             wp_expr.label("weapon_name"),
             func.count(CrimeIncident.id).label("incident_count"),
         )
-        if state_id is not None or district_id is not None:
-            query = query.join(District, CrimeIncident.district_id == District.id)
-        if district_id is not None:
-            query = query.filter(CrimeIncident.district_id == district_id)
-        elif state_id is not None:
-            query = query.filter(District.state_id == state_id)
+
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        if filter_ids is not None:
+            query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
         rows = query.group_by(wp_expr).order_by(desc("incident_count")).all()
         total = sum(r.incident_count for r in rows) or 1
@@ -372,8 +378,11 @@ class CrimeRepository:
             .outerjoin(DistrictDemographics, District.id == DistrictDemographics.district_id)
         )
 
-        if state_id is not None:
-            query = query.filter(District.state_id == state_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=None)
+        if filter_ids is not None:
+            query = query.filter(District.id.in_(filter_ids))
+        else:
+            query = query.filter(District.is_census_2011 == True)
 
         query = query.group_by(
             District.id,

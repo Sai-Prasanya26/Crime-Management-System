@@ -23,7 +23,9 @@ tables = [
     "budget_estimations",
     "users",
     "audit_logs",
-    "generated_reports"
+    "generated_reports",
+    "district_geography_mapping",
+    "official_crime_statistics"
 ]
 
 output_sql = os.path.join(os.path.dirname(__file__), "schema.sql")

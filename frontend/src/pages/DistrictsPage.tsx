@@ -11,6 +11,7 @@ import type {
   DistrictDetailResponse,
 } from '../types';
 import { MapPin, Users, BookOpen, Briefcase, Award } from 'lucide-react';
+import OfficialNcrbCard from '../components/common/OfficialNcrbCard';
 
 export const DistrictsPage: React.FC = () => {
   const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
@@ -127,7 +128,7 @@ export const DistrictsPage: React.FC = () => {
               }}
               className="rounded-lg border border-[#E2E8F0] bg-white py-1.5 px-3 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none"
             >
-              <option value="">All States & UTs (35)</option>
+              <option value="">All States & UTs ({states.length || 36})</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -171,12 +172,19 @@ export const DistrictsPage: React.FC = () => {
       {/* Selected District Census Demographics Card */}
       {selectedDistrictId && (
         <div className="rounded-[14px] border border-indigo-200 bg-indigo-50/40 p-5 shadow-xs">
-          <div className="flex items-center gap-2 border-b border-indigo-100 pb-3">
-            <MapPin className="h-4 w-4 text-[#4F46E5]" />
-            <h3 className="text-sm font-bold text-[#0F172A]">
-              Census Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
-              {districtDetail?.state_name}
-            </h3>
+          <div className="flex items-center justify-between border-b border-indigo-100 pb-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-[#4F46E5]" />
+              <h3 className="text-sm font-bold text-[#0F172A]">
+                Census Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
+                {districtDetail?.state_name}
+              </h3>
+            </div>
+            {districtDetail?.parent_district_id && (
+              <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                Modern Carved District (Census 2011 Parent ID #{districtDetail.parent_district_id})
+              </span>
+            )}
           </div>
 
           {loadingDetail ? (
@@ -188,7 +196,7 @@ export const DistrictsPage: React.FC = () => {
               <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xs">
                 <div className="flex items-center gap-1.5 text-[#64748B]">
                   <Users className="h-3.5 w-3.5 text-[#2563EB]" />
-                  <span className="text-[11px] font-medium">Total Population</span>
+                  <span className="text-[11px] font-medium">Census 2011 Population</span>
                 </div>
                 <p className="mt-1 text-lg font-bold text-[#0F172A]">
                   {districtDetail.demographics.total_population.toLocaleString()}
@@ -270,12 +278,17 @@ export const DistrictsPage: React.FC = () => {
       )}
 
       {!isLoading && !error && topDistricts && (
-        <TopDistrictsTable
-          districts={topDistricts.items}
-          metric={metric}
-          onMetricChange={(newMetric) => setMetric(newMetric)}
-          isLoading={isRefreshing}
-        />
+        <div className="space-y-8">
+          <TopDistrictsTable
+            districts={topDistricts.items}
+            metric={metric}
+            onMetricChange={(newMetric) => setMetric(newMetric)}
+            isLoading={isRefreshing}
+          />
+
+          {/* Official NCRB Published Crime Statistics */}
+          <OfficialNcrbCard />
+        </div>
       )}
     </DashboardLayout>
   );

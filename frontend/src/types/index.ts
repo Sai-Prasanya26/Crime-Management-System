@@ -51,10 +51,13 @@ export interface StateItem {
   id: number;
   state_name: string;
   state_code?: string | null;
+  entity_type?: 'STATE' | 'UT';
+  is_active?: boolean;
 }
 
 export interface StateListResponse {
   total: number;
+  view?: string;
   items: StateItem[];
 }
 
@@ -64,10 +67,15 @@ export interface DistrictItem {
   state_name: string;
   district_name: string;
   census_district_code?: number | null;
+  lgd_code?: number | null;
+  is_census_2011?: boolean;
+  is_current_admin?: boolean;
+  parent_district_id?: number | null;
 }
 
 export interface DistrictListResponse {
   total: number;
+  view?: string;
   items: DistrictItem[];
 }
 
@@ -86,7 +94,64 @@ export interface DistrictDetailResponse {
   state_name: string;
   district_name: string;
   census_district_code?: number | null;
+  lgd_code?: number | null;
+  is_census_2011?: boolean;
+  is_current_admin?: boolean;
+  parent_district_id?: number | null;
   demographics?: DistrictDemographicsData | null;
+}
+
+export interface DistrictGeographyMappingItem {
+  id: number;
+  historical_district_id: number;
+  historical_district_name?: string | null;
+  historical_state_name?: string | null;
+  current_district_id: number;
+  current_district_name?: string | null;
+  current_state_name?: string | null;
+  mapping_type: 'SAME' | 'SPLIT' | 'MERGED' | 'TRANSFERRED' | 'RENAMED' | 'REORGANIZED';
+  mapping_percentage?: number | null;
+  effective_from: string;
+  effective_to?: string | null;
+  source: string;
+  notes?: string | null;
+}
+
+export interface DistrictGeographyMappingListResponse {
+  total: number;
+  items: DistrictGeographyMappingItem[];
+}
+
+// ============================================================================
+// Official Government (NCRB) Crime Statistics Types
+// ============================================================================
+
+export interface OfficialCrimeStatisticItem {
+  id: number;
+  state_id?: number | null;
+  district_id?: number | null;
+  report_year: number;
+  geography_level: 'NATIONAL' | 'STATE' | 'DISTRICT' | 'CITY' | string;
+  entity_name: string;
+  crime_head: string;
+  crime_category: string;
+  reported_cases: number;
+  chargesheeted_cases?: number | null;
+  chargesheet_rate?: number | null;
+  conviction_rate?: number | null;
+  source_name: string;
+  source_report: string;
+  source_url: string;
+  publication_date?: string | null;
+  data_status: string;
+  notes?: string | null;
+}
+
+export interface OfficialCrimeStatisticListResponse {
+  total: number;
+  report_year?: number | null;
+  geography_level?: string | null;
+  items: OfficialCrimeStatisticItem[];
 }
 
 // ============================================================================
