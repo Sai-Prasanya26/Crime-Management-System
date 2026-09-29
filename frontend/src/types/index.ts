@@ -12,6 +12,30 @@ export interface HealthResponse {
   database?: string;
 }
 
+export type UserRole = 'ADMIN' | 'ANALYST' | 'OFFICER';
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  is_active: boolean;
+  last_login_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface LoginCredentials {
+  username_or_email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export interface FilterParams {
   state_id?: number;
   district_id?: number;

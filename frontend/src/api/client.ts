@@ -10,6 +10,18 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
+// Request interceptor to attach JWT Bearer token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('cms_access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor for unified error formatting
 apiClient.interceptors.response.use(
   (response) => response,

@@ -26,9 +26,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     
     # Security / JWT Configuration
-    JWT_SECRET_KEY: str = "insecure_dev_placeholder_for_phase_1"
+    JWT_SECRET_KEY: str = "cms_phase6_jwt_secret_key_super_secure_development_placeholder_2026"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
