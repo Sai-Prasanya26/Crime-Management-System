@@ -61,7 +61,7 @@ export const TrendsPage: React.FC = () => {
       />
 
       {isLoading && !trends && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-12">
+        <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-12 shadow-xs">
           <LoadingState message="Aggregating time-series data from MySQL..." />
         </div>
       )}
@@ -78,47 +78,47 @@ export const TrendsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Trend Summary Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-              <div className="flex items-center gap-2 text-slate-400">
-                <BarChart2 className="h-4 w-4 text-indigo-400" />
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-2 text-[#64748B]">
+                <BarChart2 className="h-4 w-4 text-[#4F46E5]" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Total Range Volume
                 </span>
               </div>
-              <p className="mt-2 text-2xl font-bold text-white">
+              <p className="mt-2 text-2xl font-bold text-[#0F172A]">
                 {totalIncidents.toLocaleString()}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[#64748B]">
                 Aggregated over {trends.total_points} {interval}ly buckets
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-              <div className="flex items-center gap-2 text-slate-400">
-                <TrendingUp className="h-4 w-4 text-amber-400" />
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-2 text-[#64748B]">
+                <TrendingUp className="h-4 w-4 text-[#D97706]" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Peak Incident Period
                 </span>
               </div>
-              <p className="mt-2 text-2xl font-bold text-amber-300">
+              <p className="mt-2 text-2xl font-bold text-[#D97706]">
                 {highestPeriod ? highestPeriod.period : '—'}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[#64748B]">
                 {highestPeriod ? `${highestPeriod.incident_count.toLocaleString()} cases` : '—'}
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-              <div className="flex items-center gap-2 text-slate-400">
-                <CalendarRange className="h-4 w-4 text-emerald-400" />
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-2 text-[#64748B]">
+                <CalendarRange className="h-4 w-4 text-[#059669]" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Interval Granularity
                 </span>
               </div>
-              <p className="mt-2 text-2xl font-bold text-emerald-300 capitalize">
+              <p className="mt-2 text-2xl font-bold text-[#059669] capitalize">
                 {interval}ly
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[#64748B]">
                 {trends.total_points} discrete time points
               </p>
             </div>

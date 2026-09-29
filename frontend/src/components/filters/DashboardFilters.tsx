@@ -102,24 +102,24 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   );
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 shadow-md backdrop-blur-sm">
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            <Filter className="h-4 w-4 text-indigo-400" />
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+            <Filter className="h-4 w-4 text-[#4F46E5]" />
             <span>Filters</span>
           </div>
 
           {/* State Selector */}
           <div className="relative min-w-[200px]">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#64748B]">
               <MapPin className="h-3.5 w-3.5" />
             </div>
             <select
               value={filters.state_id || ''}
               onChange={handleStateChange}
               disabled={loadingStates || isLoading}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 py-1.5 pl-8 pr-4 text-xs font-medium text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white py-1.5 pl-8 pr-4 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none focus:ring-1 focus:ring-[#4F46E5] disabled:opacity-60"
             >
               <option value="">All States & UTs (35)</option>
               {states.map((s) => (
@@ -132,14 +132,14 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
           {/* District Selector (active only when State is selected) */}
           <div className="relative min-w-[200px]">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#64748B]">
               <Building className="h-3.5 w-3.5" />
             </div>
             <select
               value={filters.district_id || ''}
               onChange={handleDistrictChange}
               disabled={!filters.state_id || loadingDistricts || isLoading}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 py-1.5 pl-8 pr-4 text-xs font-medium text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white py-1.5 pl-8 pr-4 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none focus:ring-1 focus:ring-[#4F46E5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-50"
             >
               <option value="">
                 {!filters.state_id
@@ -157,7 +157,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           </div>
         </div>
 
-        {/* Date Range Picker */}
+        {/* Date Range Picker & Reset */}
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter
             startDate={filters.start_date}
@@ -168,7 +168,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           {hasActiveFilters && (
             <button
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-rose-600 shadow-xs transition-colors"
               title="Reset all active filters"
             >
               <RotateCcw className="h-3.5 w-3.5" />

@@ -134,7 +134,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-12">
+        <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-12 shadow-xs">
           <LoadingState message="Fetching live crime intelligence from database..." />
         </div>
       )}
@@ -270,41 +270,41 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm lg:col-span-4">
+            <div className="flex flex-col justify-between rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] lg:col-span-4">
               <div>
-                <h4 className="text-sm font-semibold text-white">
+                <h4 className="text-sm font-semibold text-[#0F172A]">
                   Database & System Audit Summary
                 </h4>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-[#64748B]">
                   Data-Driven Crime Management System with AI-Based Resource Optimization
                 </p>
                 <div className="mt-4 space-y-2 text-xs">
-                  <div className="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
                     <span>Database Engine:</span>
-                    <span className="font-mono text-slate-200">MySQL 8.0</span>
+                    <span className="font-mono text-[#0F172A] font-medium">MySQL 8.0</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
                     <span>Frozen Schema:</span>
-                    <span className="font-mono text-slate-200">17 Tables</span>
+                    <span className="font-mono text-[#0F172A] font-medium">17 Tables</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
                     <span>Verified Records:</span>
-                    <span className="font-mono text-emerald-400">191,679 Incidents</span>
+                    <span className="font-mono text-emerald-700 font-semibold">191,679 Incidents</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
                     <span>Demographics Linkage:</span>
-                    <span className="font-mono text-slate-200">Census 2011 (640 Dists)</span>
+                    <span className="font-mono text-[#0F172A] font-medium">Census 2011 (640 Dists)</span>
                   </div>
-                  <div className="flex justify-between pb-1 text-slate-400">
+                  <div className="flex justify-between pb-1 text-[#64748B]">
                     <span>Mock Data Present:</span>
-                    <span className="font-mono font-bold text-rose-400">ZERO (0%)</span>
+                    <span className="font-mono font-bold text-rose-600">ZERO (0%)</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg bg-indigo-500/10 p-3 text-[11px] text-indigo-300 border border-indigo-500/20">
+              <div className="mt-4 rounded-lg bg-[#EEF2FF] p-3 text-[11px] text-[#4F46E5] border border-indigo-100">
                 Phase 5 Frontend is directly querying live FastAPI endpoints at{' '}
-                <code className="font-mono font-bold text-white">/api/v1/analytics</code>.
+                <code className="font-mono font-bold text-[#4F46E5]">/api/v1/analytics</code>.
               </div>
             </div>
           </div>

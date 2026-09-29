@@ -15,53 +15,32 @@ interface StatCardProps {
 
 const colorStyles = {
   blue: {
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
-    iconBg: 'bg-blue-500/20',
-    iconColor: 'text-blue-400',
-    badge: 'bg-blue-500/10 text-blue-400',
+    iconBg: 'bg-[#EFF6FF]',
+    iconColor: 'text-[#2563EB]',
   },
   emerald: {
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
-    iconBg: 'bg-emerald-500/20',
-    iconColor: 'text-emerald-400',
-    badge: 'bg-emerald-500/10 text-emerald-400',
+    iconBg: 'bg-[#ECFDF5]',
+    iconColor: 'text-[#059669]',
   },
   amber: {
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
-    iconBg: 'bg-amber-500/20',
-    iconColor: 'text-amber-400',
-    badge: 'bg-amber-500/10 text-amber-400',
+    iconBg: 'bg-[#FFFBEB]',
+    iconColor: 'text-[#D97706]',
   },
   rose: {
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
-    iconBg: 'bg-rose-500/20',
-    iconColor: 'text-rose-400',
-    badge: 'bg-rose-500/10 text-rose-400',
+    iconBg: 'bg-[#FEF2F2]',
+    iconColor: 'text-[#DC2626]',
   },
   purple: {
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/20',
-    iconBg: 'bg-purple-500/20',
-    iconColor: 'text-purple-400',
-    badge: 'bg-purple-500/10 text-purple-400',
+    iconBg: 'bg-[#EEF2FF]',
+    iconColor: 'text-[#4F46E5]',
   },
   indigo: {
-    bg: 'bg-indigo-500/10',
-    border: 'border-indigo-500/20',
-    iconBg: 'bg-indigo-500/20',
-    iconColor: 'text-indigo-400',
-    badge: 'bg-indigo-500/10 text-indigo-400',
+    iconBg: 'bg-[#EEF2FF]',
+    iconColor: 'text-[#4F46E5]',
   },
   cyan: {
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/20',
-    iconBg: 'bg-cyan-500/20',
-    iconColor: 'text-cyan-400',
-    badge: 'bg-cyan-500/10 text-cyan-400',
+    iconBg: 'bg-[#ECFEFF]',
+    iconColor: 'text-[#0891B2]',
   },
 };
 
@@ -73,28 +52,28 @@ export const StatCard: React.FC<StatCardProps> = ({
   color = 'indigo',
   trend,
 }) => {
-  const styles = colorStyles[color];
+  const styles = colorStyles[color] || colorStyles.indigo;
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border ${styles.border} ${styles.bg} bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-slate-700 hover:shadow-xl`}
+      className="relative overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-slate-300 hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{title}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{title}</p>
           <div className="mt-2 flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold tracking-tight text-white">{value}</h3>
+            <h3 className="text-2xl font-bold tracking-tight text-[#0F172A]">{value}</h3>
             {trend && (
               <span
                 className={`inline-flex items-center text-xs font-semibold ${
-                  trend.isPositive ? 'text-emerald-400' : 'text-rose-400'
+                  trend.isPositive ? 'text-emerald-600' : 'text-rose-600'
                 }`}
               >
                 {trend.isPositive ? '↑' : '↓'} {trend.value}
               </span>
             )}
           </div>
-          {subtext && <p className="mt-1 text-xs text-slate-400">{subtext}</p>}
+          {subtext && <p className="mt-1 text-xs text-[#64748B]">{subtext}</p>}
         </div>
         <div className={`rounded-xl p-3 ${styles.iconBg} ${styles.iconColor}`}>
           <Icon className="h-6 w-6" />

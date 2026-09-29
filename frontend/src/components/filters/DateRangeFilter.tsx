@@ -22,25 +22,25 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs text-slate-300">
-        <Calendar className="h-3.5 w-3.5 text-slate-400" />
-        <span className="text-slate-400">From:</span>
+      <div className="flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-xs text-[#0F172A] shadow-xs">
+        <Calendar className="h-3.5 w-3.5 text-[#64748B]" />
+        <span className="text-[#64748B] font-medium">From:</span>
         <input
           type="date"
           value={startDate || ''}
           min="2020-01-01"
           max="2025-12-31"
           onChange={(e) => onChange(e.target.value || undefined, endDate)}
-          className="bg-transparent text-white focus:outline-none [color-scheme:dark]"
+          className="bg-transparent text-[#0F172A] focus:outline-none [color-scheme:light] font-medium"
         />
-        <span className="text-slate-400">To:</span>
+        <span className="text-[#64748B] font-medium">To:</span>
         <input
           type="date"
           value={endDate || ''}
           min="2020-01-01"
           max="2025-12-31"
           onChange={(e) => onChange(startDate, e.target.value || undefined)}
-          className="bg-transparent text-white focus:outline-none [color-scheme:dark]"
+          className="bg-transparent text-[#0F172A] focus:outline-none [color-scheme:light] font-medium"
         />
       </div>
 
@@ -53,10 +53,10 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             <button
               key={p.label}
               onClick={() => onChange(p.start || undefined, p.end || undefined)}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                  ? 'bg-[#4F46E5] text-white shadow-xs font-semibold'
+                  : 'bg-[#F1F5F9] text-slate-600 hover:bg-slate-200 hover:text-[#0F172A] border border-[#E2E8F0]'
               }`}
             >
               {p.label}

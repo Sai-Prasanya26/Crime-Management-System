@@ -9,33 +9,33 @@ interface CrimeCategoryChartProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Violent Crime': '#ef4444',     // Red
-  'Fire Accident': '#f97316',     // Orange
-  'Traffic Fatality': '#eab308',  // Yellow
-  'Other Crime': '#3b82f6',       // Blue
+  'Violent Crime': '#EF4444',     // Red
+  'Fire Accident': '#F97316',     // Orange
+  'Traffic Fatality': '#EAB308',  // Yellow
+  'Other Crime': '#3B82F6',       // Blue
 };
 
-const DEFAULT_COLOR = '#6366f1';
+const DEFAULT_COLOR = '#4F46E5';
 
 export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
   data,
   totalIncidents,
 }) => {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-sm">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
+      <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-rose-500/10 p-2 text-rose-400">
+            <div className="rounded-lg bg-rose-50 p-2 text-rose-600">
               <ShieldAlert className="h-4 w-4" />
             </div>
-            <h3 className="text-base font-semibold text-white">Crime Domain Breakdown</h3>
+            <h3 className="text-base font-semibold text-[#0F172A]">Crime Domain Breakdown</h3>
           </div>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-[#64748B]">
             Categorization by legal domain & severity weighting
           </p>
         </div>
-        <span className="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300">
+        <span className="rounded-md bg-[#F1F5F9] px-2.5 py-1 text-xs font-semibold text-[#475569] border border-[#E2E8F0]">
           4 Domains
         </span>
       </div>
@@ -64,12 +64,14 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#334155',
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E2E8F0',
                   borderRadius: '0.5rem',
-                  color: '#f8fafc',
+                  color: '#0F172A',
                   fontSize: '0.75rem',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
                 }}
+                itemStyle={{ color: '#0F172A', fontWeight: 600 }}
                 formatter={(value: any, name: any) => [
                   `${Number(value).toLocaleString()} (${(
                     (Number(value) / (totalIncidents || 1)) *
@@ -89,7 +91,7 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
             return (
               <div
                 key={cat.category_id}
-                className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-800/40 p-2.5 transition-colors hover:border-slate-700"
+                className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-2.5 transition-colors hover:bg-[#F1F5F9]"
               >
                 <div className="flex items-center gap-2.5">
                   <span
@@ -97,8 +99,8 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
                     style={{ backgroundColor: color }}
                   />
                   <div>
-                    <h4 className="text-xs font-semibold text-white">{cat.category_name}</h4>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                    <h4 className="text-xs font-semibold text-[#0F172A]">{cat.category_name}</h4>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-[#64748B]">
                       <Layers className="h-2.5 w-2.5" />
                       Severity Weight: {cat.severity_weight.toFixed(2)}x
                     </span>
@@ -106,10 +108,10 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <p className="text-xs font-bold text-white">
+                  <p className="text-xs font-bold text-[#0F172A]">
                     {cat.incident_count.toLocaleString()}
                   </p>
-                  <p className="text-[10px] font-medium text-slate-400">
+                  <p className="text-[10px] font-medium text-[#64748B]">
                     {cat.percentage.toFixed(1)}%
                   </p>
                 </div>
