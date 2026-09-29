@@ -1,0 +1,70 @@
+# Environment and Secrets
+.env
+*.env
+.env.local
+.env.*.local
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python Bytecode and Caches
+__pycache__/
+*.pyc
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js and Frontend
+node_modules/
+build/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+*.local
+
+# Logs
+*.log
+
+# Machine Learning Artifacts and Models
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+ml/data/*
+!ml/data/.gitkeep
+ml/saved_models/*
+!ml/saved_models/.gitkeep
+
+# Raw Datasets (Large CSV files excluded from git version control)
+data_import/raw/*.csv
+!data_import/raw/.gitkeep
+
+# IDE and Editor Configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Output Reports
+reports/generated/
+*.pdf

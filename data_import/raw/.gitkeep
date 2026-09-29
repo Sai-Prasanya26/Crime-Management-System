@@ -1,0 +1,2 @@
+# Keep data_import/raw directory in version control.
+# Raw CSV datasets are excluded from Git due to file sizes.
