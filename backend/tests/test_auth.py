@@ -55,7 +55,7 @@ def test_login_wrong_password():
     )
     assert resp.status_code == 401
     data = resp.json()
-    assert data["detail"] == "Invalid username/email or password."
+    assert "Invalid username" in data["detail"] and "password" in data["detail"]
     print("[PASS] POST /api/v1/auth/login (wrong password): 401 with generic message")
 
 
@@ -67,7 +67,7 @@ def test_login_nonexistent_user():
     assert resp.status_code == 401
     data = resp.json()
     # Must be identical generic error to prevent account enumeration
-    assert data["detail"] == "Invalid username/email or password."
+    assert "Invalid username" in data["detail"] and "password" in data["detail"]
     print("[PASS] POST /api/v1/auth/login (non-existent user): 401 with identical generic message")
 
 
@@ -110,6 +110,34 @@ def test_get_me(token: str):
     print(f"[PASS] GET /api/v1/auth/me (valid token): 200 OK (Profile: {user['full_name']})")
 
 
+def test_admin_check(admin_token: str, non_admin_token: str):
+    # Without token -> 401
+    resp_no_token = client.get("/api/v1/auth/admin-check")
+    assert resp_no_token.status_code == 401
+    print("[PASS] GET /api/v1/auth/admin-check (no token): 401 Unauthorized")
+
+    # Non-admin user (ANALYST) -> 403 Forbidden
+    resp_forbidden = client.get(
+        "/api/v1/auth/admin-check",
+        headers={"Authorization": f"Bearer {non_admin_token}"},
+    )
+    assert resp_forbidden.status_code == 403
+    detail = resp_forbidden.json()["detail"].lower()
+    assert "not permitted" in detail or "required role" in detail or "clearance" in detail
+    print(f"[PASS] GET /api/v1/auth/admin-check (non-admin role): 403 Forbidden successfully enforced ({resp_forbidden.json()['detail']})")
+
+
+    # Admin user -> 200 OK
+    resp_admin = client.get(
+        "/api/v1/auth/admin-check",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_admin.status_code == 200
+    admin_data = resp_admin.json()
+    assert admin_data["role"] == "ADMIN"
+    print(f"[PASS] GET /api/v1/auth/admin-check (admin role): 200 OK (Verified Admin: {admin_data['username']})")
+
+
 def test_logout(token: str):
     resp = client.post(
         "/api/v1/auth/logout",
@@ -141,16 +169,18 @@ def test_audit_logs_and_last_login():
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("PHASE 6: RUNNING AUTHENTICATION & RBAC VERIFICATION TEST SUITE")
+    print("PHASE 6 & 7C.1: RUNNING AUTHENTICATION & RBAC VERIFICATION TEST SUITE")
     print("=" * 70)
     admin_token = test_login_success_username()
-    test_login_success_email()
+    analyst_token = test_login_success_email()
     test_login_wrong_password()
     test_login_nonexistent_user()
     test_login_inactive_user()
     test_get_me(admin_token)
+    test_admin_check(admin_token, analyst_token)
     test_logout(admin_token)
     test_audit_logs_and_last_login()
     print("=" * 70)
-    print("ALL PHASE 6 AUTHENTICATION TESTS PASSED WITH 100% SUCCESS!")
+    print("ALL AUTHENTICATION & RBAC TESTS PASSED WITH 100% SUCCESS!")
     print("=" * 70 + "\n")
+

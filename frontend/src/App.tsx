@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TrendsPage from './pages/TrendsPage';
 import DistrictsPage from './pages/DistrictsPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 export const App: React.FC = () => {
   return (
@@ -39,6 +40,16 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <DistrictsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Protected Route (Requires ADMIN Role) */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />

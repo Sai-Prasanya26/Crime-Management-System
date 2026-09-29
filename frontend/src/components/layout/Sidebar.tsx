@@ -5,13 +5,16 @@ import {
   TrendingUp,
   MapPin,
   Shield,
+  ShieldCheck,
   BrainCircuit,
   Cpu,
   FileText,
-  Lock,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const Sidebar: React.FC = () => {
+  const { user } = useAuth();
+
   const navItems = [
     {
       to: '/dashboard',
@@ -31,8 +34,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   const upcomingPhases = [
-    { label: 'Phase 6: Auth & Roles', icon: Lock },
-    { label: 'Phase 7-8: ML Forecast', icon: BrainCircuit },
+    { label: 'Phase 8: ML Forecast', icon: BrainCircuit },
     { label: 'Phase 10: Resource AI', icon: Cpu },
     { label: 'Phase 13: PDF Reports', icon: FileText },
   ];
@@ -84,6 +86,34 @@ export const Sidebar: React.FC = () => {
             })}
           </nav>
         </div>
+
+        {/* Admin Navigation (When authenticated as ADMIN) */}
+        {user?.role === 'ADMIN' && (
+          <div>
+            <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
+              Administration
+            </p>
+            <nav className="mt-2 space-y-1">
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-[#EEF2FF] text-[#4F46E5] font-semibold border border-indigo-100'
+                      : 'text-slate-600 hover:bg-[#F1F5F9] hover:text-[#0F172A]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <ShieldCheck className={`h-4 w-4 ${isActive ? 'text-[#4F46E5]' : 'text-indigo-500'}`} />
+                    <span>Admin Console</span>
+                  </>
+                )}
+              </NavLink>
+            </nav>
+          </div>
+        )}
 
         {/* Future Capabilities Pipeline */}
         <div>

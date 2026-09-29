@@ -4,7 +4,7 @@ from backend.app.database.session import get_db
 from backend.app.schemas.auth import LoginRequest, TokenResponse, UserResponse
 from backend.app.services.auth_service import AuthService
 from backend.app.repositories.user_repository import UserRepository
-from backend.app.api.deps import get_current_user
+from backend.app.api.deps import get_current_user, require_admin
 from backend.app.models.auth import User
 
 router = APIRouter()
@@ -33,6 +33,18 @@ def login(
 )
 def get_me(
     current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    return AuthService.get_current_user_profile(current_user)
+
+
+@router.get(
+    "/admin-check",
+    response_model=UserResponse,
+    summary="Admin Role Verification",
+    description="Dedicated administrative endpoint that strictly enforces role=ADMIN.",
+)
+def admin_check(
+    current_user: User = Depends(require_admin),
 ) -> UserResponse:
     return AuthService.get_current_user_profile(current_user)
 

@@ -22,11 +22,18 @@ class AuthService:
         # Generic error message to prevent user enumeration
         generic_auth_error = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username/email or password.",
+            detail="Invalid username or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-        user = UserRepository.get_by_username_or_email(db, login_data.username_or_email)
+        try:
+            user = UserRepository.get_by_username_or_email(db, login_data.username_or_email)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Server/database is unavailable.",
+            )
+
         if not user:
             # Audit failed attempt (no user found)
             UserRepository.log_auth_action(

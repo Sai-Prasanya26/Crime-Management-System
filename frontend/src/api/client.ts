@@ -26,7 +26,18 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ detail?: string }>) => {
-    const message = error.response?.data?.detail || error.message || 'An unexpected error occurred';
+    let message = 'An unexpected error occurred';
+    if (!error.response) {
+      message = 'Unable to connect to the server. Please start the backend.';
+    } else if (error.response.status === 503) {
+      message = error.response.data?.detail || 'Server/database is unavailable.';
+    } else if (error.response.status === 401) {
+      message = error.response.data?.detail || 'Invalid username or password.';
+    } else if (error.response.status === 403) {
+      message = error.response.data?.detail || 'Access forbidden. Required role not assigned.';
+    } else if (error.response.data?.detail) {
+      message = error.response.data.detail;
+    }
     console.error(`[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, message);
     return Promise.reject(new Error(message));
   }

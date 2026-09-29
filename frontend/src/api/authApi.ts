@@ -25,6 +25,15 @@ export const authApi = {
     const response = await apiClient.post<{ status: string; message: string }>('/auth/logout');
     return response.data;
   },
+
+  /**
+   * Verify administrative privileges (strictly requires ADMIN role).
+   */
+  checkAdmin: async (): Promise<User> => {
+    const response = await apiClient.get<User>('/auth/admin-check');
+    return response.data;
+  },
 };
 
 export default authApi;
+
