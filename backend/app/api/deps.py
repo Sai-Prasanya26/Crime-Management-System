@@ -78,7 +78,7 @@ def get_current_user(
 def require_roles(allowed_roles: List[str]):
     """
     Dependency factory to enforce role-based access control (RBAC).
-    Allowed roles: 'ADMIN', 'ANALYST', 'OFFICER'.
+    Allowed roles: 'ADMIN', 'ANALYST', 'OFFICER', 'INVESTIGATOR', 'SUPERVISOR'.
     """
     def role_dependency(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:
@@ -95,3 +95,5 @@ def require_roles(allowed_roles: List[str]):
 require_admin = require_roles(["ADMIN"])
 require_analyst = require_roles(["ADMIN", "ANALYST"])
 require_officer = require_roles(["ADMIN", "OFFICER"])
+require_investigator = require_roles(["ADMIN", "INVESTIGATOR"])
+require_supervisor = require_roles(["ADMIN", "SUPERVISOR"])

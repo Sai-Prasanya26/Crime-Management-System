@@ -58,6 +58,32 @@ class UserRepository:
         return user
 
     @staticmethod
+    def get_all(db: Session, skip: int = 0, limit: int = 100):
+        return db.query(User).order_by(User.id.asc()).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def update_user_status(db: Session, user_id: int, is_active: bool) -> Optional[User]:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.is_active = is_active
+            db.commit()
+            db.refresh(user)
+        return user
+
+    @staticmethod
+    def delete_user(db: Session, user_id: int) -> bool:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            db.delete(user)
+            db.commit()
+            return True
+        return False
+
+    @staticmethod
+    def get_audit_logs(db: Session, limit: int = 50):
+        return db.query(AuditLog).order_by(AuditLog.id.desc()).limit(limit).all()
+
+    @staticmethod
     def log_auth_action(
         db: Session,
         user_id: Optional[int],
@@ -66,7 +92,7 @@ class UserRepository:
         details: Optional[dict] = None,
     ) -> None:
         """
-        Audit log for authentication events (login success, login failure, logout).
+        Audit log for authentication events (login success, login failure, logout, account creation, etc.).
         """
         try:
             log_entry = AuditLog(

@@ -12,7 +12,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=False)
     role = Column(
-        Enum("ADMIN", "ANALYST", "OFFICER", name="user_role_enum"),
+        Enum("ADMIN", "ANALYST", "OFFICER", "INVESTIGATOR", "SUPERVISOR", name="user_role_enum"),
         nullable=False,
         default="ANALYST",
     )

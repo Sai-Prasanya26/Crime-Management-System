@@ -62,7 +62,7 @@ export const TrendsPage: React.FC = () => {
 
       {isLoading && !trends && (
         <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-12 shadow-xs">
-          <LoadingState message="Aggregating time-series data from MySQL..." />
+          <LoadingState message="Aggregating longitudinal time-series data..." />
         </div>
       )}
 

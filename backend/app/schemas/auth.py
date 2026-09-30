@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, Literal, Dict, Any, List
 from datetime import datetime
+
+RoleType = Literal["ADMIN", "ANALYST", "OFFICER", "INVESTIGATOR", "SUPERVISOR"]
 
 
 class LoginRequest(BaseModel):
@@ -25,3 +27,36 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class CreateStaffRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(
+        ...,
+        min_length=5,
+        max_length=100,
+        pattern=r"^[\w\.\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$",
+        description="Official email address",
+    )
+    password: str = Field(..., min_length=6, max_length=100)
+    role: RoleType = "OFFICER"
+    is_active: bool = True
+
+
+class UpdateUserStatusRequest(BaseModel):
+    is_active: bool
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    action: str
+    entity_type: str
+    entity_id: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    ip_address: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

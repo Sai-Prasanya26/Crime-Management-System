@@ -12,7 +12,7 @@ export interface HealthResponse {
   database?: string;
 }
 
-export type UserRole = 'ADMIN' | 'ANALYST' | 'OFFICER';
+export type UserRole = 'ADMIN' | 'ANALYST' | 'OFFICER' | 'INVESTIGATOR' | 'SUPERVISOR';
 
 export interface User {
   id: number;
@@ -34,6 +34,26 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
   user: User;
+}
+
+export interface CreateStaffPayload {
+  full_name: string;
+  username: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  is_active?: boolean;
+}
+
+export interface SecurityAuditLog {
+  id: number;
+  user_id?: number | null;
+  action: string;
+  entity_type: string;
+  entity_id?: string | null;
+  details?: Record<string, any> | null;
+  ip_address?: string | null;
+  created_at?: string | null;
 }
 
 export interface FilterParams {

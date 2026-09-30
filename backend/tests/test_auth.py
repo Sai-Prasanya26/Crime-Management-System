@@ -167,6 +167,124 @@ def test_audit_logs_and_last_login():
         db.close()
 
 
+def test_controlled_staff_account_workflow(admin_token: str, analyst_token: str):
+    # 1. Access restriction check on listing staff accounts
+    resp_unauth = client.get("/api/v1/auth/users")
+    assert resp_unauth.status_code == 401, f"Expected 401 for unauthenticated list_users, got {resp_unauth.status_code}"
+    print("[PASS] GET /api/v1/auth/users (unauthenticated): 401 Unauthorized successfully enforced")
+
+    resp_analyst = client.get("/api/v1/auth/users", headers={"Authorization": f"Bearer {analyst_token}"})
+    assert resp_analyst.status_code == 403, f"Expected 403 for analyst list_users, got {resp_analyst.status_code}"
+    print("[PASS] GET /api/v1/auth/users (analyst): 403 Forbidden successfully enforced")
+
+    # 2. Admin can list existing staff accounts
+    resp_admin = client.get("/api/v1/auth/users", headers={"Authorization": f"Bearer {admin_token}"})
+    assert resp_admin.status_code == 200
+    initial_users = resp_admin.json()
+    assert len(initial_users) >= 4
+    print(f"[PASS] GET /api/v1/auth/users (admin): 200 OK ({len(initial_users)} staff accounts retrieved)")
+
+    # 3. Clean up any leftover test user if exists
+    db = SessionLocal()
+    try:
+        old_test = db.query(User).filter(User.username == "test_officer").first()
+        if old_test:
+            db.delete(old_test)
+            db.commit()
+    finally:
+        db.close()
+
+    # 4. Admin creates a new authorized staff account
+    payload = {
+        "full_name": "Test Crime Officer",
+        "username": "test_officer",
+        "email": "test.officer@crimeops.local",
+        "password": "OfficerSecure@2026",
+        "role": "OFFICER",
+        "is_active": True,
+    }
+    resp_create = client.post(
+        "/api/v1/auth/users",
+        json=payload,
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_create.status_code == 201, f"Expected 201, got {resp_create.status_code}: {resp_create.text}"
+    new_user_data = resp_create.json()
+    new_user_id = new_user_data["id"]
+    assert new_user_data["username"] == "test_officer"
+    assert new_user_data["role"] == "OFFICER"
+    assert new_user_data["is_active"] is True
+    print(f"[PASS] POST /api/v1/auth/users (create staff): 201 Created (ID: {new_user_id}, Role: OFFICER)")
+
+    # 5. Verify database: password hash is Argon2id, NOT plaintext
+    db = SessionLocal()
+    try:
+        db_user = db.query(User).filter(User.id == new_user_id).first()
+        assert db_user is not None
+        assert db_user.password_hash.startswith("$argon2id$")
+        assert "OfficerSecure@2026" not in db_user.password_hash
+        print("[PASS] Security check: password is securely hashed with Argon2id, NOT plaintext")
+    finally:
+        db.close()
+
+    # 6. Newly authorized officer logs in
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "test_officer", "password": "OfficerSecure@2026"},
+    )
+    assert login_resp.status_code == 200, f"Expected 200 login, got {login_resp.status_code}"
+    officer_token = login_resp.json()["access_token"]
+    assert login_resp.json()["user"]["role"] == "OFFICER"
+    print("[PASS] POST /api/v1/auth/login (new staff member): 200 OK (JWT issued, Role: OFFICER)")
+
+    # 7. Officer cannot access Admin User Management
+    officer_admin_check = client.get(
+        "/api/v1/auth/admin-check",
+        headers={"Authorization": f"Bearer {officer_token}"},
+    )
+    assert officer_admin_check.status_code == 403
+    print("[PASS] GET /api/v1/auth/admin-check (new officer): 403 Forbidden successfully enforced")
+
+    # 8. Admin deactivates the staff account
+    resp_deactivate = client.patch(
+        f"/api/v1/auth/users/{new_user_id}/status",
+        json={"is_active": False},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_deactivate.status_code == 200
+    assert resp_deactivate.json()["is_active"] is False
+    print(f"[PASS] PATCH /api/v1/auth/users/{new_user_id}/status: Account deactivated successfully")
+
+    # 9. Deactivated account attempt to log in is rejected with 403
+    login_inactive_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "test_officer", "password": "OfficerSecure@2026"},
+    )
+    assert login_inactive_resp.status_code == 403
+    assert "Account is inactive" in login_inactive_resp.json()["detail"]
+    print("[PASS] POST /api/v1/auth/login (deactivated account): 403 Forbidden ('Account is inactive. Please contact an administrator.')")
+
+    # 10. Clean up: Admin deletes the test account so production-like DB is kept clean
+    resp_del = client.delete(
+        f"/api/v1/auth/users/{new_user_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_del.status_code == 200
+    print(f"[PASS] DELETE /api/v1/auth/users/{new_user_id}: Test account cleaned up successfully")
+
+    # 11. Security Audit Logs verification
+    resp_audit = client.get(
+        "/api/v1/auth/audit-logs?limit=20",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_audit.status_code == 200
+    audit_actions = [a["action"] for a in resp_audit.json()]
+    assert "STAFF_ACCOUNT_CREATED" in audit_actions
+    assert "STAFF_ACCOUNT_STATUS_CHANGED" in audit_actions
+    assert "STAFF_ACCOUNT_DELETED" in audit_actions
+    print(f"[PASS] GET /api/v1/auth/audit-logs: 200 OK (Captured STAFF_ACCOUNT_CREATED, STATUS_CHANGED, DELETED)")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("PHASE 6 & 7C.1: RUNNING AUTHENTICATION & RBAC VERIFICATION TEST SUITE")
@@ -178,9 +296,10 @@ if __name__ == "__main__":
     test_login_inactive_user()
     test_get_me(admin_token)
     test_admin_check(admin_token, analyst_token)
+    test_controlled_staff_account_workflow(admin_token, analyst_token)
     test_logout(admin_token)
     test_audit_logs_and_last_login()
     print("=" * 70)
-    print("ALL AUTHENTICATION & RBAC TESTS PASSED WITH 100% SUCCESS!")
+    print("ALL AUTHENTICATION & STAFF MANAGEMENT TESTS PASSED WITH 100% SUCCESS!")
     print("=" * 70 + "\n")
 

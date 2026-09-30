@@ -121,7 +121,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <DashboardLayout
       title="Crime Intelligence Command Center"
-      subtitle="Operational descriptive analytics powered by MySQL 8.0 & FastAPI"
+      subtitle="Jurisdictional Crime Analytics & Operational Intelligence"
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
@@ -270,41 +270,40 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div className="flex flex-col justify-between rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] lg:col-span-4">
+            <div className="flex flex-col justify-between rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-xs lg:col-span-4">
               <div>
                 <h4 className="text-sm font-semibold text-[#0F172A]">
-                  Database & System Audit Summary
+                  Operational Intelligence Summary
                 </h4>
                 <p className="mt-1 text-xs text-[#64748B]">
-                  Data-Driven Crime Management System with AI-Based Resource Optimization
+                  Crime Intelligence & Management Portal
                 </p>
                 <div className="mt-4 space-y-2 text-xs">
                   <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
-                    <span>Database Engine:</span>
-                    <span className="font-mono text-[#0F172A] font-medium">MySQL 8.0</span>
+                    <span>Analytical Coverage:</span>
+                    <span className="font-semibold text-[#0F172A]">Multi-Year Longitudinal</span>
                   </div>
                   <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
-                    <span>Frozen Schema:</span>
-                    <span className="font-mono text-[#0F172A] font-medium">17 Tables</span>
+                    <span>Incident Scope:</span>
+                    <span className="font-semibold text-emerald-700">Verified Jurisdictions</span>
                   </div>
                   <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
-                    <span>Verified Records:</span>
-                    <span className="font-mono text-emerald-700 font-semibold">191,679 Incidents</span>
+                    <span>Demographic Baseline:</span>
+                    <span className="font-medium text-[#0F172A]">Census Standardized</span>
                   </div>
                   <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
-                    <span>Demographics Linkage:</span>
-                    <span className="font-mono text-[#0F172A] font-medium">Census 2011 (640 Dists)</span>
+                    <span>Security Clearance:</span>
+                    <span className="font-semibold text-indigo-600">Restricted Operations</span>
                   </div>
                   <div className="flex justify-between pb-1 text-[#64748B]">
-                    <span>Mock Data Present:</span>
-                    <span className="font-mono font-bold text-rose-600">ZERO (0%)</span>
+                    <span>System Status:</span>
+                    <span className="font-semibold text-emerald-600">Active & Operational</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg bg-[#EEF2FF] p-3 text-[11px] text-[#4F46E5] border border-indigo-100">
-                Phase 5 Frontend is directly querying live FastAPI endpoints at{' '}
-                <code className="font-mono font-bold text-[#4F46E5]">/api/v1/analytics</code>.
+              <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3 text-[11px] text-[#64748B] border border-[#E2E8F0]">
+                All charts and metrics are computed dynamically based on your active state, district, and date range filters.
               </div>
             </div>
           </div>
