@@ -4,7 +4,6 @@ import {
   ArrowRight,
   LockKeyhole,
   ScanSearch,
-  Fingerprint,
   MapPinned,
   ShieldAlert,
   TrendingUp,
@@ -13,7 +12,6 @@ import {
   UserCheck,
   LogOut,
   ShieldCheck,
-  KeyRound,
   ClipboardCheck,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -34,17 +32,17 @@ export const LandingPage: React.FC = () => {
       number: '01',
       title: 'Crime Intelligence',
       description:
-        'Analyse historical incidents, crime categories and patterns across jurisdictions.',
+        'Analyse historical incidents and identify patterns across jurisdictions.',
       icon: ScanSearch,
       image: '/assets/crime-intelligence/cyber-investigation.jpg',
       link: '/dashboard',
-      actionText: 'Explore Intelligence',
+      actionText: 'View Analytics',
     },
     {
       number: '02',
       title: 'Geographic Intelligence',
       description:
-        'Explore crime distribution across states and districts with geographic context.',
+        'Explore crime distribution across states and districts.',
       icon: MapPinned,
       image: '/assets/crime-intelligence/geographic-intelligence.jpg',
       link: '/districts',
@@ -54,11 +52,11 @@ export const LandingPage: React.FC = () => {
       number: '03',
       title: 'Risk Assessment',
       description:
-        'Assess jurisdiction-level risk using crime volume, severity and trend indicators.',
+        'Assess jurisdiction-level crime indicators and risk levels.',
       icon: ShieldAlert,
       image: '/assets/crime-intelligence/risk-assessment.jpg',
       link: '/risk',
-      actionText: 'Assess Risk Levels',
+      actionText: 'Assess Risk',
     },
     {
       number: '04',
@@ -68,62 +66,34 @@ export const LandingPage: React.FC = () => {
       icon: TrendingUp,
       image: '/assets/crime-intelligence/predictive-intelligence.jpg',
       link: '/predictions',
-      actionText: 'Review Forecasting',
+      actionText: 'View Forecasts',
     },
     {
       number: '05',
       title: 'Resource Optimization',
       description:
-        'Support operational resource planning across high-workload jurisdictions.',
+        'Support operational resource planning across jurisdictions.',
       icon: CarFront,
       image: '/assets/crime-intelligence/resource-optimization.jpg',
       link: '/resources',
-      actionText: 'Optimize Resources',
+      actionText: 'View Resources',
     },
     {
       number: '06',
       title: 'Intelligence Reports',
       description:
-        'Generate structured intelligence summaries and operational reports.',
+        'Review structured analytical summaries and operational reports.',
       icon: FileSearch,
       image: '/assets/crime-intelligence/intelligence-reports.jpg',
       link: '/reports',
-      actionText: 'Generate Reports',
-    },
-  ];
-
-  // 4-step workflow explaining system architecture without developer jargon
-  const workflowSteps = [
-    {
-      number: '01',
-      title: 'Incident Data',
-      description: 'Structured crime records form the analytical foundation.',
-      icon: Fingerprint,
-    },
-    {
-      number: '02',
-      title: 'Pattern Analysis',
-      description: 'Identify temporal, geographic and categorical patterns.',
-      icon: ScanSearch,
-    },
-    {
-      number: '03',
-      title: 'Risk Assessment',
-      description: 'Evaluate jurisdiction-level crime indicators.',
-      icon: ShieldAlert,
-    },
-    {
-      number: '04',
-      title: 'Operational Planning',
-      description: 'Translate intelligence into resource recommendations.',
-      icon: CarFront,
+      actionText: 'View Reports',
     },
   ];
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-[#172033] flex flex-col justify-between selection:bg-[#1769AA] selection:text-white">
-      {/* Top Header Navigation */}
-      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white px-5 sm:px-6 h-15 flex items-center shadow-2xs">
+      {/* 1. Professional Header */}
+      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white px-5 sm:px-6 h-16 flex items-center shadow-2xs">
         <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
           {/* Logo & Portal Identity */}
           <div className="flex items-center gap-2.5">
@@ -151,8 +121,8 @@ export const LandingPage: React.FC = () => {
             <Link to="/districts" className="hover:text-[#0B1F3A] transition-colors">
               Geographic Intelligence
             </Link>
-            <Link to="/risk" className="hover:text-[#0B1F3A] transition-colors">
-              Risk Assessment
+            <Link to="/trends" className="hover:text-[#0B1F3A] transition-colors">
+              Crime Trends
             </Link>
             <a href="#modules" className="hover:text-[#0B1F3A] transition-colors">
               Capabilities
@@ -196,7 +166,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1">
-        {/* SECTION 1: Premium Two-Column Hero */}
+        {/* 2. Strong Two-Column Hero */}
         <section className="border-b border-[#D9E1EA] bg-white py-10 md:py-14">
           <div className="max-w-6xl mx-auto px-5 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             {/* Left 54%: Mission & Operational Actions */}
@@ -242,7 +212,7 @@ export const LandingPage: React.FC = () => {
                   <span className="font-medium text-[#172033]">Secure Staff Access</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <KeyRound className="h-3.5 w-3.5 text-[#1769AA]" />
+                  <LockKeyhole className="h-3.5 w-3.5 text-[#1769AA]" />
                   <span className="font-medium text-[#172033]">Role-Based Access</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -252,7 +222,7 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right 46%: High Quality Crime Intelligence Operations Visual */}
+            {/* Right 46%: Large Realistic Crime-Intelligence Image */}
             <div className="lg:col-span-5">
               <div className="relative rounded-[10px] border border-[#D9E1EA] overflow-hidden bg-[#0B1F3A] shadow-xs max-h-[360px]">
                 <img
@@ -263,142 +233,28 @@ export const LandingPage: React.FC = () => {
                     (e.currentTarget as HTMLElement).style.display = 'none';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/90 via-[#0B1F3A]/25 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/80 via-[#0B1F3A]/20 to-transparent pointer-events-none" />
 
-                {/* Floating Operational Panel */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[11px]">
-                  <div className="bg-[#0B1F3A]/90 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 flex items-center gap-1.5">
-                    <span className="font-semibold tracking-wide text-slate-200">
-                      INTELLIGENCE OPERATIONS
-                    </span>
-                  </div>
-                  <div className="bg-[#0B1F3A]/90 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-emerald-300 font-medium">System Operational</span>
-                  </div>
+                {/* Professional Operational Status Label (No fake statistics or fake live alerts) */}
+                <div className="absolute bottom-3 left-3 bg-[#0B1F3A]/90 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[11px] font-semibold tracking-wide text-slate-200">
+                  INTELLIGENCE OPERATIONS
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* SECTION 2: Intelligence Network Workflow Section */}
-        <section className="py-10 max-w-6xl mx-auto px-5">
-          <div className="text-left mb-6">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA]">
-              OPERATIONAL FRAMEWORK
-            </p>
-            <h2 className="text-[20px] font-bold text-[#0B1F3A] mt-0.5">
-              From Incident Data to Operational Intelligence
-            </h2>
-            <p className="text-[13px] text-[#5D6878] mt-0.5">
-              A structured workflow for analysing crime patterns and supporting operational decisions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {workflowSteps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <div
-                  key={step.number}
-                  className="rounded-lg border border-[#D9E1EA] bg-white p-4.5 shadow-2xs flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="h-10 w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span className="text-[12px] font-bold text-[#1769AA] font-mono">
-                        {step.number}
-                      </span>
-                    </div>
-
-                    <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                      {step.title}
-                    </h3>
-                    <p className="text-[12px] text-[#5D6878] mt-1.5 leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* SECTION 3: Dark Navy Feature Strip "Crime Intelligence at a Glance" */}
-        <section className="bg-[#0B1F3A] text-white py-7 border-y border-[#12345B]">
-          <div className="max-w-6xl mx-auto px-5">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="shrink-0 text-center md:text-left">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#1D7FE2] block">
-                  SYSTEM OVERVIEW
-                </span>
-                <h3 className="text-[17px] font-bold text-white mt-0.5">
-                  Crime Intelligence at a Glance
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
-                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded px-3 py-2">
-                  <Fingerprint className="h-5 w-5 text-[#1D7FE2] shrink-0" />
-                  <div>
-                    <span className="text-[12px] font-bold text-white block leading-tight">
-                      Incident Analysis
-                    </span>
-                    <span className="text-[10px] text-slate-400">Classified Offenses</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded px-3 py-2">
-                  <MapPinned className="h-5 w-5 text-[#1D7FE2] shrink-0" />
-                  <div>
-                    <span className="text-[12px] font-bold text-white block leading-tight">
-                      Geographic Intel
-                    </span>
-                    <span className="text-[10px] text-slate-400">789 Districts</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded px-3 py-2">
-                  <ShieldAlert className="h-5 w-5 text-[#1D7FE2] shrink-0" />
-                  <div>
-                    <span className="text-[12px] font-bold text-white block leading-tight">
-                      Risk Assessment
-                    </span>
-                    <span className="text-[10px] text-slate-400">Threat Matrix</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded px-3 py-2">
-                  <TrendingUp className="h-5 w-5 text-[#1D7FE2] shrink-0" />
-                  <div>
-                    <span className="text-[12px] font-bold text-white block leading-tight">
-                      Predictive Intel
-                    </span>
-                    <span className="text-[10px] text-slate-400">Forecasting Series</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION 4: Redesigned 3-Column Capability Modules */}
+        {/* 3. Intelligence Capabilities Grid (Immediately after Hero) */}
         <section id="modules" className="py-12 max-w-6xl mx-auto px-5">
           <div className="text-left mb-7">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA]">
-              INTELLIGENCE MODULES
+              INTELLIGENCE CAPABILITIES
             </p>
             <h2 className="text-[22px] font-bold text-[#0B1F3A] mt-0.5">
-              Comprehensive Operational Modules
+              Intelligence Capabilities
             </h2>
             <p className="text-[13px] text-[#5D6878] mt-0.5">
-              End-to-end analytical toolsets engineered for investigative officers, intelligence analysts, and operational commanders.
+              Explore the platform&apos;s core analytical and operational capabilities.
             </p>
           </div>
 
@@ -410,7 +266,7 @@ export const LandingPage: React.FC = () => {
                   key={module.number}
                   className="rounded-lg border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-1 transition-all duration-200 shadow-2xs h-[350px] sm:h-[365px]"
                 >
-                  {/* Top Image (175–185px) with Badges */}
+                  {/* Top Image (180px) with Badges */}
                   <div className="relative h-[180px] w-full overflow-hidden bg-[#0B1F3A] shrink-0">
                     <img
                       src={module.image}
@@ -433,7 +289,7 @@ export const LandingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Content (150–165px) */}
+                  {/* Content */}
                   <div className="p-4.5 flex-1 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-2">
@@ -464,9 +320,35 @@ export const LandingPage: React.FC = () => {
             })}
           </div>
         </section>
+
+        {/* 4. Small Professional Operational-Information Section */}
+        <section className="pb-12 max-w-6xl mx-auto px-5 w-full">
+          <div className="rounded-lg border border-[#D9E1EA] bg-[#EAF3FA]/50 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="h-9 w-9 rounded bg-[#0B1F3A] text-white flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5 text-[#1D7FE2]" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA] block">
+                  SECURE OPERATIONAL ACCESS
+                </span>
+                <p className="text-[13px] sm:text-[14px] text-[#5D6878] mt-0.5 leading-relaxed">
+                  Designed for authorized personnel working with crime intelligence, jurisdictional analysis and operational planning.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={isAuthenticated ? '/dashboard' : '/login'}
+              className="inline-flex h-10 items-center gap-2 rounded bg-[#0B1F3A] px-4.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
+            >
+              <span>Access Staff Portal</span>
+              <ArrowRight className="h-4 w-4 text-[#1D7FE2]" />
+            </Link>
+          </div>
+        </section>
       </main>
 
-      {/* SECTION 5: Professional Compact Footer */}
+      {/* 5. Professional Compact Footer */}
       <footer className="border-t border-[#D9E1EA] bg-white py-4 px-5 text-xs text-[#5D6878]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
