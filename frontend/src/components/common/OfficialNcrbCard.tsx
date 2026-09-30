@@ -48,18 +48,18 @@ export const OfficialNcrbCard: React.FC = () => {
   }, [selectedYear, selectedGeoLevel]);
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-xs">
+    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#E2E8F0] pb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3.5">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-indigo-600" />
-            <h3 className="text-sm font-bold text-[#0F172A]">Official Government (NCRB) Crime Statistics</h3>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+            <ShieldCheck className="h-4 w-4 text-[#1D4ED8]" />
+            <h3 className="text-[15px] font-bold text-[#172033]">Official Government (NCRB) Crime Statistics</h3>
+            <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-[#16805C] border border-emerald-200">
               OFFICIAL PUBLISHED
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#64748B]">
+          <p className="mt-0.5 text-[12px] text-[#5B6577]">
             Source:{' '}
             <span className="font-semibold text-slate-700">Crime in India {selectedYear}</span> | Published by{' '}
             <span className="font-medium text-slate-700">National Crime Records Bureau (NCRB)</span>, Ministry of Home Affairs

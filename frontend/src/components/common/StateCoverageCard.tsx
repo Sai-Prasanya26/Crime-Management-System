@@ -64,19 +64,19 @@ export const StateCoverageCard: React.FC = () => {
   });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-6">
+    <div className="bg-white border border-[#DCE2EA] rounded-lg shadow-2xs p-4 mb-4">
       {/* Header and Summary */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-100 gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-[15px] font-bold text-[#172033]">
               India Crime Data Coverage
             </h2>
-            <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-0.5 rounded-full">
-              36 States & UTs Complete
+            <span className="text-[10px] bg-emerald-50 text-[#16805C] font-semibold px-2 py-0.5 rounded border border-emerald-200">
+              36 States &amp; UTs Complete
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[12px] text-[#5B6577] mt-0.5">
             Dual-layer coverage audit contrasting the <strong>2020–2025 Historical Crime Incident Records</strong> with published <strong>Official NCRB Benchmarks</strong>.
           </p>
         </div>

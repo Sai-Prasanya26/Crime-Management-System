@@ -118,11 +118,11 @@ export const DistrictsPage: React.FC = () => {
       <DataFreshnessBanner />
 
       {/* State & District Lookup Filter */}
-      <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3.5">
-            <span className="text-xs sm:text-[13px] font-bold uppercase tracking-wider text-[#64748B]">
-              Filter By State:
+      <div className="rounded-lg border border-[#DCE2EA] bg-white p-3 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5B6577]">
+              State Filter:
             </span>
             <select
               value={selectedStateId || ''}
@@ -131,7 +131,7 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(val);
                 setSelectedDistrictId(undefined);
               }}
-              className="min-h-[46px] rounded-xl border border-[#E2E8F0] bg-white py-2.5 px-4 text-[15px] font-medium text-[#0F172A] shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer"
+              className="h-10 rounded-md border border-[#DCE2EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] cursor-pointer"
             >
               <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
@@ -148,7 +148,7 @@ export const DistrictsPage: React.FC = () => {
                   const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                   setSelectedDistrictId(val);
                 }}
-                className="min-h-[46px] rounded-xl border border-[#E2E8F0] bg-white py-2.5 px-4 text-[15px] font-medium text-[#0F172A] shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer"
+                className="h-10 rounded-md border border-[#DCE2EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] cursor-pointer"
               >
                 <option value="">Select District Profile ({districts.length})</option>
                 {districts.map((d) => (
@@ -166,9 +166,9 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(undefined);
                 setSelectedDistrictId(undefined);
               }}
-              className="inline-flex min-h-[44px] items-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center rounded-md border border-rose-200 bg-rose-50 px-3 text-[12px] font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
             >
-              Clear State Filter
+              Clear Filter
             </button>
           )}
         </div>
@@ -176,51 +176,51 @@ export const DistrictsPage: React.FC = () => {
 
       {/* Selected District Census Demographics Card */}
       {selectedDistrictId && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-6 shadow-xs">
-          <div className="flex items-center justify-between border-b border-indigo-100 pb-4">
-            <div className="flex items-center gap-2.5">
-              <MapPin className="h-5 w-5 text-[#4F46E5]" />
-              <h3 className="text-base font-bold text-[#0F172A]">
+        <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-[#1D4ED8]" />
+              <h3 className="text-[15px] font-bold text-[#172033]">
                 Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
                 {districtDetail?.state_name}
               </h3>
             </div>
             {districtDetail?.parent_district_id && (
-              <span className="rounded-lg bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                Administrative Unit (Census 2011 Parent #{districtDetail.parent_district_id})
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-[#1D4ED8] border border-blue-200">
+                Census 2011 Parent #{districtDetail.parent_district_id}
               </span>
             )}
           </div>
 
           {loadingDetail ? (
-            <div className="py-6 text-center text-xs font-medium text-[#4F46E5]">
+            <div className="py-4 text-center text-xs font-medium text-[#1D4ED8]">
               Loading Census metrics from district_demographics table...
             </div>
           ) : districtDetail?.demographics ? (
-            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xs">
-                <div className="flex items-center gap-1.5 text-[#64748B]">
-                  <Users className="h-3.5 w-3.5 text-[#2563EB]" />
-                  <span className="text-[11px] font-medium">Census 2011 Population</span>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-md border border-[#DCE2EA] bg-slate-50/60 p-2.5">
+                <div className="flex items-center gap-1.5 text-[#5B6577]">
+                  <Users className="h-3.5 w-3.5 text-[#1D4ED8]" />
+                  <span className="text-[11px] font-medium">Population</span>
                 </div>
-                <p className="mt-1 text-lg font-bold text-[#0F172A]">
+                <p className="mt-1 text-[16px] font-bold text-[#172033]">
                   {districtDetail.demographics.total_population.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-[#64748B]">
-                  Male: {districtDetail.demographics.male_population.toLocaleString()} | Female:{' '}
+                <p className="text-[10px] text-[#5B6577]">
+                  M: {districtDetail.demographics.male_population.toLocaleString()} | F:{' '}
                   {districtDetail.demographics.female_population.toLocaleString()}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xs">
-                <div className="flex items-center gap-1.5 text-[#64748B]">
-                  <BookOpen className="h-3.5 w-3.5 text-[#059669]" />
-                  <span className="text-[11px] font-medium">Literacy Count</span>
+              <div className="rounded-md border border-[#DCE2EA] bg-slate-50/60 p-2.5">
+                <div className="flex items-center gap-1.5 text-[#5B6577]">
+                  <BookOpen className="h-3.5 w-3.5 text-[#16805C]" />
+                  <span className="text-[11px] font-medium">Literacy</span>
                 </div>
-                <p className="mt-1 text-lg font-bold text-emerald-700">
+                <p className="mt-1 text-[16px] font-bold text-[#16805C]">
                   {districtDetail.demographics.literate_population.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-[#64748B]">
+                <p className="text-[10px] text-[#5B6577]">
                   {(
                     (districtDetail.demographics.literate_population /
                       (districtDetail.demographics.total_population || 1)) *
@@ -230,37 +230,37 @@ export const DistrictsPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xs">
-                <div className="flex items-center gap-1.5 text-[#64748B]">
-                  <Briefcase className="h-3.5 w-3.5 text-[#D97706]" />
-                  <span className="text-[11px] font-medium">Working Workforce</span>
+              <div className="rounded-md border border-[#DCE2EA] bg-slate-50/60 p-2.5">
+                <div className="flex items-center gap-1.5 text-[#5B6577]">
+                  <Briefcase className="h-3.5 w-3.5 text-[#B7791F]" />
+                  <span className="text-[11px] font-medium">Workforce</span>
                 </div>
-                <p className="mt-1 text-lg font-bold text-amber-700">
+                <p className="mt-1 text-[16px] font-bold text-[#B7791F]">
                   {districtDetail.demographics.total_workers.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-[#64748B]">
+                <p className="text-[10px] text-[#5B6577]">
                   {(
                     (districtDetail.demographics.total_workers /
                       (districtDetail.demographics.total_population || 1)) *
                     100
                   ).toFixed(1)}
-                  % workforce participation
+                  % participation
                 </p>
               </div>
 
-              <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xs">
-                <div className="flex items-center gap-1.5 text-[#64748B]">
-                  <Award className="h-3.5 w-3.5 text-[#4F46E5]" />
+              <div className="rounded-md border border-[#DCE2EA] bg-slate-50/60 p-2.5">
+                <div className="flex items-center gap-1.5 text-[#5B6577]">
+                  <Award className="h-3.5 w-3.5 text-purple-700" />
                   <span className="text-[11px] font-medium">Census Code</span>
                 </div>
-                <p className="mt-1 text-lg font-mono font-bold text-[#4F46E5]">
+                <p className="mt-1 text-[16px] font-mono font-bold text-purple-700">
                   #{districtDetail.census_district_code ?? 'N/A'}
                 </p>
-                <p className="text-[10px] text-[#64748B]">Census Year: 2011</p>
+                <p className="text-[10px] text-[#5B6577]">Census Year: 2011</p>
               </div>
             </div>
           ) : (
-            <p className="mt-3 text-xs text-[#64748B]">
+            <p className="mt-2 text-xs text-[#5B6577]">
               No demographic record found for this district.
             </p>
           )}
@@ -269,7 +269,7 @@ export const DistrictsPage: React.FC = () => {
 
       {/* Main Ranking Table */}
       {isLoading && !topDistricts && (
-        <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-12 shadow-xs">
+        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Ranking districts based on Census demographics..." />
         </div>
       )}
@@ -283,7 +283,7 @@ export const DistrictsPage: React.FC = () => {
       )}
 
       {!isLoading && !error && topDistricts && (
-        <div className="space-y-8">
+        <div className="space-y-4">
           <TopDistrictsTable
             districts={topDistricts.items}
             metric={metric}

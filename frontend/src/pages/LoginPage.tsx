@@ -50,70 +50,70 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] [background-image:radial-gradient(#E2E8F0_1px,transparent_1px)] [background-size:24px_24px] px-4 py-12 text-[#0F172A] selection:bg-[#4F46E5] selection:text-white">
-      <div className="w-full max-w-[480px]">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F6F8FB] [background-image:radial-gradient(#DCE2EA_1px,transparent_1px)] [background-size:20px_20px] px-4 py-8 text-[#172033] selection:bg-[#1D4ED8] selection:text-white">
+      <div className="w-full max-w-[420px]">
         {/* Return to Portal Link */}
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#0F172A] transition-colors"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B6577] hover:text-[#172033] transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           <span>Return to Portal Overview</span>
         </Link>
 
         {/* Login Container Card */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 sm:p-10 shadow-[0_4px_20px_rgba(15,23,42,0.06)]">
+        <div className="rounded-xl border border-[#DCE2EA] bg-white p-6 sm:p-7 shadow-sm">
           {/* Header & Badging */}
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0F172A] text-white shadow-md">
-              <Shield className="h-7 w-7 text-indigo-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#172033] text-white">
+              <Shield className="h-5 w-5 text-blue-400" />
             </div>
 
-            <h1 className="mt-5 text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#0F172A]">
+            <h1 className="mt-3 text-[24px] font-bold tracking-tight text-[#172033] leading-tight">
               Secure Staff Access
             </h1>
 
-            <p className="mt-1.5 text-sm sm:text-base font-semibold text-[#4F46E5]">
+            <p className="mt-1 text-[14px] font-medium text-[#5B6577]">
               Crime Intelligence &amp; Management Portal
             </p>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-slate-700 border border-slate-200">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Authorized personnel only</span>
+            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700 border border-[#DCE2EA]">
+              <ShieldCheck className="h-3 w-3 text-[#16805C]" />
+              <span>Authorized personnel only.</span>
             </div>
           </div>
 
           {/* Error Alert */}
           {errorMessage && (
-            <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-[#FEF2F2] p-3.5 text-sm text-red-700">
-              <AlertCircle className="h-5 w-5 shrink-0 text-[#B91C1C] mt-0.5" />
+            <div className="mt-4 flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs text-[#C53030]">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
             <div>
               <label
                 htmlFor="username-or-email"
-                className="block text-sm sm:text-[15px] font-semibold text-slate-700 mb-2"
+                className="block text-[13px] font-medium text-[#172033] mb-1"
               >
                 Username or Official Email
               </label>
               <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#64748B]">
-                  <UserIcon className="h-5 w-5" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#8492A6]">
+                  <UserIcon className="h-4 w-4" />
                 </div>
                 <input
                   id="username-or-email"
                   type="text"
                   value={usernameOrEmail}
                   onChange={(e) => setUsernameOrEmail(e.target.value)}
-                  placeholder="Enter assigned username or email"
+                  placeholder="Enter username or email"
                   disabled={isLoading}
                   autoComplete="username"
                   required
-                  className="w-full min-h-[50px] rounded-xl border border-[#E2E8F0] bg-white py-3 pl-11 pr-4 text-base text-[#0F172A] placeholder-slate-400 shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 disabled:opacity-50"
+                  className="w-full h-11 rounded-md border border-[#DCE2EA] bg-white py-2 pl-9 pr-3 text-[14px] text-[#172033] placeholder-slate-400 shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] disabled:opacity-50"
                 />
               </div>
             </div>
@@ -121,32 +121,32 @@ export const LoginPage: React.FC = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm sm:text-[15px] font-semibold text-slate-700 mb-2"
+                className="block text-[13px] font-medium text-[#172033] mb-1"
               >
                 Password
               </label>
               <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#64748B]">
-                  <Lock className="h-5 w-5" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#8492A6]">
+                  <Lock className="h-4 w-4" />
                 </div>
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Enter account password"
                   disabled={isLoading}
                   autoComplete="current-password"
                   required
-                  className="w-full min-h-[50px] rounded-xl border border-[#E2E8F0] bg-white py-3 pl-11 pr-11 text-base text-[#0F172A] placeholder-slate-400 shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 disabled:opacity-50"
+                  className="w-full h-11 rounded-md border border-[#DCE2EA] bg-white py-2 pl-9 pr-10 text-[14px] text-[#172033] placeholder-slate-400 shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#64748B] hover:text-[#0F172A]"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#8492A6] hover:text-[#172033]"
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -154,12 +154,12 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-3 flex w-full min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[#4F46E5] py-3.5 text-base font-bold text-white shadow-sm hover:bg-[#4338CA] focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:ring-offset-2 disabled:opacity-50 transition-all cursor-pointer"
+              className="mt-2 w-full h-11 rounded-md bg-[#1D4ED8] text-white text-[14px] font-semibold hover:bg-[#1E40AF] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8] focus:ring-offset-1 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Verifying Credentials...</span>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Authenticating...</span>
                 </>
               ) : (
                 <span>Sign In Securely</span>
@@ -167,24 +167,13 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Staff Access Guidance */}
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-sm sm:text-[15px] font-bold text-slate-800">
-              <Shield className="h-4 w-4 text-indigo-500" />
-              <span>Need access?</span>
-            </div>
-            <p className="mt-1 text-xs sm:text-[13px] leading-relaxed text-slate-600">
+          {/* Need access callout */}
+          <div className="mt-5 border-t border-slate-100 pt-4 text-center">
+            <p className="text-[13px] font-semibold text-[#172033]">
+              Need access?
+            </p>
+            <p className="text-[12px] text-[#5B6577] mt-0.5 leading-relaxed">
               Contact your system administrator to have an authorized staff account created.
-            </p>
-          </div>
-
-          {/* Operational Security Notice */}
-          <div className="mt-6 border-t border-[#E2E8F0] pt-5 text-center">
-            <p className="text-xs sm:text-[13px] font-medium text-slate-600">
-              Access is restricted to authorized crime-management personnel.
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Protected operational access &bull; All authentication events are monitored and audited.
             </p>
           </div>
         </div>

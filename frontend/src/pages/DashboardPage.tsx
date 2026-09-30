@@ -4,7 +4,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Globe2,
-  Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/common/StatCard';
@@ -61,7 +61,7 @@ export const DashboardPage: React.FC = () => {
     setError(null);
 
     try {
-      // Parallel fetch for all Phase 4 endpoints
+      // Parallel fetch for all analytical endpoints
       const [
         overviewRes,
         trendsRes,
@@ -121,7 +121,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <DashboardLayout
       title="Crime Intelligence Dashboard"
-      subtitle="Operational overview of reported crime patterns and jurisdictional activity."
+      subtitle="Operational overview of reported crime activity and jurisdictional patterns."
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
@@ -134,7 +134,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 shadow-xs">
+        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Fetching live crime intelligence from database..." />
         </div>
       )}
@@ -161,46 +161,46 @@ export const DashboardPage: React.FC = () => {
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <>
           {/* Key Performance Indicators (StatCards) */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
               title="Total Incidents"
               value={overview.total_incidents.toLocaleString()}
-              subtext="Reported Incident Records: 2020–2025"
+              subtext="Historical reported incidents"
               icon={FileText}
               color="indigo"
             />
             <StatCard
-              title="Case Clearance Rate"
-              value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
-              subtext={`${overview.cases.closed.toLocaleString()} resolved cases (2020–2025)`}
+              title="Closed Cases"
+              value={overview.cases.closed.toLocaleString()}
+              subtext={`${overview.cases.clearance_rate_pct.toFixed(1)}% clearance rate`}
               icon={CheckCircle2}
               color="emerald"
             />
             <StatCard
-              title="Active / Open Cases"
+              title="Open Cases"
               value={overview.cases.open.toLocaleString()}
-              subtext={`${(100 - overview.cases.clearance_rate_pct).toFixed(1)}% pending disposition`}
+              subtext={`${(100 - overview.cases.clearance_rate_pct).toFixed(1)}% in active inquiry`}
               icon={AlertTriangle}
               color="amber"
             />
             <StatCard
-              title="Jurisdictions Covered"
-              value={overview.total_districts.toLocaleString()}
-              subtext={`Census 2011 districts (${overview.total_states} States/UTs)`}
-              icon={Globe2}
+              title="Clearance Rate"
+              value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
+              subtext="Formal disposition ratio"
+              icon={ShieldCheck}
               color="blue"
             />
             <StatCard
-              title="Diurnal Peak Hour"
-              value={hourly ? `${hourly.peak_hour.toString().padStart(2, '0')}:00` : '18:00'}
-              subtext="Highest reported incident window"
-              icon={Clock}
+              title="Jurisdictions"
+              value={overview.total_districts.toLocaleString()}
+              subtext={`${overview.total_states} States & UTs`}
+              icon={Globe2}
               color="cyan"
             />
           </div>
 
           {/* Row 1: Trend Line & Crime Domain Donut */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-8">
               {trends && (
                 <CrimeTrendChart
@@ -222,15 +222,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Row 2: Diurnal Curve & Crime Type Distribution */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-6">
-              {hourly && (
-                <HourlyDistributionChart
-                  data={hourly.items}
-                  peakHour={hourly.peak_hour}
-                />
-              )}
-            </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-6">
               {types && (
                 <CrimeTypeChart
@@ -239,10 +231,18 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
+            <div className="lg:col-span-6">
+              {hourly && (
+                <HourlyDistributionChart
+                  data={hourly.items}
+                  peakHour={hourly.peak_hour}
+                />
+              )}
+            </div>
           </div>
 
           {/* Row 3: High Risk Jurisdictions & Victim Demographics */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-7">
               {topDistricts && (
                 <TopDistrictsTable
@@ -260,8 +260,8 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 4: Weapon Distribution & System Attribution */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Row 4: Weapon Distribution & Operational Summary */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-8">
               {weapons && (
                 <WeaponDistributionChart
@@ -270,43 +270,43 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xs lg:col-span-4">
+            <div className="flex flex-col justify-between rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs lg:col-span-4">
               <div>
-                <h4 className="text-base font-bold text-[#0F172A]">
+                <h4 className="text-[16px] font-bold text-[#172033]">
                   Operational Intelligence Summary
                 </h4>
-                <p className="mt-1 text-xs sm:text-sm text-[#64748B]">
+                <p className="mt-0.5 text-[12px] text-[#5B6577]">
                   Crime Intelligence &amp; Management Portal
                 </p>
-                <div className="mt-5 space-y-2.5 text-xs sm:text-sm">
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
+                <div className="mt-3.5 space-y-2 text-[12px]">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
                     <span>Analytical Coverage:</span>
-                    <span className="font-semibold text-[#0F172A]">Multi-Year Longitudinal</span>
+                    <span className="font-semibold text-[#172033]">Multi-Year Longitudinal</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
                     <span>Incident Scope:</span>
-                    <span className="font-semibold text-emerald-700">Verified Jurisdictions</span>
+                    <span className="font-semibold text-[#16805C]">Verified Jurisdictions</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
                     <span>Demographic Baseline:</span>
-                    <span className="font-medium text-[#0F172A]">Census Standardized</span>
+                    <span className="font-medium text-[#172033]">Census Standardized</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
                     <span>Security Clearance:</span>
-                    <span className="font-semibold text-indigo-600">Restricted Operations</span>
+                    <span className="font-semibold text-blue-700">Restricted Operations</span>
                   </div>
-                  <div className="flex justify-between pb-1.5 text-[#64748B]">
+                  <div className="flex justify-between pb-1 text-[#5B6577]">
                     <span>System Status:</span>
-                    <span className="font-bold text-emerald-600 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-bold text-[#16805C] flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       Active &amp; Operational
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 rounded-xl bg-[#F8FAFC] p-3.5 text-xs text-[#64748B] border border-[#E2E8F0]">
-                All charts and metrics are computed dynamically based on active state, district, and date range analysis parameters.
+              <div className="mt-3.5 rounded border border-[#DCE2EA] bg-slate-50/70 p-2.5 text-[11px] text-[#5B6577] leading-relaxed">
+                All metrics are computed dynamically from verified operational records according to active state, district, and date analysis parameters.
               </div>
             </div>
           </div>

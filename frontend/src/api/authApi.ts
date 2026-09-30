@@ -49,6 +49,10 @@ export const authApi = {
     const response = await apiClient.post<User>('/admin/users', payload);
     return response.data;
   },
+  createUser: async (payload: CreateStaffPayload): Promise<User> => {
+    const response = await apiClient.post<User>('/admin/users', payload);
+    return response.data;
+  },
 
   /**
    * Update active/inactive status of a staff account (Admin Only).

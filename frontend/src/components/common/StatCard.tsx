@@ -15,32 +15,32 @@ interface StatCardProps {
 
 const colorStyles = {
   blue: {
-    iconBg: 'bg-[#EFF6FF]',
-    iconColor: 'text-[#2563EB]',
+    iconBg: 'bg-blue-50',
+    iconColor: 'text-blue-700',
   },
   emerald: {
-    iconBg: 'bg-[#ECFDF5]',
-    iconColor: 'text-[#059669]',
+    iconBg: 'bg-emerald-50',
+    iconColor: 'text-[#16805C]',
   },
   amber: {
-    iconBg: 'bg-[#FFFBEB]',
-    iconColor: 'text-[#D97706]',
+    iconBg: 'bg-amber-50',
+    iconColor: 'text-[#B7791F]',
   },
   rose: {
-    iconBg: 'bg-[#FEF2F2]',
-    iconColor: 'text-[#DC2626]',
+    iconBg: 'bg-red-50',
+    iconColor: 'text-[#C53030]',
   },
   purple: {
-    iconBg: 'bg-[#EEF2FF]',
-    iconColor: 'text-[#4F46E5]',
+    iconBg: 'bg-purple-50',
+    iconColor: 'text-purple-700',
   },
   indigo: {
-    iconBg: 'bg-[#EEF2FF]',
-    iconColor: 'text-[#4F46E5]',
+    iconBg: 'bg-indigo-50',
+    iconColor: 'text-[#1D4ED8]',
   },
   cyan: {
-    iconBg: 'bg-[#ECFEFF]',
-    iconColor: 'text-[#0891B2]',
+    iconBg: 'bg-cyan-50',
+    iconColor: 'text-cyan-700',
   },
 };
 
@@ -55,29 +55,36 @@ export const StatCard: React.FC<StatCardProps> = ({
   const styles = colorStyles[color] || colorStyles.indigo;
 
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-slate-300 hover:shadow-sm"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs sm:text-[13px] font-bold uppercase tracking-wider text-[#64748B]">{title}</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A]">{value}</h3>
-            {trend && (
-              <span
-                className={`inline-flex items-center text-xs font-bold ${
-                  trend.isPositive ? 'text-emerald-600' : 'text-rose-600'
-                }`}
-              >
-                {trend.isPositive ? '↑' : '↓'} {trend.value}
-              </span>
-            )}
-          </div>
-          {subtext && <p className="mt-1.5 text-xs sm:text-[13px] text-slate-500 leading-snug">{subtext}</p>}
+    <div className="flex flex-col justify-between rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs hover:border-slate-300 transition-colors min-h-[110px] max-h-[130px]">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5B6577] truncate">
+          {title}
+        </p>
+        <div className={`rounded-md p-1.5 shrink-0 ${styles.iconBg} ${styles.iconColor}`}>
+          <Icon className="h-4 w-4" />
         </div>
-        <div className={`rounded-2xl p-3.5 shrink-0 ${styles.iconBg} ${styles.iconColor}`}>
-          <Icon className="h-6 w-6" />
+      </div>
+
+      <div className="mt-1">
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-[24px] sm:text-[26px] font-bold tracking-tight text-[#172033] leading-none">
+            {value}
+          </h3>
+          {trend && (
+            <span
+              className={`inline-flex items-center text-[11px] font-bold ${
+                trend.isPositive ? 'text-[#16805C]' : 'text-[#C53030]'
+              }`}
+            >
+              {trend.isPositive ? '↑' : '↓'} {trend.value}
+            </span>
+          )}
         </div>
+        {subtext && (
+          <p className="mt-1 text-[12px] text-[#5B6577] truncate leading-tight">
+            {subtext}
+          </p>
+        )}
       </div>
     </div>
   );

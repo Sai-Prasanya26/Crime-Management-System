@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Home, LogOut, LogIn, UserCheck, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Home, LogOut, LogIn } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,14 +9,6 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
-
-const ROLE_STYLES: Record<string, string> = {
-  ADMIN: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  ANALYST: 'bg-amber-50 text-amber-700 border-amber-200',
-  OFFICER: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  INVESTIGATOR: 'bg-purple-50 text-purple-700 border-purple-200',
-  SUPERVISOR: 'bg-blue-50 text-blue-700 border-blue-200',
-};
 
 export const Header: React.FC<HeaderProps> = ({
   title,
@@ -32,76 +24,87 @@ export const Header: React.FC<HeaderProps> = ({
     navigate('/login');
   };
 
+  const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+
   return (
-    <header className="sticky top-0 z-20 flex min-h-[72px] w-full items-center justify-between border-b border-[#E2E8F0] bg-white px-6 sm:px-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A]">{title}</h1>
-        {subtitle && <p className="text-sm sm:text-[15px] text-[#64748B] mt-0.5">{subtitle}</p>}
+    <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#DCE2EA] bg-white px-5 sm:px-6 shadow-2xs">
+      {/* Left: Page Title & Context */}
+      <div className="min-w-0 pr-4">
+        <h1 className="text-[18px] sm:text-[20px] font-bold tracking-tight text-[#172033] leading-tight truncate">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="text-[12px] text-[#5B6577] mt-0.5 leading-tight truncate">
+            {subtitle}
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center gap-3.5">
-        {/* Operational Status Indicator */}
-        <div className="hidden md:flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-3.5 py-1.5 text-sm text-emerald-900 font-semibold shadow-2xs">
-          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span>System Status: Operational</span>
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+      {/* Right: Operational Controls */}
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* System Status: Operational */}
+        <div className="hidden md:flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50/70 px-2.5 py-1 text-[12px] font-medium text-emerald-800">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>Operational</span>
         </div>
 
-        {/* User Profile / Auth Badge */}
-        {isAuthenticated && user ? (
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#E2E8F0] bg-white p-1.5 pl-3.5 shadow-2xs">
-            <UserCheck className="h-4.5 w-4.5 text-[#4F46E5] shrink-0" />
-            <div className="text-left pr-1">
-              <p className="text-sm font-bold text-[#0F172A] leading-tight">{user.full_name}</p>
-              <p className="text-xs text-[#64748B] font-mono mt-0.5">@{user.username}</p>
-            </div>
-            <span
-              className={`rounded-lg border px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${
-                ROLE_STYLES[user.role] || 'bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              {user.role}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="ml-1 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors"
-              title="Terminate session / Sign Out"
-            >
-              <LogOut className="h-4.5 w-4.5" />
-            </button>
-          </div>
-        ) : (
-          <Link
-            to="/login"
-            className="flex items-center gap-2 rounded-xl bg-[#0F172A] px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-slate-800 transition-colors"
+        {/* Refresh Action */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="flex h-8 items-center gap-1.5 rounded-md border border-[#DCE2EA] bg-white px-2.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 hover:text-[#172033] disabled:opacity-50 transition-colors cursor-pointer"
+            title="Refresh current data"
           >
-            <LogIn className="h-4 w-4 text-indigo-400" />
-            <span>Staff Sign In</span>
-          </Link>
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-[#1D4ED8]' : 'text-slate-500'}`}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         )}
 
         {/* Home Portal Link */}
         <Link
           to="/"
-          className="rounded-xl border border-[#E2E8F0] bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-[#0F172A] shadow-2xs transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-[#DCE2EA] bg-white text-slate-600 hover:bg-slate-50 hover:text-[#172033] transition-colors"
           title="Return to Portal Overview"
         >
-          <Home className="h-4.5 w-4.5" />
+          <Home className="h-3.5 w-3.5" />
         </Link>
 
-        {/* Refresh Button */}
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0F172A] shadow-2xs disabled:opacity-50 transition-colors cursor-pointer"
-            title="Refresh current intelligence view"
+        {/* User Account / Profile */}
+        {isAuthenticated && user ? (
+          <div className="flex items-center gap-2 rounded-md border border-[#DCE2EA] bg-white py-1 pl-2 pr-1.5 shadow-2xs">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#172033] text-[11px] font-bold text-white shrink-0">
+              {userInitial}
+            </div>
+            <div className="hidden sm:block text-left pr-1">
+              <p className="text-[13px] font-medium text-[#172033] leading-tight truncate max-w-[140px]">
+                {user.full_name}
+              </p>
+              <p className="text-[11px] text-[#5B6577] leading-tight">
+                {user.role}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors cursor-pointer ml-0.5"
+              title="Sign Out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            className="flex h-8 items-center gap-1.5 rounded-md bg-[#1D4ED8] px-3 text-[12px] font-semibold text-white shadow-2xs hover:bg-[#1E40AF] transition-colors"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-[#4F46E5]' : 'text-slate-500'}`}
-            />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+            <LogIn className="h-3.5 w-3.5" />
+            <span>Staff Sign In</span>
+          </Link>
         )}
       </div>
     </header>

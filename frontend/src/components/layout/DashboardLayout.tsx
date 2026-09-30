@@ -18,12 +18,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
+    <div className="min-h-screen bg-[#F6F8FB] text-[#172033]">
       {/* Sidebar navigation */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="pl-64">
+      <div className="pl-[240px]">
         <Header
           title={title}
           subtitle={subtitle}
@@ -31,8 +31,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-8">
-          <div className="mx-auto max-w-7xl space-y-6">{children}</div>
+        <main className="p-4 sm:p-5 lg:p-6">
+          <div className="mx-auto max-w-[1600px] space-y-4 sm:space-y-5">{children}</div>
         </main>
       </div>
     </div>

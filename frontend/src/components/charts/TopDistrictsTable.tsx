@@ -23,16 +23,16 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
       : 1;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600">
-              <Award className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <div className="rounded p-1.5 bg-emerald-50 text-[#16805C]">
+              <Award className="h-4 w-4" />
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">Top High-Risk Jurisdictions</h3>
+            <h3 className="text-[16px] font-bold text-[#172033]">Top High-Risk Jurisdictions</h3>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-[12px] text-[#5B6577]">
             {metric === 'volume'
               ? 'Ranked by absolute reported incident volume'
               : 'Ranked by per-capita crime rate per 100,000 citizens (Census 2011 normalized)'}
@@ -40,46 +40,46 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
         </div>
 
         {/* Metric Toggle */}
-        <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm">
+        <div className="flex items-center rounded border border-[#DCE2EA] bg-slate-50 p-0.5 text-[12px]">
           <button
             onClick={() => onMetricChange('volume')}
             disabled={isLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-medium transition-all ${
+            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors ${
               metric === 'volume'
-                ? 'bg-white text-emerald-700 shadow-sm border border-slate-200 font-semibold'
-                : 'text-slate-600 hover:text-[#0F172A]'
+                ? 'bg-white text-[#16805C] shadow-2xs font-semibold'
+                : 'text-[#5B6577] hover:text-[#172033]'
             }`}
           >
-            <TrendingUp className="h-4 w-4" />
+            <TrendingUp className="h-3 w-3" />
             By Volume
           </button>
           <button
             onClick={() => onMetricChange('rate')}
             disabled={isLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-medium transition-all ${
+            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors ${
               metric === 'rate'
-                ? 'bg-white text-emerald-700 shadow-sm border border-slate-200 font-semibold'
-                : 'text-slate-600 hover:text-[#0F172A]'
+                ? 'bg-white text-[#16805C] shadow-2xs font-semibold'
+                : 'text-[#5B6577] hover:text-[#172033]'
             }`}
           >
-            <Users className="h-4 w-4" />
+            <Users className="h-3 w-3" />
             Per 100k Rate
           </button>
         </div>
       </div>
 
-      <div className="mt-5 overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="mt-3.5 overflow-x-auto">
+        <table className="w-full text-left text-[13px]">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-600">
-              <th className="py-3.5 pl-4"># Rank</th>
-              <th className="py-3.5 px-3">District</th>
-              <th className="py-3.5 px-3">State / UT</th>
-              <th className="py-3.5 px-3 text-right">Population</th>
-              <th className="py-3.5 px-3 text-right">
+            <tr className="border-b border-[#DCE2EA] bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
+              <th className="py-2.5 pl-3"># Rank</th>
+              <th className="py-2.5 px-3">District</th>
+              <th className="py-2.5 px-3">State / UT</th>
+              <th className="py-2.5 px-3 text-right">Population</th>
+              <th className="py-2.5 px-3 text-right">
                 {metric === 'volume' ? 'Reported Crimes' : 'Rate / 100k'}
               </th>
-              <th className="py-3.5 pl-4 pr-4">Relative Intensity</th>
+              <th className="py-2.5 pl-3 pr-3">Relative Intensity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -91,37 +91,37 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
               return (
                 <tr
                   key={d.district_id}
-                  className="transition-colors hover:bg-slate-50/70"
+                  className="transition-colors hover:bg-slate-50/60"
                 >
-                  <td className="py-3.5 pl-4 font-mono font-bold text-slate-500">
+                  <td className="py-2.5 pl-3 font-mono font-bold text-[#5B6577]">
                     <span
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                      className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
                         index === 0
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-amber-100 text-[#B7791F]'
                           : index === 1
                           ? 'bg-slate-200 text-slate-700'
                           : index === 2
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'text-slate-500 bg-slate-100'
+                          : 'text-[#5B6577] bg-slate-100'
                       }`}
                     >
                       {index + 1}
                     </span>
                   </td>
-                  <td className="py-3.5 px-3 font-semibold text-slate-900">{d.district_name}</td>
-                  <td className="py-3.5 px-3 text-slate-600">{d.state_name}</td>
-                  <td className="py-3.5 px-3 text-right font-mono text-slate-700">
+                  <td className="py-2.5 px-3 font-semibold text-[#172033]">{d.district_name}</td>
+                  <td className="py-2.5 px-3 text-[#5B6577]">{d.state_name}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-slate-700">
                     {d.total_population ? d.total_population.toLocaleString() : '—'}
                   </td>
-                  <td className="py-3.5 px-3 text-right font-mono font-bold text-emerald-700">
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-[#16805C]">
                     {metric === 'volume'
                       ? d.incident_count.toLocaleString()
                       : `${d.crime_rate_per_100k?.toFixed(2) ?? '—'}`}
                   </td>
-                  <td className="py-3.5 pl-4 pr-4">
-                    <div className="h-2 w-full rounded-full bg-slate-100">
+                  <td className="py-2.5 pl-3 pr-3">
+                    <div className="h-1.5 w-full rounded-full bg-slate-100">
                       <div
-                        className="h-2 rounded-full bg-emerald-500 transition-all duration-300"
+                        className="h-1.5 rounded-full bg-[#16805C] transition-all duration-300"
                         style={{ width: `${ratio}%` }}
                       />
                     </div>

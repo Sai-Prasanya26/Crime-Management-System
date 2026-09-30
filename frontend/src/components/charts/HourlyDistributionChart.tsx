@@ -30,70 +30,70 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
   const peakItem = data.find((d) => d.hour === peakHour);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-xl bg-cyan-50 p-2.5 text-[#0891B2]">
-              <Clock className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <div className="rounded p-1.5 bg-cyan-50 text-cyan-700">
+              <Clock className="h-4 w-4" />
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">24-Hour Diurnal Crime Distribution</h3>
+            <h3 className="text-[16px] font-bold text-[#172033]">24-Hour Diurnal Crime Distribution</h3>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-[12px] text-[#5B6577]">
             Hourly incident volume profiling for police shift planning and patrol optimization
           </p>
         </div>
 
         {peakItem && (
-          <div className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 shadow-xs">
-            <Siren className="h-4 w-4 text-amber-600" />
+          <div className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-[#B7791F]">
+            <Siren className="h-3.5 w-3.5 text-[#B7791F]" />
             <span>
-              Peak Hour: {peakHour.toString().padStart(2, '0')}:00 ({peakItem.incident_count.toLocaleString()} cases)
+              Peak: {peakHour.toString().padStart(2, '0')}:00 ({peakItem.incident_count.toLocaleString()} cases)
             </span>
           </div>
         )}
       </div>
 
-      <div className="mt-4 h-64 w-full">
+      <div className="mt-3.5 h-64 w-full">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-slate-400">
             No hourly distribution data available
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" vertical={false} />
               <XAxis
                 dataKey="displayHour"
-                stroke="#E2E8F0"
-                tick={{ fill: '#64748B', fontSize: 10 }}
+                stroke="#DCE2EA"
+                tick={{ fill: '#5B6577', fontSize: 10 }}
                 interval={2}
               />
               <YAxis
-                stroke="#E2E8F0"
-                tick={{ fill: '#64748B', fontSize: 10 }}
+                stroke="#DCE2EA"
+                tick={{ fill: '#5B6577', fontSize: 10 }}
                 tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#FFFFFF',
-                  borderColor: '#E2E8F0',
-                  borderRadius: '0.5rem',
-                  color: '#0F172A',
+                  borderColor: '#DCE2EA',
+                  borderRadius: '0.375rem',
+                  color: '#172033',
                   fontSize: '0.75rem',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
+                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                 }}
-                itemStyle={{ color: '#0F172A', fontWeight: 600 }}
+                itemStyle={{ color: '#172033', fontWeight: 600 }}
                 formatter={(val: any, _name: any, item: any) => [
                   `${Number(val).toLocaleString()} incidents (${item.payload.percentage.toFixed(1)}%)`,
                   item.payload.isPeak ? '★ PEAK CRIME HOUR' : 'Hourly Volume',
                 ]}
               />
-              <Bar dataKey="incident_count" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="incident_count" radius={[3, 3, 0, 0]}>
                 {chartData.map((entry) => (
                   <Cell
                     key={`cell-${entry.hour}`}
-                    fill={entry.isPeak ? '#F59E0B' : '#6366F1'}
+                    fill={entry.isPeak ? '#B7791F' : '#1D4ED8'}
                     opacity={entry.isPeak ? 1 : 0.85}
                   />
                 ))}
@@ -103,16 +103,16 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs text-[#64748B]">
+      <div className="mt-2.5 flex items-center justify-between rounded border border-[#DCE2EA] bg-slate-50/60 px-3 py-1.5 text-xs text-[#5B6577]">
         <span className="text-[11px] font-medium">
-          Operational Insight: Shift staffing should concentrate between 16:00 and 22:00.
+          Operational Shift Recommendation: Concentrate coverage 16:00–22:00.
         </span>
         <div className="flex items-center gap-3 text-[11px]">
           <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#6366F1]" /> Normal
+            <span className="h-2 w-2 rounded-xs bg-[#1D4ED8]" /> Normal
           </span>
           <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#F59E0B]" /> Peak Hour
+            <span className="h-2 w-2 rounded-xs bg-[#B7791F]" /> Peak Hour
           </span>
         </div>
       </div>

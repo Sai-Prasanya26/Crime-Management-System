@@ -19,9 +19,9 @@ interface VictimDemographicsChartProps {
 }
 
 const GENDER_COLORS: Record<string, string> = {
-  F: '#EC4899',       // Pink
-  M: '#3B82F6',       // Blue
-  UNKNOWN: '#94A3B8', // Gray
+  F: '#C53030',       // Rose
+  M: '#1D4ED8',       // Blue
+  UNKNOWN: '#8492A6', // Slate
 };
 
 const GENDER_LABELS: Record<string, string> = {
@@ -48,58 +48,58 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
   }));
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-xl bg-indigo-50 p-2.5 text-[#4F46E5]">
-              <Users className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <div className="rounded p-1.5 bg-blue-50 text-[#1D4ED8]">
+              <Users className="h-4 w-4" />
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">Victim Demographics Profile</h3>
+            <h3 className="text-[16px] font-bold text-[#172033]">Victim Demographics Profile</h3>
           </div>
-          <p className="mt-1.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-[12px] text-[#5B6577]">
             Age cohort distribution and disaggregated gender split
           </p>
         </div>
 
         {data.average_age !== undefined && data.average_age !== null && (
-          <div className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold">
-            <UserCheck className="h-4 w-4 text-[#4F46E5]" />
-            <span className="text-slate-600 font-medium">Average Age:</span>
-            <span className="font-bold text-[#4F46E5]">{data.average_age} yrs</span>
+          <div className="flex items-center gap-1.5 rounded border border-[#DCE2EA] bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+            <UserCheck className="h-3.5 w-3.5 text-[#1D4ED8]" />
+            <span className="text-[#5B6577]">Avg Age:</span>
+            <span className="font-bold text-[#172033]">{data.average_age} yrs</span>
           </div>
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="mt-3.5 grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Age Cohorts Bar Chart */}
         <div className="lg:col-span-7">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
             Incidents by Age Cohort
           </p>
-          <div className="h-52 w-full">
+          <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="cohort" stroke="#E2E8F0" tick={{ fill: '#64748B', fontSize: 11 }} />
+              <BarChart data={ageData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" vertical={false} />
+                <XAxis dataKey="cohort" stroke="#DCE2EA" tick={{ fill: '#5B6577', fontSize: 10 }} />
                 <YAxis
-                  stroke="#E2E8F0"
-                  tick={{ fill: '#64748B', fontSize: 10 }}
+                  stroke="#DCE2EA"
+                  tick={{ fill: '#5B6577', fontSize: 10 }}
                   tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
                 />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#FFFFFF',
-                    borderColor: '#E2E8F0',
-                    borderRadius: '0.5rem',
-                    color: '#0F172A',
+                    borderColor: '#DCE2EA',
+                    borderRadius: '0.375rem',
+                    color: '#172033',
                     fontSize: '0.75rem',
-                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                   }}
-                  itemStyle={{ color: '#0F172A', fontWeight: 600 }}
+                  itemStyle={{ color: '#172033', fontWeight: 600 }}
                   formatter={(val: any) => [`${Number(val).toLocaleString()} victims`, 'Cohort Count']}
                 />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#1D4ED8" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -107,11 +107,11 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
 
         {/* Gender Breakdown Donut & Legend */}
         <div className="flex flex-col justify-center lg:col-span-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
             Gender Classification
           </p>
-          <div className="flex items-center gap-3">
-            <div className="h-40 w-40">
+          <div className="flex items-center gap-2.5">
+            <div className="h-36 w-36 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -120,27 +120,27 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
                     nameKey="label"
                     cx="50%"
                     cy="50%"
-                    innerRadius={35}
-                    outerRadius={55}
+                    innerRadius={30}
+                    outerRadius={48}
                     paddingAngle={3}
                   >
                     {genderData.map((entry) => (
                       <Cell
                         key={`cell-${entry.genderKey}`}
-                        fill={GENDER_COLORS[entry.genderKey] || '#94A3B8'}
+                        fill={GENDER_COLORS[entry.genderKey] || '#8492A6'}
                       />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#FFFFFF',
-                      borderColor: '#E2E8F0',
-                      borderRadius: '0.5rem',
-                      color: '#0F172A',
+                      borderColor: '#DCE2EA',
+                      borderRadius: '0.375rem',
+                      color: '#172033',
                       fontSize: '0.75rem',
-                      boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
+                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                     }}
-                    itemStyle={{ color: '#0F172A', fontWeight: 600 }}
+                    itemStyle={{ color: '#172033', fontWeight: 600 }}
                     formatter={(val: any) => [
                       `${Number(val).toLocaleString()} (${(
                         (Number(val) / (totalGender || 1)) *
@@ -153,17 +153,17 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
               </ResponsiveContainer>
             </div>
 
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-1.5">
               {genderData.map((g) => (
-                <div key={g.genderKey} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
+                <div key={g.genderKey} className="flex items-center justify-between text-[12px]">
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: GENDER_COLORS[g.genderKey] || '#94A3B8' }}
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: GENDER_COLORS[g.genderKey] || '#8492A6' }}
                     />
-                    <span className="text-slate-700 font-medium">{g.label}</span>
+                    <span className="text-slate-600 font-medium">{g.label}</span>
                   </div>
-                  <span className="font-semibold text-[#0F172A]">{g.percentage.toFixed(1)}%</span>
+                  <span className="font-semibold text-[#172033]">{g.percentage.toFixed(1)}%</span>
                 </div>
               ))}
             </div>

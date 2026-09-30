@@ -50,41 +50,36 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Year Dropdown */}
-      <div className="flex items-center gap-2">
-        <label htmlFor="year-select" className="text-sm font-bold text-slate-700 whitespace-nowrap">
-          Year:
-        </label>
-        <div className="relative min-w-[200px]">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#64748B]">
-            <Calendar className="h-4 w-4" />
-          </div>
-          <select
-            id="year-select"
-            aria-label="Year"
-            value={selectedValue}
-            onChange={handleYearChange}
-            disabled={disabled}
-            className="w-full min-h-[46px] rounded-xl border border-[#E2E8F0] bg-white py-2.5 pl-9 pr-4 text-[15px] font-medium text-[#0F172A] shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 disabled:opacity-60 cursor-pointer"
-          >
-            {selectedValue === 'CUSTOM' && (
-              <option value="CUSTOM" disabled hidden>
-                Custom Range
-              </option>
-            )}
-            {YEAR_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+      <div className="relative min-w-[160px]">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+          <Calendar className="h-3.5 w-3.5" />
         </div>
+        <select
+          id="year-select"
+          aria-label="Year"
+          value={selectedValue}
+          onChange={handleYearChange}
+          disabled={disabled}
+          className="h-10 w-full rounded-md border border-[#DCE2EA] bg-white py-1.5 pl-8 pr-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] disabled:opacity-60 cursor-pointer"
+        >
+          {selectedValue === 'CUSTOM' && (
+            <option value="CUSTOM" disabled hidden>
+              Custom Range
+            </option>
+          )}
+          {YEAR_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Custom Date Pickers */}
-      <div className="flex min-h-[46px] items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2 text-sm text-[#0F172A] shadow-2xs">
-        <span className="text-[#64748B] font-semibold text-xs sm:text-sm">From:</span>
+      <div className="flex h-10 items-center gap-1.5 rounded-md border border-[#DCE2EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs">
+        <span className="text-[#5B6577] text-[11px] font-medium uppercase">From:</span>
         <input
           type="date"
           aria-label="Start date"
@@ -93,9 +88,9 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           max="2025-12-31"
           disabled={disabled}
           onChange={(e) => onChange(e.target.value || undefined, endDate)}
-          className="bg-transparent text-[15px] text-[#0F172A] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
+          className="bg-transparent text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
         />
-        <span className="text-[#64748B] font-semibold text-xs sm:text-sm">To:</span>
+        <span className="text-[#5B6577] text-[11px] font-medium uppercase">To:</span>
         <input
           type="date"
           aria-label="End date"
@@ -104,7 +99,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           max="2025-12-31"
           disabled={disabled}
           onChange={(e) => onChange(startDate, e.target.value || undefined)}
-          className="bg-transparent text-[15px] text-[#0F172A] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
+          className="bg-transparent text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
         />
       </div>
     </div>
