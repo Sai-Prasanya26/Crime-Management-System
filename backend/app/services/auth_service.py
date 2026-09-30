@@ -121,16 +121,16 @@ class AuthService:
         existing_user = UserRepository.get_by_username_or_email(db, clean_username)
         if existing_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Username '{staff_data.username.strip()}' is already in use.",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already exists.",
             )
 
         # Check existing email
         existing_email = UserRepository.get_by_username_or_email(db, clean_email)
         if existing_email:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email address '{staff_data.email.strip()}' is already registered.",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists.",
             )
 
         # Secure Argon2id password hash
@@ -146,18 +146,19 @@ class AuthService:
             is_active=staff_data.is_active,
         )
 
-        # Audit log creation
+        # Audit log creation using CREATE action on entity_type USER
         UserRepository.log_auth_action(
             db=db,
             user_id=admin_user.id,
-            action="STAFF_ACCOUNT_CREATED",
+            action="CREATE",
+            entity_type="USER",
+            entity_id=str(new_user.id),
             ip_address=ip_address,
             details={
-                "created_user_id": new_user.id,
                 "username": new_user.username,
+                "email": new_user.email,
                 "role": new_user.role,
                 "is_active": new_user.is_active,
-                "created_by": admin_user.username,
             },
         )
 

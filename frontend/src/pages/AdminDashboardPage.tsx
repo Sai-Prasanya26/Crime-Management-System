@@ -178,7 +178,7 @@ export const AdminDashboardPage: React.FC = () => {
       });
       setActionMessage({
         type: 'success',
-        text: `Staff account @${newUser.username} created successfully.`,
+        text: `Staff account created successfully. ${newUser.full_name} has been provisioned as an ${newUser.role}.`,
       });
       loadAuditData();
     } catch (err: any) {

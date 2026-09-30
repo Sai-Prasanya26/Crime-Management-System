@@ -59,8 +59,8 @@ echo Press Ctrl+C in this window to stop the backend server.
 echo ======================================================================
 echo.
 
-:: 6. Start Uvicorn Server
-"%PYTHON_EXE%" -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+:: 6. Start Uvicorn Server with live auto-reload
+"%PYTHON_EXE%" -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 
 if errorlevel 1 (
     echo.

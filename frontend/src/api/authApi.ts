@@ -38,7 +38,7 @@ export const authApi = {
    * Retrieve all staff accounts (Admin Only).
    */
   getUsers: async (): Promise<User[]> => {
-    const response = await apiClient.get<User[]>('/auth/users');
+    const response = await apiClient.get<User[]>('/admin/users');
     return response.data;
   },
 
@@ -46,7 +46,7 @@ export const authApi = {
    * Create an authorized staff account (Admin Only).
    */
   createStaff: async (payload: CreateStaffPayload): Promise<User> => {
-    const response = await apiClient.post<User>('/auth/users', payload);
+    const response = await apiClient.post<User>('/admin/users', payload);
     return response.data;
   },
 
@@ -54,7 +54,7 @@ export const authApi = {
    * Update active/inactive status of a staff account (Admin Only).
    */
   updateUserStatus: async (userId: number, isActive: boolean): Promise<User> => {
-    const response = await apiClient.patch<User>(`/auth/users/${userId}/status`, {
+    const response = await apiClient.patch<User>(`/admin/users/${userId}/status`, {
       is_active: isActive,
     });
     return response.data;
@@ -64,7 +64,7 @@ export const authApi = {
    * Delete a staff account (Admin Only).
    */
   deleteUser: async (userId: number): Promise<{ status: string; message: string }> => {
-    const response = await apiClient.delete<{ status: string; message: string }>(`/auth/users/${userId}`);
+    const response = await apiClient.delete<{ status: string; message: string }>(`/admin/users/${userId}`);
     return response.data;
   },
 
@@ -72,7 +72,7 @@ export const authApi = {
    * Fetch security audit logs (Admin Only).
    */
   getAuditLogs: async (limit: number = 50): Promise<SecurityAuditLog[]> => {
-    const response = await apiClient.get<SecurityAuditLog[]>(`/auth/audit-logs?limit=${limit}`);
+    const response = await apiClient.get<SecurityAuditLog[]>(`/admin/audit-logs?limit=${limit}`);
     return response.data;
   },
 };

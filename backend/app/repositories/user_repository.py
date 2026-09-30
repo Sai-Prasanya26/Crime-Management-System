@@ -88,18 +88,20 @@ class UserRepository:
         db: Session,
         user_id: Optional[int],
         action: str,
+        entity_type: str = "AUTH",
+        entity_id: Optional[str] = None,
         ip_address: Optional[str] = None,
         details: Optional[dict] = None,
     ) -> None:
         """
-        Audit log for authentication events (login success, login failure, logout, account creation, etc.).
+        Audit log for authentication & staff management events.
         """
         try:
             log_entry = AuditLog(
                 user_id=user_id,
                 action=action,
-                entity_type="AUTH",
-                entity_id=str(user_id) if user_id else None,
+                entity_type=entity_type,
+                entity_id=entity_id if entity_id is not None else (str(user_id) if user_id else None),
                 ip_address=ip_address,
                 details=details,
             )
