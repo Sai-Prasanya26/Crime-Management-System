@@ -61,7 +61,7 @@ export const TrendsPage: React.FC = () => {
       />
 
       {isLoading && !trends && (
-        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Aggregating longitudinal time-series data..." />
         </div>
       )}
@@ -78,53 +78,53 @@ export const TrendsPage: React.FC = () => {
         <div className="space-y-4">
           {/* Trend Summary Cards */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
-              <div className="flex items-center gap-2 text-[#5B6577]">
-                <div className="rounded p-1 bg-blue-50 text-[#1D4ED8]">
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center gap-2 text-[#5D6878]">
+                <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
                   <BarChart2 className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                   Total Range Volume
                 </span>
               </div>
-              <p className="mt-2 text-[24px] font-bold text-[#172033] leading-none">
+              <p className="mt-2 text-[24px] font-bold text-[#0B1F3A] leading-none">
                 {totalIncidents.toLocaleString()}
               </p>
-              <p className="mt-1 text-[12px] text-[#5B6577]">
-                Aggregated over {trends.total_points} {interval}ly buckets
+              <p className="mt-1 text-[12px] text-[#5D6878]">
+                Aggregated over {trends.total_points} {interval}ly periods
               </p>
             </div>
 
-            <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
-              <div className="flex items-center gap-2 text-[#5B6577]">
-                <div className="rounded p-1 bg-amber-50 text-[#B7791F]">
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center gap-2 text-[#5D6878]">
+                <div className="rounded p-1 bg-amber-50 text-[#C98512]">
                   <TrendingUp className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                   Peak Incident Period
                 </span>
               </div>
-              <p className="mt-2 text-[24px] font-bold text-[#B7791F] leading-none">
+              <p className="mt-2 text-[24px] font-bold text-[#C98512] leading-none">
                 {highestPeriod ? highestPeriod.period : '—'}
               </p>
-              <p className="mt-1 text-[12px] text-[#5B6577]">
+              <p className="mt-1 text-[12px] text-[#5D6878]">
                 {highestPeriod ? `${highestPeriod.incident_count.toLocaleString()} cases` : '—'}
               </p>
             </div>
 
-            <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
-              <div className="flex items-center gap-2 text-[#5B6577]">
-                <div className="rounded p-1 bg-emerald-50 text-[#16805C]">
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center gap-2 text-[#5D6878]">
+                <div className="rounded p-1 bg-emerald-50 text-[#16845B]">
                   <CalendarRange className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                   Interval Granularity
                 </span>
               </div>
-              <p className="mt-2 text-[24px] font-bold text-[#16805C] capitalize leading-none">
+              <p className="mt-2 text-[24px] font-bold text-[#16845B] capitalize leading-none">
                 {interval}ly
               </p>
-              <p className="mt-1 text-[12px] text-[#5B6577]">
+              <p className="mt-1 text-[12px] text-[#5D6878]">
                 {trends.total_points} discrete time points
               </p>
             </div>

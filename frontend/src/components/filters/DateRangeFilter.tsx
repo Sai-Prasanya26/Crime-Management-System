@@ -15,7 +15,7 @@ const YEAR_OPTIONS: YearOption[] = [
   { label: '2023', value: '2023', start: '2023-01-01', end: '2023-12-31' },
   { label: '2022', value: '2022', start: '2022-01-01', end: '2022-12-31' },
   { label: '2021', value: '2021', start: '2021-01-01', end: '2021-12-31' },
-  { label: '2020', value: '2020', start: '2020-01-01', end: '2020-12-31' },
+  { label: '2020', value: '2020', start: '2020-01-01', end: '2020-01-31' },
 ];
 
 interface DateRangeFilterProps {
@@ -53,7 +53,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     <div className="flex flex-wrap items-center gap-2">
       {/* Year Dropdown */}
       <div className="relative min-w-[160px]">
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#7C8796]">
           <Calendar className="h-3.5 w-3.5" />
         </div>
         <select
@@ -62,7 +62,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           value={selectedValue}
           onChange={handleYearChange}
           disabled={disabled}
-          className="h-10 w-full rounded-md border border-[#DCE2EA] bg-white py-1.5 pl-8 pr-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8] disabled:opacity-60 cursor-pointer"
+          className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 pl-8 pr-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-60 cursor-pointer"
         >
           {selectedValue === 'CUSTOM' && (
             <option value="CUSTOM" disabled hidden>
@@ -78,8 +78,8 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       </div>
 
       {/* Custom Date Pickers */}
-      <div className="flex h-10 items-center gap-1.5 rounded-md border border-[#DCE2EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs">
-        <span className="text-[#5B6577] text-[11px] font-medium uppercase">From:</span>
+      <div className="flex h-10 items-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs">
+        <span className="text-[#5D6878] text-[11px] font-medium uppercase">From:</span>
         <input
           type="date"
           aria-label="Start date"
@@ -90,7 +90,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           onChange={(e) => onChange(e.target.value || undefined, endDate)}
           className="bg-transparent text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
         />
-        <span className="text-[#5B6577] text-[11px] font-medium uppercase">To:</span>
+        <span className="text-[#5D6878] text-[11px] font-medium uppercase">To:</span>
         <input
           type="date"
           aria-label="End date"

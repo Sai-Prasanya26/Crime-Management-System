@@ -30,23 +30,23 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
   const peakItem = data.find((d) => d.hour === peakHour);
 
   return (
-    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-cyan-50 text-cyan-700">
+            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
               <Clock className="h-4 w-4" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#172033]">24-Hour Diurnal Crime Distribution</h3>
+            <h3 className="text-[16px] font-bold text-[#0B1F3A]">24-Hour Diurnal Pattern</h3>
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5B6577]">
-            Hourly incident volume profiling for police shift planning and patrol optimization
+          <p className="mt-0.5 text-[12px] text-[#5D6878]">
+            Hourly incident distribution for shift planning and patrol optimization
           </p>
         </div>
 
         {peakItem && (
-          <div className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-[#B7791F]">
-            <Siren className="h-3.5 w-3.5 text-[#B7791F]" />
+          <div className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-[#C98512]">
+            <Siren className="h-3.5 w-3.5 text-[#C98512]" />
             <span>
               Peak: {peakHour.toString().padStart(2, '0')}:00 ({peakItem.incident_count.toLocaleString()} cases)
             </span>
@@ -65,35 +65,35 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
               <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" vertical={false} />
               <XAxis
                 dataKey="displayHour"
-                stroke="#DCE2EA"
-                tick={{ fill: '#5B6577', fontSize: 10 }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#5D6878', fontSize: 10 }}
                 interval={2}
               />
               <YAxis
-                stroke="#DCE2EA"
-                tick={{ fill: '#5B6577', fontSize: 10 }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#5D6878', fontSize: 10 }}
                 tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#FFFFFF',
-                  borderColor: '#DCE2EA',
+                  borderColor: '#D9E1EA',
                   borderRadius: '0.375rem',
-                  color: '#172033',
+                  color: '#0B1F3A',
                   fontSize: '0.75rem',
                   boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                 }}
-                itemStyle={{ color: '#172033', fontWeight: 600 }}
+                itemStyle={{ color: '#0B1F3A', fontWeight: 600 }}
                 formatter={(val: any, _name: any, item: any) => [
                   `${Number(val).toLocaleString()} incidents (${item.payload.percentage.toFixed(1)}%)`,
-                  item.payload.isPeak ? '★ PEAK CRIME HOUR' : 'Hourly Volume',
+                  item.payload.isPeak ? '★ PEAK PATROL HOUR' : 'Hourly Volume',
                 ]}
               />
               <Bar dataKey="incident_count" radius={[3, 3, 0, 0]}>
                 {chartData.map((entry) => (
                   <Cell
                     key={`cell-${entry.hour}`}
-                    fill={entry.isPeak ? '#B7791F' : '#1D4ED8'}
+                    fill={entry.isPeak ? '#C98512' : '#1769AA'}
                     opacity={entry.isPeak ? 1 : 0.85}
                   />
                 ))}
@@ -103,16 +103,16 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         )}
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between rounded border border-[#DCE2EA] bg-slate-50/60 px-3 py-1.5 text-xs text-[#5B6577]">
+      <div className="mt-2.5 flex items-center justify-between rounded border border-[#D9E1EA] bg-[#F4F7FA] px-3 py-1.5 text-xs text-[#5D6878]">
         <span className="text-[11px] font-medium">
           Operational Shift Recommendation: Concentrate coverage 16:00–22:00.
         </span>
         <div className="flex items-center gap-3 text-[11px]">
           <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2 w-2 rounded-xs bg-[#1D4ED8]" /> Normal
+            <span className="h-2 w-2 rounded-xs bg-[#1769AA]" /> Normal
           </span>
           <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2 w-2 rounded-xs bg-[#B7791F]" /> Peak Hour
+            <span className="h-2 w-2 rounded-xs bg-[#C98512]" /> Peak Hour
           </span>
         </div>
       </div>

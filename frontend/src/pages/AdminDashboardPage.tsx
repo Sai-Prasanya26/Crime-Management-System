@@ -752,18 +752,18 @@ export const AdminDashboardPage: React.FC = () => {
                     </label>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-end gap-2.5 pt-3.5 border-t border-[#DCE2EA]">
+                  <div className="mt-5 flex items-center justify-end gap-2.5 pt-3.5 border-t border-[#D9E1EA]">
                     <button
                       type="button"
                       onClick={() => setIsCreateModalOpen(false)}
-                      className="h-10 rounded-md border border-[#DCE2EA] px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="h-10 rounded border border-[#D9E1EA] px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmittingUser}
-                      className="inline-flex h-10 items-center gap-1.5 rounded-md bg-[#1D4ED8] px-4.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#1E40AF] transition-colors disabled:opacity-50 cursor-pointer"
+                      className="inline-flex h-10 items-center gap-1.5 rounded bg-[#0B1F3A] px-4.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {isSubmittingUser ? (
                         <>

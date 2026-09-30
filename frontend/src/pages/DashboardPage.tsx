@@ -120,8 +120,8 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Crime Intelligence Dashboard"
-      subtitle="Operational overview of reported crime activity and jurisdictional patterns."
+      title="Crime Intelligence Overview"
+      subtitle="Current intelligence and incident activity"
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
@@ -134,7 +134,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Fetching live crime intelligence from database..." />
         </div>
       )}
@@ -159,22 +159,15 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main Dashboard Grid */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
-        <>
-          {/* Key Performance Indicators (StatCards) */}
+        <div className="space-y-4">
+          {/* Key Performance Indicators (5 compact KPI cards) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
               title="Total Incidents"
               value={overview.total_incidents.toLocaleString()}
               subtext="Historical reported incidents"
               icon={FileText}
-              color="indigo"
-            />
-            <StatCard
-              title="Closed Cases"
-              value={overview.cases.closed.toLocaleString()}
-              subtext={`${overview.cases.clearance_rate_pct.toFixed(1)}% clearance rate`}
-              icon={CheckCircle2}
-              color="emerald"
+              color="navy"
             />
             <StatCard
               title="Open Cases"
@@ -184,6 +177,13 @@ export const DashboardPage: React.FC = () => {
               color="amber"
             />
             <StatCard
+              title="Closed Cases"
+              value={overview.cases.closed.toLocaleString()}
+              subtext={`${overview.cases.clearance_rate_pct.toFixed(1)}% clearance rate`}
+              icon={CheckCircle2}
+              color="emerald"
+            />
+            <StatCard
               title="Clearance Rate"
               value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
               subtext="Formal disposition ratio"
@@ -191,126 +191,86 @@ export const DashboardPage: React.FC = () => {
               color="blue"
             />
             <StatCard
-              title="Jurisdictions"
+              title="Active Jurisdictions"
               value={overview.total_districts.toLocaleString()}
               subtext={`${overview.total_states} States & UTs`}
               icon={Globe2}
-              color="cyan"
+              color="blue"
             />
           </div>
 
-          {/* Row 1: Trend Line & Crime Domain Donut */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-8">
-              {trends && (
-                <CrimeTrendChart
-                  data={trends.items}
-                  interval={trendInterval}
-                  onIntervalChange={handleIntervalChange}
-                  isLoading={isRefreshing}
-                />
-              )}
-            </div>
-            <div className="lg:col-span-4">
-              {categories && (
-                <CrimeCategoryChart
-                  data={categories.items}
-                  totalIncidents={categories.total_incidents}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Row 2: Diurnal Curve & Crime Type Distribution */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-6">
-              {types && (
-                <CrimeTypeChart
-                  data={types.items}
-                  totalIncidents={types.total_incidents}
-                />
-              )}
-            </div>
-            <div className="lg:col-span-6">
-              {hourly && (
-                <HourlyDistributionChart
-                  data={hourly.items}
-                  peakHour={hourly.peak_hour}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Row 3: High Risk Jurisdictions & Victim Demographics */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              {topDistricts && (
-                <TopDistrictsTable
-                  districts={topDistricts.items}
-                  metric={rankingMetric}
-                  onMetricChange={handleMetricChange}
-                  isLoading={isRefreshing}
-                />
-              )}
-            </div>
-            <div className="lg:col-span-5">
-              {demographics && (
-                <VictimDemographicsChart data={demographics} />
-              )}
-            </div>
-          </div>
-
-          {/* Row 4: Weapon Distribution & Operational Summary */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-8">
-              {weapons && (
-                <WeaponDistributionChart
-                  data={weapons.items}
-                  totalIncidents={weapons.total_incidents}
-                />
-              )}
-            </div>
-            <div className="flex flex-col justify-between rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs lg:col-span-4">
-              <div>
-                <h4 className="text-[16px] font-bold text-[#172033]">
-                  Operational Intelligence Summary
-                </h4>
-                <p className="mt-0.5 text-[12px] text-[#5B6577]">
-                  Crime Intelligence &amp; Management Portal
-                </p>
-                <div className="mt-3.5 space-y-2 text-[12px]">
-                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
-                    <span>Analytical Coverage:</span>
-                    <span className="font-semibold text-[#172033]">Multi-Year Longitudinal</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
-                    <span>Incident Scope:</span>
-                    <span className="font-semibold text-[#16805C]">Verified Jurisdictions</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
-                    <span>Demographic Baseline:</span>
-                    <span className="font-medium text-[#172033]">Census Standardized</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-1.5 text-[#5B6577]">
-                    <span>Security Clearance:</span>
-                    <span className="font-semibold text-blue-700">Restricted Operations</span>
-                  </div>
-                  <div className="flex justify-between pb-1 text-[#5B6577]">
-                    <span>System Status:</span>
-                    <span className="font-bold text-[#16805C] flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Active &amp; Operational
-                    </span>
-                  </div>
-                </div>
+          {/* Analytics Area Section */}
+          <div id="analytics" className="space-y-4 pt-1">
+            {/* Row 1: LEFT 65% Crime Trend, RIGHT 35% Crime Category Distribution */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-8">
+                {trends && (
+                  <CrimeTrendChart
+                    data={trends.items}
+                    interval={trendInterval}
+                    onIntervalChange={handleIntervalChange}
+                    isLoading={isRefreshing}
+                  />
+                )}
               </div>
+              <div className="lg:col-span-4">
+                {categories && (
+                  <CrimeCategoryChart
+                    data={categories.items}
+                    totalIncidents={categories.total_incidents}
+                  />
+                )}
+              </div>
+            </div>
 
-              <div className="mt-3.5 rounded border border-[#DCE2EA] bg-slate-50/70 p-2.5 text-[11px] text-[#5B6577] leading-relaxed">
-                All metrics are computed dynamically from verified operational records according to active state, district, and date analysis parameters.
+            {/* Row 2: Crime Type Analysis & Geographic Crime Distribution (Top Jurisdictions) */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-6">
+                {types && (
+                  <CrimeTypeChart
+                    data={types.items}
+                    totalIncidents={types.total_incidents}
+                  />
+                )}
+              </div>
+              <div className="lg:col-span-6">
+                {topDistricts && (
+                  <TopDistrictsTable
+                    districts={topDistricts.items}
+                    metric={rankingMetric}
+                    onMetricChange={handleMetricChange}
+                    isLoading={isRefreshing}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Hourly Crime Pattern, Victim Demographics, Weapon Analysis */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-4">
+                {hourly && (
+                  <HourlyDistributionChart
+                    data={hourly.items}
+                    peakHour={hourly.peak_hour}
+                  />
+                )}
+              </div>
+              <div className="lg:col-span-4">
+                {demographics && (
+                  <VictimDemographicsChart data={demographics} />
+                )}
+              </div>
+              <div className="lg:col-span-4">
+                {weapons && (
+                  <WeaponDistributionChart
+                    data={weapons.items}
+                    totalIncidents={weapons.total_incidents}
+                  />
+                )}
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </DashboardLayout>
   );

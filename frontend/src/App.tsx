@@ -7,6 +7,11 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TrendsPage from './pages/TrendsPage';
 import DistrictsPage from './pages/DistrictsPage';
+import RiskAssessmentPage from './pages/RiskAssessmentPage';
+import PredictionsPage from './pages/PredictionsPage';
+import ResourceOptimizationPage from './pages/ResourceOptimizationPage';
+import BudgetIntelligencePage from './pages/BudgetIntelligencePage';
+import ReportsPage from './pages/ReportsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
 export const App: React.FC = () => {
@@ -40,6 +45,46 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <DistrictsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/risk"
+            element={
+              <ProtectedRoute>
+                <RiskAssessmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/predictions"
+            element={
+              <ProtectedRoute>
+                <PredictionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resources"
+            element={
+              <ProtectedRoute>
+                <ResourceOptimizationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/budget"
+            element={
+              <ProtectedRoute>
+                <BudgetIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
               </ProtectedRoute>
             }
           />

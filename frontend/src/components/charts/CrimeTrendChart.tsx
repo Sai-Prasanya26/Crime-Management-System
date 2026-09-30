@@ -34,31 +34,31 @@ export const CrimeTrendChart: React.FC<CrimeTrendChartProps> = ({
   const totalIncidents = data.reduce((sum, item) => sum + item.incident_count, 0);
 
   return (
-    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-blue-50 text-[#1D4ED8]">
+            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
               <TrendingUp className="h-4 w-4" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#172033]">Longitudinal Crime Incident Trends</h3>
+            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Crime Trend Analysis</h3>
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5B6577]">
-            Temporal distribution of verified crime reports ({totalIncidents.toLocaleString()} total incidents)
+          <p className="mt-0.5 text-[12px] text-[#5D6878]">
+            Temporal volume distribution across reporting periods ({totalIncidents.toLocaleString()} incidents)
           </p>
         </div>
 
         {onIntervalChange && (
-          <div className="flex items-center rounded border border-[#DCE2EA] bg-slate-50 p-0.5 text-[12px]">
+          <div className="flex items-center rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[12px]">
             {(['year', 'month'] as const).map((intVal) => (
               <button
                 key={intVal}
                 onClick={() => handleIntervalClick(intVal)}
                 disabled={isLoading}
-                className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium capitalize transition-colors ${
+                className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium capitalize transition-colors cursor-pointer ${
                   activeInterval === intVal
-                    ? 'bg-white text-[#1D4ED8] shadow-2xs font-semibold'
-                    : 'text-[#5B6577] hover:text-[#172033]'
+                    ? 'bg-white text-[#1769AA] shadow-2xs font-semibold'
+                    : 'text-[#5D6878] hover:text-[#0B1F3A]'
                 }`}
               >
                 <Calendar className="h-3 w-3" />
@@ -69,44 +69,44 @@ export const CrimeTrendChart: React.FC<CrimeTrendChartProps> = ({
         )}
       </div>
 
-      <div className="mt-3.5 h-64 w-full">
+      <div className="mt-3 h-64 w-full">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-slate-400">
-            No longitudinal data available for this range
+            No temporal incident data available for this range
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="incidentGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1D4ED8" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#1D4ED8" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#1769AA" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#1769AA" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" vertical={false} />
               <XAxis
                 dataKey="period"
-                stroke="#DCE2EA"
-                tick={{ fill: '#5B6577', fontSize: 11 }}
-                tickLine={{ stroke: '#DCE2EA' }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#5D6878', fontSize: 11 }}
+                tickLine={{ stroke: '#D9E1EA' }}
               />
               <YAxis
-                stroke="#DCE2EA"
-                tick={{ fill: '#5B6577', fontSize: 11 }}
-                tickLine={{ stroke: '#DCE2EA' }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#5D6878', fontSize: 11 }}
+                tickLine={{ stroke: '#D9E1EA' }}
                 tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#FFFFFF',
-                  borderColor: '#DCE2EA',
+                  borderColor: '#D9E1EA',
                   borderRadius: '0.375rem',
-                  color: '#172033',
+                  color: '#0B1F3A',
                   fontSize: '0.75rem',
                   boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                 }}
-                itemStyle={{ color: '#172033', fontWeight: 600 }}
-                labelStyle={{ color: '#5B6577', fontWeight: 600 }}
+                itemStyle={{ color: '#0B1F3A', fontWeight: 600 }}
+                labelStyle={{ color: '#5D6878', fontWeight: 600 }}
                 formatter={(value: any) => [
                   Number(value || 0).toLocaleString() + ' incidents',
                   'Incident Volume',
@@ -116,7 +116,7 @@ export const CrimeTrendChart: React.FC<CrimeTrendChartProps> = ({
               <Area
                 type="monotone"
                 dataKey="incident_count"
-                stroke="#1D4ED8"
+                stroke="#1769AA"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#incidentGradient)"

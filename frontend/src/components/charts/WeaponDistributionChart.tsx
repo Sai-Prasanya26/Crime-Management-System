@@ -17,20 +17,20 @@ interface WeaponDistributionChartProps {
   totalIncidents: number;
 }
 
-const WEAPON_COLORS = ['#C53030', '#B7791F', '#D97706', '#1D4ED8', '#0891B2', '#5B6577'];
+const WEAPON_COLORS = ['#C53B3B', '#C98512', '#1769AA', '#0B1F3A', '#16845B', '#7C8796'];
 
 export const WeaponDistributionChart: React.FC<WeaponDistributionChartProps> = ({ data }) => {
   return (
-    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-red-50 text-[#C53030]">
+            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
               <Crosshair className="h-4 w-4" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#172033]">Weapon Involvement Distribution</h3>
+            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Weapon Involvement Profile</h3>
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5B6577]">
+          <p className="mt-0.5 text-[12px] text-[#5D6878]">
             Recorded weapon classifications utilized during commission of offenses
           </p>
         </div>
@@ -51,27 +51,27 @@ export const WeaponDistributionChart: React.FC<WeaponDistributionChartProps> = (
               <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" horizontal={false} />
               <XAxis
                 type="number"
-                stroke="#DCE2EA"
-                tick={{ fill: '#5B6577', fontSize: 10 }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#5D6878', fontSize: 10 }}
                 tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
               />
               <YAxis
                 dataKey="weapon_name"
                 type="category"
-                stroke="#DCE2EA"
-                tick={{ fill: '#172033', fontSize: 10 }}
+                stroke="#D9E1EA"
+                tick={{ fill: '#0B1F3A', fontSize: 10 }}
                 width={70}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#FFFFFF',
-                  borderColor: '#DCE2EA',
+                  borderColor: '#D9E1EA',
                   borderRadius: '0.375rem',
-                  color: '#172033',
+                  color: '#0B1F3A',
                   fontSize: '0.75rem',
                   boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                 }}
-                itemStyle={{ color: '#172033', fontWeight: 600 }}
+                itemStyle={{ color: '#0B1F3A', fontWeight: 600 }}
                 formatter={(val: any, _name: any, item: any) => [
                   `${Number(val).toLocaleString()} incidents (${item.payload.percentage.toFixed(1)}%)`,
                   'Weapon Involvement',

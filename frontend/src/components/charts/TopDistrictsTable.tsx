@@ -23,16 +23,16 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
       : 1;
 
   return (
-    <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-emerald-50 text-[#16805C]">
+            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
               <Award className="h-4 w-4" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#172033]">Top High-Risk Jurisdictions</h3>
+            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Top Jurisdictions by Crime Load</h3>
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5B6577]">
+          <p className="mt-0.5 text-[12px] text-[#5D6878]">
             {metric === 'volume'
               ? 'Ranked by absolute reported incident volume'
               : 'Ranked by per-capita crime rate per 100,000 citizens (Census 2011 normalized)'}
@@ -40,14 +40,14 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
         </div>
 
         {/* Metric Toggle */}
-        <div className="flex items-center rounded border border-[#DCE2EA] bg-slate-50 p-0.5 text-[12px]">
+        <div className="flex items-center rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[12px]">
           <button
             onClick={() => onMetricChange('volume')}
             disabled={isLoading}
-            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors cursor-pointer ${
               metric === 'volume'
-                ? 'bg-white text-[#16805C] shadow-2xs font-semibold'
-                : 'text-[#5B6577] hover:text-[#172033]'
+                ? 'bg-white text-[#1769AA] shadow-2xs font-semibold'
+                : 'text-[#5D6878] hover:text-[#0B1F3A]'
             }`}
           >
             <TrendingUp className="h-3 w-3" />
@@ -56,10 +56,10 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
           <button
             onClick={() => onMetricChange('rate')}
             disabled={isLoading}
-            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors cursor-pointer ${
               metric === 'rate'
-                ? 'bg-white text-[#16805C] shadow-2xs font-semibold'
-                : 'text-[#5B6577] hover:text-[#172033]'
+                ? 'bg-white text-[#1769AA] shadow-2xs font-semibold'
+                : 'text-[#5D6878] hover:text-[#0B1F3A]'
             }`}
           >
             <Users className="h-3 w-3" />
@@ -71,7 +71,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
       <div className="mt-3.5 overflow-x-auto">
         <table className="w-full text-left text-[13px]">
           <thead>
-            <tr className="border-b border-[#DCE2EA] bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577]">
+            <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
               <th className="py-2.5 pl-3"># Rank</th>
               <th className="py-2.5 px-3">District</th>
               <th className="py-2.5 px-3">State / UT</th>
@@ -91,29 +91,29 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
               return (
                 <tr
                   key={d.district_id}
-                  className="transition-colors hover:bg-slate-50/60"
+                  className="transition-colors hover:bg-slate-50/70"
                 >
-                  <td className="py-2.5 pl-3 font-mono font-bold text-[#5B6577]">
+                  <td className="py-2.5 pl-3 font-mono font-bold text-[#5D6878]">
                     <span
                       className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
                         index === 0
-                          ? 'bg-amber-100 text-[#B7791F]'
+                          ? 'bg-amber-100 text-[#C98512]'
                           : index === 1
                           ? 'bg-slate-200 text-slate-700'
                           : index === 2
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'text-[#5B6577] bg-slate-100'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          : 'text-[#5D6878] bg-slate-100'
                       }`}
                     >
                       {index + 1}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 font-semibold text-[#172033]">{d.district_name}</td>
-                  <td className="py-2.5 px-3 text-[#5B6577]">{d.state_name}</td>
+                  <td className="py-2.5 px-3 font-semibold text-[#0B1F3A]">{d.district_name}</td>
+                  <td className="py-2.5 px-3 text-[#5D6878]">{d.state_name}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-slate-700">
                     {d.total_population ? d.total_population.toLocaleString() : '—'}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-[#16805C]">
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-[#1769AA]">
                     {metric === 'volume'
                       ? d.incident_count.toLocaleString()
                       : `${d.crime_rate_per_100k?.toFixed(2) ?? '—'}`}
@@ -121,7 +121,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
                   <td className="py-2.5 pl-3 pr-3">
                     <div className="h-1.5 w-full rounded-full bg-slate-100">
                       <div
-                        className="h-1.5 rounded-full bg-[#16805C] transition-all duration-300"
+                        className="h-1.5 rounded-full bg-[#1769AA] transition-all duration-300"
                         style={{ width: `${ratio}%` }}
                       />
                     </div>
