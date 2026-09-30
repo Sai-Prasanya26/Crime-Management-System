@@ -58,6 +58,9 @@ export const ReportsPage: React.FC = () => {
       report_title: title,
       generated_at: new Date().toISOString(),
       platform: 'Crime Intelligence & Management Portal',
+      operational_unit: 'Operations & Analysis Center',
+      project_title:
+        'Data-Driven Crime Management System with AI-Based Resource Optimization',
       access_level: 'Restricted Law Enforcement Operations',
       status: 'VERIFIED_DISCLOSURE',
     };

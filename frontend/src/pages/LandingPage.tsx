@@ -458,30 +458,38 @@ export const LandingPage: React.FC = () => {
       </main>
 
       {/* 5. Professional Compact Footer (3-column layout inside max-w-[1440px]) */}
-      <footer className="border-t border-[#D9E1EA] bg-white">
-        <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 h-16 sm:h-[68px] grid grid-cols-1 md:grid-cols-3 items-center gap-3">
-          {/* LEFT: Shield Icon + Portal Name */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0">
+      <footer className="border-t border-[#D9E1EA] bg-white py-4.5 sm:py-5">
+        <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
+          {/* LEFT: Shield Icon + Portal Name + Subtitle + Subtle Academic Project Title */}
+          <div className="md:col-span-6 flex items-start gap-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0 mt-0.5">
               <Shield className="h-3.5 w-3.5 text-[#1D7FE2]" />
             </div>
-            <span className="text-[13px] sm:text-[14px] font-semibold text-[#172033] truncate">
-              Crime Intelligence &amp; Management Portal
-            </span>
+            <div className="min-w-0 max-w-[650px]">
+              <p className="text-[13px] sm:text-[14px] font-semibold text-[#172033] leading-tight">
+                Crime Intelligence &amp; Management Portal
+              </p>
+              <p className="text-[11px] sm:text-[11.5px] font-medium text-[#5D6878] leading-tight mt-0.5">
+                Operations &amp; Analysis Center
+              </p>
+              <p className="text-[11px] sm:text-[11.5px] font-normal text-[#64748B] mt-1.5 leading-snug">
+                Data-Driven Crime Management System with AI-Based Resource Optimization
+              </p>
+            </div>
           </div>
 
           {/* CENTER: Operational Intelligence Platform */}
-          <div className="text-left md:text-center">
-            <span className="text-[12px] sm:text-[13px] text-[#64748B]">
+          <div className="md:col-span-3 text-left md:text-center">
+            <span className="text-[12px] sm:text-[12.5px] text-[#64748B] font-medium">
               Operational Intelligence Platform
             </span>
           </div>
 
           {/* RIGHT: Secure Staff Access */}
-          <div className="text-left md:text-right">
+          <div className="md:col-span-3 text-left md:text-right">
             <Link
               to="/login"
-              className="text-[12px] sm:text-[13px] text-[#1769AA] hover:text-[#0B1F3A] font-medium transition-colors"
+              className="text-[12px] sm:text-[12.5px] text-[#1769AA] hover:text-[#0B1F3A] font-medium transition-colors"
             >
               Secure Staff Access
             </Link>

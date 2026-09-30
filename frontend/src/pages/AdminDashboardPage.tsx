@@ -501,6 +501,12 @@ export const AdminDashboardPage: React.FC = () => {
                         : 'Current Active Session'}
                     </span>
                   </div>
+                  <div className="flex justify-between py-1 border-t border-slate-100 pt-2 text-[11px]">
+                    <span className="text-[#5B6577]">Official System</span>
+                    <span className="font-normal text-slate-600 text-right max-w-[280px]">
+                      Data-Driven Crime Management System with AI-Based Resource Optimization
+                    </span>
+                  </div>
                 </div>
               </div>
 

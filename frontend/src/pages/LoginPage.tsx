@@ -84,10 +84,10 @@ export const LoginPage: React.FC = () => {
               <Shield className="h-5 w-5 text-white" />
             </div>
             <h2 className="text-[20px] font-bold leading-tight tracking-tight text-white">
-              Crime Intelligence Portal
+              Crime Intelligence &amp; Management Portal
             </h2>
-            <p className="mt-1 text-[13px] text-[#1D7FE2] font-semibold tracking-wide uppercase">
-              Secure Operational Access
+            <p className="mt-1 text-[12px] text-[#93C5FD] font-medium tracking-wide">
+              Operations &amp; Analysis Center
             </p>
           </div>
 

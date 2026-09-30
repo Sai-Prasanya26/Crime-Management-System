@@ -98,11 +98,11 @@ export const Sidebar: React.FC = () => {
           <Shield className="h-4 w-4 text-white" />
         </div>
         <div className="overflow-hidden">
-          <h1 className="text-[13px] font-bold tracking-tight text-white leading-tight truncate">
-            Crime Intelligence Portal
+          <h1 className="text-[12.5px] font-bold tracking-tight text-white leading-tight truncate" title="Crime Intelligence & Management Portal">
+            Crime Intelligence &amp; Management Portal
           </h1>
-          <p className="text-[11px] font-medium text-slate-400 leading-none mt-0.5">
-            Operations &amp; Analysis
+          <p className="text-[10.5px] font-medium text-slate-400 leading-none mt-0.5">
+            Operations &amp; Analysis Center
           </p>
         </div>
       </div>
