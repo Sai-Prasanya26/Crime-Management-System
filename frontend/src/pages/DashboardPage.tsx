@@ -19,7 +19,6 @@ import HourlyDistributionChart from '../components/charts/HourlyDistributionChar
 import VictimDemographicsChart from '../components/charts/VictimDemographicsChart';
 import WeaponDistributionChart from '../components/charts/WeaponDistributionChart';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
-import DataFreshnessBanner from '../components/common/DataFreshnessBanner';
 
 import { analyticsApi } from '../api';
 import type {
@@ -126,9 +125,6 @@ export const DashboardPage: React.FC = () => {
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
-      {/* Academic Disclosures & Data Freshness Banner */}
-      <DataFreshnessBanner />
-
       {/* Global Filter Bar */}
       <DashboardFilters
         filters={filters}

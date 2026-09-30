@@ -189,6 +189,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             startDate={filters.start_date}
             endDate={filters.end_date}
             onChange={handleDateChange}
+            disabled={isLoading}
           />
 
           {hasActiveFilters && (
