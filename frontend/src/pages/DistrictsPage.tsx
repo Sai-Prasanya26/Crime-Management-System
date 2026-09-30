@@ -109,19 +109,19 @@ export const DistrictsPage: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Jurisdiction Risk & Demographics Intelligence"
-      subtitle="Census 2011 population baseline & 2026 administrative geography across 789 districts"
+      title="Risk Intelligence"
+      subtitle="Assess jurisdiction-level risk indicators derived from historical crime activity."
       onRefresh={() => fetchTopDistricts(true)}
       isRefreshing={isRefreshing}
     >
-      {/* Academic Disclosures & Data Freshness Banner */}
+      {/* Operational Disclosures & Data Freshness Banner */}
       <DataFreshnessBanner />
 
       {/* State & District Lookup Filter */}
-      <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-xs">
+      <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+          <div className="flex flex-wrap items-center gap-3.5">
+            <span className="text-xs sm:text-[13px] font-bold uppercase tracking-wider text-[#64748B]">
               Filter By State:
             </span>
             <select
@@ -131,9 +131,9 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(val);
                 setSelectedDistrictId(undefined);
               }}
-              className="rounded-lg border border-[#E2E8F0] bg-white py-1.5 px-3 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none"
+              className="min-h-[46px] rounded-xl border border-[#E2E8F0] bg-white py-2.5 px-4 text-[15px] font-medium text-[#0F172A] shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer"
             >
-              <option value="">All States & UTs ({states.length || 36})</option>
+              <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -148,7 +148,7 @@ export const DistrictsPage: React.FC = () => {
                   const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                   setSelectedDistrictId(val);
                 }}
-                className="rounded-lg border border-[#E2E8F0] bg-white py-1.5 px-3 text-xs font-medium text-[#0F172A] shadow-xs focus:border-[#4F46E5] focus:outline-none"
+                className="min-h-[46px] rounded-xl border border-[#E2E8F0] bg-white py-2.5 px-4 text-[15px] font-medium text-[#0F172A] shadow-2xs focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer"
               >
                 <option value="">Select District Profile ({districts.length})</option>
                 {districts.map((d) => (
@@ -166,7 +166,7 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(undefined);
                 setSelectedDistrictId(undefined);
               }}
-              className="text-xs font-medium text-rose-600 hover:underline"
+              className="inline-flex min-h-[44px] items-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
             >
               Clear State Filter
             </button>
@@ -176,18 +176,18 @@ export const DistrictsPage: React.FC = () => {
 
       {/* Selected District Census Demographics Card */}
       {selectedDistrictId && (
-        <div className="rounded-[14px] border border-indigo-200 bg-indigo-50/40 p-5 shadow-xs">
-          <div className="flex items-center justify-between border-b border-indigo-100 pb-3">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-[#4F46E5]" />
-              <h3 className="text-sm font-bold text-[#0F172A]">
-                Census Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-6 shadow-xs">
+          <div className="flex items-center justify-between border-b border-indigo-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <MapPin className="h-5 w-5 text-[#4F46E5]" />
+              <h3 className="text-base font-bold text-[#0F172A]">
+                Demographic Profile: {districtDetail?.district_name || 'Loading...'},{' '}
                 {districtDetail?.state_name}
               </h3>
             </div>
             {districtDetail?.parent_district_id && (
-              <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
-                Modern Carved District (Census 2011 Parent ID #{districtDetail.parent_district_id})
+              <span className="rounded-lg bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                Administrative Unit (Census 2011 Parent #{districtDetail.parent_district_id})
               </span>
             )}
           </div>

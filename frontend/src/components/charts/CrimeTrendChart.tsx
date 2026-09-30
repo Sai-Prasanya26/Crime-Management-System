@@ -34,34 +34,34 @@ export const CrimeTrendChart: React.FC<CrimeTrendChartProps> = ({
   const totalIncidents = data.reduce((sum, item) => sum + item.incident_count, 0);
 
   return (
-    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E2E8F0] pb-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-[#EEF2FF] p-2 text-[#4F46E5]">
-              <TrendingUp className="h-4 w-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-indigo-50 p-2.5 text-[#4F46E5]">
+              <TrendingUp className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-[#0F172A]">Longitudinal Crime Incident Trends</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">Longitudinal Crime Incident Trends</h3>
           </div>
-          <p className="mt-1 text-xs text-[#64748B]">
+          <p className="mt-1.5 text-sm text-slate-500">
             Temporal distribution of verified crime reports ({totalIncidents.toLocaleString()} total incidents)
           </p>
         </div>
 
         {onIntervalChange && (
-          <div className="flex items-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 text-xs">
+          <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm">
             {(['year', 'month'] as const).map((intVal) => (
               <button
                 key={intVal}
                 onClick={() => handleIntervalClick(intVal)}
                 disabled={isLoading}
-                className={`flex items-center gap-1 rounded-md px-3 py-1 font-medium capitalize transition-all ${
+                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-medium capitalize transition-all ${
                   activeInterval === intVal
-                    ? 'bg-white text-[#4F46E5] shadow-xs border border-[#E2E8F0] font-semibold'
+                    ? 'bg-white text-[#4F46E5] shadow-sm border border-slate-200 font-semibold'
                     : 'text-slate-600 hover:text-[#0F172A]'
                 }`}
               >
-                <Calendar className="h-3 w-3" />
+                <Calendar className="h-4 w-4" />
                 {intVal}ly
               </button>
             ))}

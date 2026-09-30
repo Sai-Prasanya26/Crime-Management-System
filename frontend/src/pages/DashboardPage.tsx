@@ -120,8 +120,8 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Crime Intelligence Command Center"
-      subtitle="Jurisdictional Crime Analytics & Operational Intelligence"
+      title="Crime Intelligence Dashboard"
+      subtitle="Operational overview of reported crime patterns and jurisdictional activity."
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
@@ -134,7 +134,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-12 shadow-xs">
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-12 shadow-xs">
           <LoadingState message="Fetching live crime intelligence from database..." />
         </div>
       )}
@@ -161,11 +161,11 @@ export const DashboardPage: React.FC = () => {
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <>
           {/* Key Performance Indicators (StatCards) */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
-              title="Historical Project Incidents"
+              title="Total Incidents"
               value={overview.total_incidents.toLocaleString()}
-              subtext="Historical Project Dataset: 2020–2025"
+              subtext="Reported Incident Records: 2020–2025"
               icon={FileText}
               color="indigo"
             />
@@ -270,40 +270,43 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div className="flex flex-col justify-between rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-xs lg:col-span-4">
+            <div className="flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xs lg:col-span-4">
               <div>
-                <h4 className="text-sm font-semibold text-[#0F172A]">
+                <h4 className="text-base font-bold text-[#0F172A]">
                   Operational Intelligence Summary
                 </h4>
-                <p className="mt-1 text-xs text-[#64748B]">
-                  Crime Intelligence & Management Portal
+                <p className="mt-1 text-xs sm:text-sm text-[#64748B]">
+                  Crime Intelligence &amp; Management Portal
                 </p>
-                <div className="mt-4 space-y-2 text-xs">
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
+                <div className="mt-5 space-y-2.5 text-xs sm:text-sm">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
                     <span>Analytical Coverage:</span>
                     <span className="font-semibold text-[#0F172A]">Multi-Year Longitudinal</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
                     <span>Incident Scope:</span>
                     <span className="font-semibold text-emerald-700">Verified Jurisdictions</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
                     <span>Demographic Baseline:</span>
                     <span className="font-medium text-[#0F172A]">Census Standardized</span>
                   </div>
-                  <div className="flex justify-between border-b border-[#E2E8F0] pb-1.5 text-[#64748B]">
+                  <div className="flex justify-between border-b border-[#E2E8F0] pb-2 text-[#64748B]">
                     <span>Security Clearance:</span>
                     <span className="font-semibold text-indigo-600">Restricted Operations</span>
                   </div>
-                  <div className="flex justify-between pb-1 text-[#64748B]">
+                  <div className="flex justify-between pb-1.5 text-[#64748B]">
                     <span>System Status:</span>
-                    <span className="font-semibold text-emerald-600">Active & Operational</span>
+                    <span className="font-bold text-emerald-600 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Active &amp; Operational
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3 text-[11px] text-[#64748B] border border-[#E2E8F0]">
-                All charts and metrics are computed dynamically based on your active state, district, and date range filters.
+              <div className="mt-5 rounded-xl bg-[#F8FAFC] p-3.5 text-xs text-[#64748B] border border-[#E2E8F0]">
+                All charts and metrics are computed dynamically based on active state, district, and date range analysis parameters.
               </div>
             </div>
           </div>

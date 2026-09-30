@@ -48,7 +48,7 @@ export const DataFreshnessBanner: React.FC = () => {
               <span className="text-xs font-bold tracking-wider uppercase text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
                 DATA FRESHNESS & PROVENANCE
               </span>
-              <span className="text-xs text-slate-500 font-medium">Academic Standards Verified</span>
+              <span className="text-xs text-slate-500 font-medium">Operational Data Standards Verified</span>
             </div>
             <h3 className="text-sm font-semibold text-slate-800 mt-1">
               India Crime Management & Analytical Intelligence Platform

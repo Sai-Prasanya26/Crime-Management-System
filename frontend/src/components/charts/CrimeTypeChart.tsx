@@ -30,28 +30,28 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
   const displayedData = data.slice(0, displayCount);
 
   return (
-    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E2E8F0] pb-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-amber-50 p-2 text-amber-600">
-              <Scale className="h-4 w-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600">
+              <Scale className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-[#0F172A]">Legal Crime Type Distribution</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">Legal Crime Type Distribution</h3>
           </div>
-          <p className="mt-1 text-xs text-[#64748B]">
+          <p className="mt-1.5 text-sm text-slate-500">
             Top statutory IPC offenses disaggregated by severity tier (21 types total)
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 text-xs">
+        <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm">
           {[5, 8, 12, 21].map((count) => (
             <button
               key={count}
               onClick={() => setDisplayCount(count)}
-              className={`rounded-md px-2.5 py-1 font-medium transition-all ${
+              className={`rounded-lg px-3 py-1.5 font-medium transition-all ${
                 displayCount === count
-                  ? 'bg-white text-amber-800 shadow-xs border border-[#E2E8F0] font-semibold'
+                  ? 'bg-white text-amber-800 shadow-sm border border-slate-200 font-semibold'
                   : 'text-slate-600 hover:text-[#0F172A]'
               }`}
             >

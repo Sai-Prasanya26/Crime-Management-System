@@ -77,7 +77,7 @@ export const StateCoverageCard: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Dual-layer coverage audit contrasting the <strong>2020–2025 Historical Project Incident Dataset</strong> with published <strong>Official NCRB Benchmarks</strong>.
+            Dual-layer coverage audit contrasting the <strong>2020–2025 Historical Crime Incident Records</strong> with published <strong>Official NCRB Benchmarks</strong>.
           </p>
         </div>
 
@@ -175,7 +175,7 @@ export const StateCoverageCard: React.FC = () => {
               <th className="py-2.5 px-3 text-right">Current Districts</th>
               <th className="py-2.5 px-3 text-right">
                 Historical Incidents
-                <span className="block text-[10px] text-slate-400 font-normal">2020–2025 Project</span>
+                <span className="block text-[10px] text-slate-400 font-normal">2020–2025 Repository</span>
               </th>
               <th className="py-2.5 px-3 text-right">
                 Official NCRB
@@ -217,7 +217,7 @@ export const StateCoverageCard: React.FC = () => {
                     </span>
                   ) : (
                     <span className="text-amber-600 text-[11px] italic">
-                      No incident-level records in project dataset
+                      No incident-level records in central repository
                     </span>
                   )}
                 </td>
@@ -262,7 +262,7 @@ export const StateCoverageCard: React.FC = () => {
         </table>
       </div>
 
-      {/* Academic Transparency Footer */}
+      {/* Institutional Transparency Footer */}
       <div className="mt-3 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
         <div>
           Showing <strong>{filteredItems.length}</strong> of <strong>{coverageData.total_entities}</strong> administrative entities.

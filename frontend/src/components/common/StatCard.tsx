@@ -56,16 +56,16 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-slate-300 hover:shadow-md"
+      className="relative overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-slate-300 hover:shadow-sm"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{title}</p>
+          <p className="text-xs sm:text-[13px] font-bold uppercase tracking-wider text-[#64748B]">{title}</p>
           <div className="mt-2 flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold tracking-tight text-[#0F172A]">{value}</h3>
+            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A]">{value}</h3>
             {trend && (
               <span
-                className={`inline-flex items-center text-xs font-semibold ${
+                className={`inline-flex items-center text-xs font-bold ${
                   trend.isPositive ? 'text-emerald-600' : 'text-rose-600'
                 }`}
               >
@@ -73,9 +73,9 @@ export const StatCard: React.FC<StatCardProps> = ({
               </span>
             )}
           </div>
-          {subtext && <p className="mt-1 text-xs text-[#64748B]">{subtext}</p>}
+          {subtext && <p className="mt-1.5 text-xs sm:text-[13px] text-slate-500 leading-snug">{subtext}</p>}
         </div>
-        <div className={`rounded-xl p-3 ${styles.iconBg} ${styles.iconColor}`}>
+        <div className={`rounded-2xl p-3.5 shrink-0 ${styles.iconBg} ${styles.iconColor}`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>

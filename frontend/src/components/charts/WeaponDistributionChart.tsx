@@ -21,16 +21,16 @@ const WEAPON_COLORS = ['#EF4444', '#F97316', '#EAB308', '#8B5CF6', '#06B6D4', '#
 
 export const WeaponDistributionChart: React.FC<WeaponDistributionChartProps> = ({ data }) => {
   return (
-    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.08)]">
-      <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-red-50 p-2 text-red-600">
-              <Crosshair className="h-4 w-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
+              <Crosshair className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-[#0F172A]">Weapon Involvement Distribution</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-[#0F172A]">Weapon Involvement Distribution</h3>
           </div>
-          <p className="mt-1 text-xs text-[#64748B]">
+          <p className="mt-1.5 text-sm text-slate-500">
             Recorded weapon classifications utilized during commission of offenses
           </p>
         </div>
