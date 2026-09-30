@@ -64,7 +64,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Split Layout Container */}
-      <div className="w-full max-w-[880px] overflow-hidden rounded-lg border border-[#D9E1EA] bg-white shadow-xs grid grid-cols-1 md:grid-cols-12 min-h-[480px]">
+      <div className="w-full max-w-[880px] overflow-hidden rounded-lg border border-[#D9E1EA] bg-white shadow-xs grid grid-cols-1 md:grid-cols-12 min-h-[490px]">
         {/* LEFT PANE: Dark Navy Visual Area (5 cols) */}
         <div className="relative hidden md:flex md:col-span-5 flex-col justify-between p-7 bg-[#0B1F3A] text-white overflow-hidden">
           {/* Background Image with Dark Navy Gradient */}
@@ -84,17 +84,15 @@ export const LoginPage: React.FC = () => {
               <Shield className="h-5 w-5 text-white" />
             </div>
             <h2 className="text-[20px] font-bold leading-tight tracking-tight text-white">
-              Crime Intelligence
-              <br />
-              &amp; Management Portal
+              Crime Intelligence Portal
             </h2>
-            <p className="mt-2 text-[13px] text-slate-300 leading-relaxed font-normal">
-              Transforming crime data into actionable intelligence.
+            <p className="mt-1 text-[13px] text-[#1D7FE2] font-semibold tracking-wide uppercase">
+              Secure Operational Access
             </p>
           </div>
 
           {/* Operational Badges */}
-          <div className="relative z-10 space-y-2 pt-6 border-t border-white/10 text-[12px] text-slate-300">
+          <div className="relative z-10 space-y-2.5 pt-6 border-t border-white/10 text-[12px] text-slate-300">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-3.5 w-3.5 text-[#16845B] shrink-0" />
               <span>Role-Based Access Control (RBAC)</span>
@@ -111,22 +109,24 @@ export const LoginPage: React.FC = () => {
 
           {/* System Footer Notice */}
           <div className="relative z-10 pt-4 text-[11px] text-slate-400">
-            <span>Operational Console v7.7 &bull; Restricted</span>
+            <span>Operational Console &bull; Restricted Access</span>
           </div>
         </div>
 
         {/* RIGHT PANE: White Login Panel (7 cols) */}
         <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-center bg-white">
           <div className="w-full max-w-[360px] mx-auto">
-            {/* Header */}
+            {/* Header with ShieldCheck Icon */}
             <div>
-              <div className="flex items-center gap-2 text-[#0B1F3A] mb-1">
-                <Lock className="h-5 w-5 text-[#1769AA]" />
-                <h1 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A]">
+              <div className="flex items-center gap-2.5 text-[#0B1F3A] mb-1">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-[#EAF3FA] text-[#1769AA]">
+                  <ShieldCheck className="h-5 w-5 text-[#1769AA]" />
+                </div>
+                <h1 className="text-[22px] sm:text-[23px] font-bold tracking-tight text-[#0B1F3A]">
                   Secure Staff Access
                 </h1>
               </div>
-              <p className="text-[13px] text-[#5D6878]">
+              <p className="text-[13px] text-[#5D6878] pl-10.5">
                 Authorized personnel only.
               </p>
             </div>
@@ -161,7 +161,7 @@ export const LoginPage: React.FC = () => {
                     disabled={isLoading}
                     autoComplete="username"
                     required
-                    className="w-full h-11 rounded border border-[#D9E1EA] bg-white py-2 pl-9 pr-3 text-[14px] text-[#172033] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-50"
+                    className="w-full h-[46px] rounded border border-[#D9E1EA] bg-white py-2 pl-9 pr-3 text-[14px] text-[#172033] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
                     disabled={isLoading}
                     autoComplete="current-password"
                     required
-                    className="w-full h-11 rounded border border-[#D9E1EA] bg-white py-2 pl-9 pr-10 text-[14px] text-[#172033] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-50"
+                    className="w-full h-[46px] rounded border border-[#D9E1EA] bg-white py-2 pl-9 pr-10 text-[14px] text-[#172033] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -202,7 +202,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="mt-2 w-full h-11 rounded bg-[#0B1F3A] text-white text-[13px] font-semibold hover:bg-[#12345B] focus:outline-none focus:ring-2 focus:ring-[#1769AA] focus:ring-offset-1 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                className="mt-2 w-full h-[46px] rounded bg-[#0B1F3A] text-white text-[13.5px] font-semibold hover:bg-[#12345B] focus:outline-none focus:ring-2 focus:ring-[#1769AA] focus:ring-offset-1 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

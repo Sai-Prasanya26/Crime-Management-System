@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Home, LogOut, LogIn, Clock } from 'lucide-react';
+import { RefreshCw, Home, LogOut, LogIn, Clock, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -51,17 +51,23 @@ export const Header: React.FC<HeaderProps> = ({
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-20 flex h-15 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-5 sm:px-6 shadow-2xs">
-      {/* Left: Current Page Title / Breadcrumb */}
-      <div className="min-w-0 pr-4">
-        <h1 className="text-[17px] sm:text-[19px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-[12px] text-[#5D6878] mt-0.5 leading-tight truncate">
-            {subtitle}
-          </p>
-        )}
+    <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-5 sm:px-6 shadow-2xs">
+      {/* Left: Shield Emblem & Page Title / Breadcrumb */}
+      <div className="flex items-center gap-3 min-w-0 pr-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0">
+          <Shield className="h-4 w-4 text-[#1D7FE2]" />
+        </div>
+        <div className="h-6 w-px bg-[#D9E1EA] hidden sm:block shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-[16px] sm:text-[18px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-[11.5px] sm:text-[12px] text-[#5D6878] mt-0.5 leading-tight truncate">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Right: Operational Status, Time & Controls */}
@@ -73,12 +79,12 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Live Status Badge */}
-        <div className="hidden md:flex items-center gap-1.5 rounded border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+        <div className="hidden md:flex items-center gap-1.5 rounded border border-emerald-200 bg-emerald-50/70 px-2.5 py-1 text-[11px] font-medium text-emerald-800">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span>Operational</span>
+          <span>System Operational</span>
         </div>
 
         {/* Refresh Action */}

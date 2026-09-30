@@ -5,7 +5,7 @@ import {
   BarChart3,
   MapPin,
   TrendingUp,
-  AlertTriangle,
+  ShieldAlert,
   Activity,
   Sliders,
   BadgeDollarSign,
@@ -23,17 +23,72 @@ export const Sidebar: React.FC = () => {
     await logout();
   };
 
-  const navItems = [
+  interface NavItem {
+    name: string;
+    path: string;
+    icon: typeof LayoutDashboard;
+    exact?: boolean;
+  }
+
+  const overviewItems: NavItem[] = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
+  ];
+
+  const intelligenceItems: NavItem[] = [
     { name: 'Crime Analytics', path: '/dashboard#analytics', icon: BarChart3 },
     { name: 'Geographic Intelligence', path: '/districts', icon: MapPin },
     { name: 'Crime Trends', path: '/trends', icon: TrendingUp },
-    { name: 'Risk Assessment', path: '/risk', icon: AlertTriangle },
+    { name: 'Risk Assessment', path: '/risk', icon: ShieldAlert },
     { name: 'Predictions', path: '/predictions', icon: Activity },
+  ];
+
+  const operationsItems: NavItem[] = [
     { name: 'Resource Optimization', path: '/resources', icon: Sliders },
     { name: 'Budget Intelligence', path: '/budget', icon: BadgeDollarSign },
     { name: 'Reports', path: '/reports', icon: FileText },
   ];
+
+  const renderNavGroup = (title: string, items: NavItem[], isAccentTitle = false) => (
+    <div>
+      <p
+        className={`px-3 text-[10.5px] font-semibold uppercase tracking-wider mb-1 ${
+          isAccentTitle ? 'text-[#1D7FE2]' : 'text-slate-400'
+        }`}
+      >
+        {title}
+      </p>
+      <nav className="space-y-0.5">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.name}
+              to={item.path}
+              end={item.exact}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 py-1.5 text-[13px] transition-colors rounded ${
+                  isActive
+                    ? 'border-l-[3px] border-[#1D7FE2] bg-[#1769AA]/25 pl-2.5 pr-2.5 text-white font-semibold'
+                    : 'px-3 text-slate-300 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    className={`h-4 w-4 shrink-0 ${
+                      isActive ? 'text-[#1D7FE2]' : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="truncate">{item.name}</span>
+                </>
+              )}
+            </NavLink>
+          );
+        })}
+      </nav>
+    </div>
+  );
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-[240px] flex-col border-r border-[#12345B] bg-[#0B1F3A] text-slate-200">
@@ -53,75 +108,23 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation List */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3 text-sm">
-        {/* OPERATIONAL NAVIGATION */}
-        <div>
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Intelligence Modules
-          </p>
-          <nav className="space-y-0.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.name}
-                  to={item.path}
-                  end={item.exact}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 py-2 text-[13px] transition-colors rounded ${
-                      isActive
-                        ? 'border-l-[3px] border-[#1D7FE2] bg-[#1769AA]/25 pl-2.5 pr-2.5 text-white font-semibold'
-                        : 'px-3 text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon
-                        className={`h-4 w-4 shrink-0 ${
-                          isActive ? 'text-[#1D7FE2]' : 'text-slate-400'
-                        }`}
-                      />
-                      <span className="truncate">{item.name}</span>
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
-        </div>
+      <div className="flex-1 space-y-3.5 overflow-y-auto px-2.5 py-3 text-sm">
+        {/* OVERVIEW */}
+        {renderNavGroup('OVERVIEW', overviewItems)}
+
+        {/* INTELLIGENCE */}
+        {renderNavGroup('INTELLIGENCE', intelligenceItems)}
+
+        {/* OPERATIONS */}
+        {renderNavGroup('OPERATIONS', operationsItems)}
 
         {/* ADMINISTRATION (Admins Only) */}
-        {user?.role === 'ADMIN' && (
-          <div>
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-[#1D7FE2] mb-1">
-              Administration
-            </p>
-            <nav className="space-y-0.5">
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 py-2 text-[13px] transition-colors rounded ${
-                    isActive
-                      ? 'border-l-[3px] border-[#1D7FE2] bg-[#1769AA]/25 pl-2.5 pr-2.5 text-white font-semibold'
-                      : 'px-3 text-slate-300 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <UserCog
-                      className={`h-4 w-4 shrink-0 ${
-                        isActive ? 'text-[#1D7FE2]' : 'text-slate-400'
-                      }`}
-                    />
-                    <span className="truncate">Administration</span>
-                  </>
-                )}
-              </NavLink>
-            </nav>
-          </div>
-        )}
+        {user?.role === 'ADMIN' &&
+          renderNavGroup(
+            'ADMINISTRATION',
+            [{ name: 'Administration', path: '/admin', icon: UserCog, exact: false }],
+            true
+          )}
       </div>
 
       {/* Footer: User Details & Logout */}
