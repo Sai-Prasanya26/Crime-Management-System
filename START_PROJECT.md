@@ -1,71 +1,87 @@
 # Crime Management System — Local Startup & Operation Guide
 
 **Project**: Data-Driven Crime Management System with AI-Based Resource Optimization  
-**Phase Baseline**: Phase 7C.1 Complete  
+**Phase Baseline**: Phase 7C.2 Complete (Unified Startup Launcher Fixed)  
 **Database**: MySQL 8.0 (`crime_management_db`)  
 
 ---
 
-## 1. Quick Start (One-Click Launch)
+## 1. Quick Start Workflow (When VS Code / Project is Closed)
 
-To start the entire project after closing VS Code or restarting your computer:
+When resuming development or starting the system from a closed state:
 
-Double-click or run:
-```cmd
-start_project.bat
-```
+1. **Make sure MySQL80 is running**:
+   ```powershell
+   Get-Service MYSQL80
+   ```
+   If stopped, start it:
+   ```cmd
+   net start MYSQL80
+   ```
 
-This launches:
-1. **FastAPI Backend Server** in a dedicated window on `http://127.0.0.1:8000`.
-2. **React + Vite Frontend** in a dedicated window on `http://localhost:5174`.
-3. Opens `http://localhost:5174` in your browser.
+2. **Open the project root directory**:
+   ```cmd
+   cd "C:\Users\saipr.SAIPRASANYA.000\Desktop\Puppyyy\Major Project"
+   ```
+
+3. **Run the unified project launcher**:
+   ```cmd
+   cmd /c start_project.bat
+   ```
+   or double-click `start_project.bat`.
+
+4. **Wait until both ports are verified**:
+   The launcher polls ports 8000 and 5174 and only confirms success when both services are actively listening:
+   ```text
+   ======================================================================
+                         SERVICE STATUS REPORT
+   ======================================================================
+    Backend:  RUNNING [http://127.0.0.1:8000]
+    Frontend: RUNNING [http://localhost:5174]
+   ======================================================================
+   ```
+
+5. **Open the web application**:
+   The launcher automatically opens your browser to:
+   ```text
+   http://localhost:5174
+   ```
 
 ---
 
-## 2. Manual Startup (Step-by-Step)
+## 2. Manual Fallback Commands
 
-If you prefer starting services manually from PowerShell or Command Prompt:
+If you prefer starting backend and frontend services in dedicated manual terminal windows:
 
-### Step 1: Ensure MySQL is Running
-The database `crime_management_db` is hosted on MySQL 8.0 on default port **3306**.
-
-- Verify the Windows service status:
-  ```powershell
-  Get-Service MYSQL80
-  ```
-- If stopped, start it (Run PowerShell as Administrator):
-  ```powershell
-  Start-Service MYSQL80
-  ```
-  or:
-  ```cmd
-  net start MYSQL80
-  ```
-
-### Step 2: Start the Backend Server
-Open a terminal in the project root:
+### Terminal 1: MySQL Service Check
 ```cmd
+net start MYSQL80
+```
+
+### Terminal 2: FastAPI Backend Server
+```cmd
+cd /d "C:\Users\saipr.SAIPRASANYA.000\Desktop\Puppyyy\Major Project"
 start_backend.bat
 ```
-or manually:
+or directly via Python:
 ```cmd
 .\backend\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 ```
-- API Base URL: `http://127.0.0.1:8000/api/v1`
-- Swagger Documentation: `http://127.0.0.1:8000/api/v1/docs`
-- Database Health Check: `http://127.0.0.1:8000/api/v1/health`
+- API Base: `http://127.0.0.1:8000/api/v1`
+- Swagger UI: `http://127.0.0.1:8000/api/v1/docs`
+- Health Check: `http://127.0.0.1:8000/api/v1/health`
 
-### Step 3: Start the Frontend Application
-Open another terminal:
+### Terminal 3: React + Vite Frontend Application
 ```cmd
+cd /d "C:\Users\saipr.SAIPRASANYA.000\Desktop\Puppyyy\Major Project"
 start_frontend.bat
 ```
-or manually:
+or directly via npm:
 ```cmd
-cd frontend
-npm run dev -- --port 5174
+cd /d "C:\Users\saipr.SAIPRASANYA.000\Desktop\Puppyyy\Major Project\frontend"
+npm run dev -- --host localhost --port 5174
 ```
-- Frontend Application URL: `http://localhost:5174`
+- Application: `http://localhost:5174`
 
 ---
 
@@ -95,8 +111,16 @@ The database contains pre-configured test users with distinct RBAC clearance lev
 
 ## 5. Verification & Testing Instructions
 
-### A. Verify Database Health
-Open `http://127.0.0.1:8000/api/v1/health` in your browser. You should receive:
+### A. Port Verification
+```powershell
+Test-NetConnection 127.0.0.1 -Port 8000
+Test-NetConnection 127.0.0.1 -Port 5174
+Test-NetConnection localhost -Port 5174
+```
+All tests return `TcpTestSucceeded: True`.
+
+### B. Verify Database Health
+Open `http://127.0.0.1:8000/api/v1/health` in your browser. Expected response:
 ```json
 {
   "status": "ok",
@@ -107,19 +131,19 @@ Open `http://127.0.0.1:8000/api/v1/health` in your browser. You should receive:
 }
 ```
 
-### B. Verify Backend Test Suite
+### C. Verify Backend Test Suite
 Run the automated test suites from project root:
 ```cmd
 .\backend\.venv\Scripts\python.exe backend\tests\test_auth.py
 .\backend\.venv\Scripts\python.exe backend\tests\test_api_endpoints.py
 ```
-Both test suites will pass 100% against the live MySQL database.
+Both test suites pass 100% against the live MySQL database.
 
-### C. Verify Admin Authentication in Browser
+### D. Verify Admin Authentication in Browser
 1. Open `http://localhost:5174/login`.
 2. Enter username `admin` and password `Admin@12345`.
 3. Click **Sign In**.
-4. You will be redirected to `http://localhost:5174/dashboard`.
+4. You are redirected to `http://localhost:5174/dashboard`.
 5. In the top navigation bar, notice the badge **Chief System Administrator** with role `ADMIN`.
 6. In the left sidebar under **Administration**, click **Admin Console** (or navigate to `http://localhost:5174/admin`).
 7. Verify the green **VERIFIED ADMIN** indicator confirming `GET /api/v1/auth/admin-check` returned HTTP 200.
