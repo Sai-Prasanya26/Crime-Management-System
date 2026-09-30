@@ -1,6 +1,6 @@
 @echo off
-title CMS - FastAPI Backend (Port 8000)
-
+title CMS - FastAPI Backend
+ 
 :: 1. Resolve Project Root
 set "PROJECT_ROOT=%~dp0"
 if "%PROJECT_ROOT:~-1%"=="\" set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
@@ -23,17 +23,18 @@ if not exist "%PYTHON_EXE%" (
     exit /b 1
 )
 
-:: 3. Verify MySQL Service Connectivity
-echo [*] Checking MySQL service on port 3306...
-"%PYTHON_EXE%" -c "import socket; s = socket.socket(); s.settimeout(2); res = s.connect_ex(('127.0.0.1', 3306)); s.close(); exit(res)" >nul 2>&1
+:: 3. Verify MySQL Service Connectivity and Database Readiness
+echo [*] Checking MySQL service and database readiness...
+"%PYTHON_EXE%" -m backend.scripts.launcher_service verify-db 3 >nul 2>&1
 if errorlevel 1 (
-    echo [WARNING] MySQL does not appear to be listening on port 3306.
+    echo [ERROR] MySQL database is not reachable or not ready.
     echo Please make sure the MySQL service is started: net start MYSQL80
-    echo Attempting to proceed anyway...
+    echo Backend startup cannot continue without the database.
     echo.
-) else (
-    echo [OK] MySQL is active and listening on port 3306.
+    pause
+    exit /b 1
 )
+echo [OK] MySQL database is active and verified.
 
 :: 4. Check if Port 8000 is already active
 "%PYTHON_EXE%" -c "import socket; s = socket.socket(); s.settimeout(1); res = s.connect_ex(('127.0.0.1', 8000)); s.close(); exit(res)" >nul 2>&1

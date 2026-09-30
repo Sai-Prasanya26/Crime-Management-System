@@ -1,5 +1,5 @@
 @echo off
-title CMS - React Vite Frontend (Port 5174)
+title CMS - Vite Frontend
 
 :: 1. Resolve Project Root and Frontend Directory
 set "PROJECT_ROOT=%~dp0"
@@ -45,15 +45,12 @@ if errorlevel 1 (
 :: 4. Verify node_modules
 cd /d "%FRONTEND_DIR%"
 if not exist "node_modules\" (
-    echo [*] node_modules not detected in %FRONTEND_DIR%.
-    echo [*] Installing dependencies with npm install...
-    call npm install
-    if errorlevel 1 (
-        echo.
-        echo [ERROR] npm install failed.
-        pause
-        exit /b 1
-    )
+    echo [ERROR] Frontend dependencies are missing.
+    echo Please run "npm install" inside the frontend directory:
+    echo   cd "%FRONTEND_DIR%" ^&^& npm install
+    echo.
+    pause
+    exit /b 1
 )
 
 :: 5. Check if Port 5174 is already active
