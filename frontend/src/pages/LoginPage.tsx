@@ -167,8 +167,19 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
+          {/* Staff Access Guidance */}
+          <div className="mt-5 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700">
+              <Shield className="h-3.5 w-3.5 text-indigo-500" />
+              <span>Need access?</span>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              Contact your system administrator to have an authorized staff account created.
+            </p>
+          </div>
+
           {/* Operational Security Notice */}
-          <div className="mt-6 border-t border-[#E2E8F0] pt-4 text-center">
+          <div className="mt-5 border-t border-[#E2E8F0] pt-4 text-center">
             <p className="text-[11px] font-medium text-slate-500">
               Access is restricted to authorized crime-management personnel.
             </p>
