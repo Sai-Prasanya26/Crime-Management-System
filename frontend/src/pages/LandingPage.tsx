@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   ArrowRight,
@@ -9,10 +9,12 @@ import {
   TrendingUp,
   CarFront,
   FileSearch,
-  UserCheck,
+  UserRound,
   LogOut,
   ShieldCheck,
   ClipboardCheck,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 export const LandingPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -92,83 +95,195 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-[#172033] flex flex-col justify-between selection:bg-[#1769AA] selection:text-white">
-      {/* 1. Professional Header */}
-      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white px-5 sm:px-6 h-16 flex items-center shadow-2xs">
-        <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
-          {/* Logo & Portal Identity */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white">
-              <Shield className="h-4 w-4 text-[#1D7FE2]" />
+      {/* 1. Professional Header: 3 clearly separated zones (Brand, Navigation, User) */}
+      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <div className="max-w-[1440px] w-full mx-auto h-full px-6 sm:px-8 flex items-center justify-between">
+          {/* ZONE 1: LEFT BRAND AREA (width ~300-330px, margin-right 32-40px) */}
+          <div className="flex items-center gap-3.5 shrink-0 mr-6 lg:mr-10 min-w-[280px] max-w-[340px]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0">
+              <Shield className="h-5 w-5 text-[#1D7FE2]" />
             </div>
-            <div>
-              <span className="font-bold text-[14px] tracking-tight text-[#0B1F3A] block leading-tight">
-                Crime Intelligence &amp; Management Portal
-              </span>
-              <span className="text-[11px] font-medium text-[#5D6878] block leading-none mt-0.5">
-                Operations &amp; Analysis Center
-              </span>
+            <div className="min-w-0">
+              <Link to="/" className="block">
+                <span className="font-bold text-[15px] sm:text-[16px] tracking-tight text-[#0B1F3A] block leading-tight truncate">
+                  Crime Intelligence &amp; Management Portal
+                </span>
+                <span className="text-[11.5px] font-medium text-[#5D6878] block leading-none mt-1">
+                  Operations &amp; Analysis Center
+                </span>
+              </Link>
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-[13px] font-medium text-[#5D6878]">
-            <Link to="/" className="text-[#1769AA] font-semibold">
+          {/* ZONE 2: CENTER PRIMARY NAVIGATION (gap 24-28px, font 13-14px, weight 500, color #536174, active #1769AA) */}
+          <nav className="hidden xl:flex items-center justify-center gap-6 lg:gap-7 flex-1">
+            <Link
+              to="/"
+              className="text-[13.5px] font-semibold text-[#1769AA] border-b-2 border-[#1769AA] pb-1"
+            >
               Home
             </Link>
-            <Link to="/dashboard" className="hover:text-[#0B1F3A] transition-colors">
+            <Link
+              to="/dashboard"
+              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] transition-colors pb-1"
+            >
               Crime Intelligence
             </Link>
-            <Link to="/districts" className="hover:text-[#0B1F3A] transition-colors">
+            <Link
+              to="/districts"
+              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] transition-colors pb-1"
+            >
               Geographic Intelligence
             </Link>
-            <Link to="/trends" className="hover:text-[#0B1F3A] transition-colors">
+            <Link
+              to="/trends"
+              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] transition-colors pb-1"
+            >
               Crime Trends
             </Link>
-            <a href="#modules" className="hover:text-[#0B1F3A] transition-colors">
+            <a
+              href="#modules"
+              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] transition-colors pb-1"
+            >
               Capabilities
             </a>
           </nav>
 
-          {/* Auth State / Sign In CTA */}
-          <div className="flex items-center gap-2.5">
+          {/* ZONE 3: RIGHT AUTHENTICATED USER CONTROLS (far right, gap 12-16px between identity & logout) */}
+          <div className="hidden lg:flex items-center justify-end shrink-0 gap-3 ml-auto">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* User identity container */}
                 <Link
                   to="/dashboard"
-                  className="flex items-center gap-2 rounded border border-[#D9E1EA] bg-white px-3 py-1.5 text-xs font-semibold text-[#172033] hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-2.5 rounded-lg border border-[#D9E1EA] bg-white py-1.5 pl-2 pr-2.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors"
                 >
-                  <UserCheck className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>{user.full_name}</span>
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA] shrink-0">
+                    <UserRound className="h-4.5 w-4.5 text-[#1769AA]" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-[13px] font-semibold text-[#172033] leading-tight truncate max-w-[170px]">
+                      {user.full_name}
+                    </p>
+                  </div>
+                  <span className="rounded px-2 py-0.5 text-[11px] font-semibold bg-[#EEF2F6] text-[#415065] border border-[#D9E1EA]/60 uppercase tracking-wide shrink-0">
                     {user.role}
                   </span>
                 </Link>
+
+                {/* Dedicated square logout button */}
                 <button
                   onClick={handleLogout}
-                  className="rounded border border-[#D9E1EA] p-1.5 text-[#5D6878] hover:bg-slate-50 hover:text-[#C53B3B] transition-colors cursor-pointer"
-                  title="Sign Out"
+                  className="flex h-9 w-9 items-center justify-center rounded-md border border-[#D9E1EA] bg-white text-[#536174] hover:bg-[#EAF3FA] hover:text-[#1769AA] hover:border-[#1769AA]/40 transition-colors cursor-pointer shadow-2xs shrink-0"
+                  title="Sign out"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
+                  <LogOut className="h-4 w-4" />
                 </button>
               </div>
             ) : (
               <Link
                 to="/login"
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-[#0B1F3A] px-3.5 text-xs font-semibold text-white hover:bg-[#12345B] transition-colors shadow-2xs"
+                className="inline-flex h-9 sm:h-10 items-center gap-2 rounded bg-[#0B1F3A] px-4 text-[13px] font-semibold text-white hover:bg-[#12345B] transition-colors shadow-2xs"
               >
                 <LockKeyhole className="h-3.5 w-3.5 text-[#1D7FE2]" />
                 <span>Access Staff Portal</span>
               </Link>
             )}
           </div>
+
+          {/* Mobile / Tablet Menu Button */}
+          <div className="flex xl:hidden items-center gap-2 ml-auto">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-[#D9E1EA] bg-white text-[#536174] hover:bg-slate-50 transition-colors cursor-pointer"
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="xl:hidden border-b border-[#D9E1EA] bg-white px-6 py-4 space-y-3 shadow-md animate-in fade-in slide-in-from-top-2">
+            <nav className="flex flex-col space-y-2 text-[14px]">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="font-semibold text-[#1769AA] py-1"
+              >
+                Home
+              </Link>
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
+              >
+                Crime Intelligence
+              </Link>
+              <Link
+                to="/districts"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
+              >
+                Geographic Intelligence
+              </Link>
+              <Link
+                to="/trends"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
+              >
+                Crime Trends
+              </Link>
+              <a
+                href="#modules"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
+              >
+                Capabilities
+              </a>
+            </nav>
+
+            <div className="pt-3 border-t border-[#D9E1EA]">
+              {isAuthenticated && user ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA]">
+                      <UserRound className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-[#172033]">{user.full_name}</p>
+                      <span className="text-[11px] font-semibold text-[#415065] uppercase">{user.role}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex h-8 w-8 items-center justify-center rounded border border-[#D9E1EA] text-[#536174] hover:bg-[#EAF3FA] hover:text-[#C53B3B]"
+                    title="Sign out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full h-10 rounded bg-[#0B1F3A] text-white text-[13px] font-semibold"
+                >
+                  <LockKeyhole className="h-3.5 w-3.5 text-[#1D7FE2]" />
+                  <span>Access Staff Portal</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
       <main className="flex-1">
-        {/* 2. Strong Two-Column Hero */}
+        {/* 2. Strong Two-Column Hero (aligned to max-w-[1440px]) */}
         <section className="border-b border-[#D9E1EA] bg-white py-10 md:py-14">
-          <div className="max-w-6xl mx-auto px-5 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             {/* Left 54%: Mission & Operational Actions */}
             <div className="lg:col-span-7 space-y-4">
               <div className="inline-flex items-center gap-1.5 rounded border border-[#D9E1EA] bg-[#EAF3FA] px-2.5 py-1 text-[11px] font-bold tracking-wider text-[#1769AA] uppercase">
@@ -182,7 +297,7 @@ export const LandingPage: React.FC = () => {
                 into Actionable Intelligence
               </h1>
 
-              <p className="text-[14px] sm:text-[15px] text-[#5D6878] leading-relaxed max-w-xl">
+              <p className="text-[14px] sm:text-[15px] text-[#5D6878] leading-relaxed max-w-2xl">
                 A secure operational platform for analysing crime patterns, understanding jurisdictional risk and supporting data-driven resource planning.
               </p>
 
@@ -206,7 +321,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Security Indicators with Lucide Icons */}
-              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-4 text-[12px] text-[#5D6878]">
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-5 text-[12px] text-[#5D6878]">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#16845B]" />
                   <span className="font-medium text-[#172033]">Secure Staff Access</span>
@@ -223,8 +338,8 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Right 46%: Large Realistic Crime-Intelligence Image */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-[10px] border border-[#D9E1EA] overflow-hidden bg-[#0B1F3A] shadow-xs max-h-[360px]">
+            <div className="lg:col-span-5 flex justify-end">
+              <div className="relative rounded-[10px] border border-[#D9E1EA] overflow-hidden bg-[#0B1F3A] shadow-xs w-full max-w-[560px] max-h-[360px]">
                 <img
                   src="/assets/crime-intelligence/crime-intelligence-hero.jpg"
                   alt="Crime Intelligence Operations Center"
@@ -244,8 +359,8 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 3. Intelligence Capabilities Grid (Immediately after Hero) */}
-        <section id="modules" className="py-12 max-w-6xl mx-auto px-5">
+        {/* 3. Intelligence Capabilities Grid (aligned to max-w-[1440px]) */}
+        <section id="modules" className="py-12 max-w-[1440px] w-full mx-auto px-6 sm:px-8">
           <div className="text-left mb-7">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA]">
               INTELLIGENCE CAPABILITIES
@@ -258,7 +373,7 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
             {capabilityModules.map((module) => {
               const Icon = module.icon;
               return (
@@ -321,11 +436,11 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 4. Small Professional Operational-Information Section */}
-        <section className="pb-12 max-w-6xl mx-auto px-5 w-full">
+        {/* 4. Small Professional Operational-Information Section (aligned to max-w-[1440px]) */}
+        <section className="pb-12 max-w-[1440px] w-full mx-auto px-6 sm:px-8">
           <div className="rounded-lg border border-[#D9E1EA] bg-[#EAF3FA]/50 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5">
-              <div className="h-9 w-9 rounded bg-[#0B1F3A] text-white flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-lg bg-[#0B1F3A] text-white flex items-center justify-center shrink-0">
                 <ShieldCheck className="h-5 w-5 text-[#1D7FE2]" />
               </div>
               <div>
@@ -348,20 +463,35 @@ export const LandingPage: React.FC = () => {
         </section>
       </main>
 
-      {/* 5. Professional Compact Footer */}
-      <footer className="border-t border-[#D9E1EA] bg-white py-4 px-5 text-xs text-[#5D6878]">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-[#1769AA]" />
-            <span className="font-semibold text-[#0B1F3A]">Crime Intelligence &amp; Management Portal</span>
+      {/* 5. Professional Compact Footer (3-column layout inside max-w-[1440px]) */}
+      <footer className="border-t border-[#D9E1EA] bg-white">
+        <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 h-16 sm:h-[68px] grid grid-cols-1 md:grid-cols-3 items-center gap-3">
+          {/* LEFT: Shield Icon + Portal Name */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0">
+              <Shield className="h-3.5 w-3.5 text-[#1D7FE2]" />
+            </div>
+            <span className="text-[13px] sm:text-[14px] font-semibold text-[#172033] truncate">
+              Crime Intelligence &amp; Management Portal
+            </span>
           </div>
-          <span className="text-[11px] text-[#5D6878]">Operational Intelligence Platform</span>
-          <Link
-            to="/login"
-            className="text-[11px] text-[#1769AA] hover:text-[#0B1F3A] font-medium"
-          >
-            Secure Staff Access
-          </Link>
+
+          {/* CENTER: Operational Intelligence Platform */}
+          <div className="text-left md:text-center">
+            <span className="text-[12px] sm:text-[13px] text-[#64748B]">
+              Operational Intelligence Platform
+            </span>
+          </div>
+
+          {/* RIGHT: Secure Staff Access */}
+          <div className="text-left md:text-right">
+            <Link
+              to="/login"
+              className="text-[12px] sm:text-[13px] text-[#1769AA] hover:text-[#0B1F3A] font-medium transition-colors"
+            >
+              Secure Staff Access
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
