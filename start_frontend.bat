@@ -6,9 +6,9 @@ set "PROJECT_ROOT=%~dp0"
 if "%PROJECT_ROOT:~-1%"=="\" set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
 set "FRONTEND_DIR=%PROJECT_ROOT%\frontend"
 
-echo ======================================================================
+echo ============================================================
 echo  CRIME MANAGEMENT SYSTEM - REACT + VITE FRONTEND
-echo ======================================================================
+echo ============================================================
 echo.
 echo [*] Project Root: %PROJECT_ROOT%
 echo [*] Frontend Dir: %FRONTEND_DIR%
@@ -59,7 +59,7 @@ if not errorlevel 1 (
     echo.
     echo [OK] Frontend application is already running on http://localhost:5174
     echo Frontend process is already active. Keeping this monitor open.
-    echo ======================================================================
+    echo ============================================================
     cmd /k
     exit /b 0
 )
@@ -72,7 +72,7 @@ echo [*] Port:                5174
 echo [*] Target API Base URL: http://127.0.0.1:8000/api/v1
 echo.
 echo Press Ctrl+C in this window to stop the frontend server.
-echo ======================================================================
+echo ============================================================
 echo.
 
 :: 7. Ensure IPv4 resolution precedence so both localhost and 127.0.0.1 connect

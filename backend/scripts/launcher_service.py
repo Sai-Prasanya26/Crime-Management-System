@@ -1,7 +1,7 @@
 """
 Crime Intelligence & Management Portal - Launcher Verification Service
-Handles pre-flight checks, port conflict inspection, database readiness,
-backend health monitoring, and frontend readiness.
+Robust process orchestration, port conflict checking, database verification,
+and health synchronization without tracebacks.
 """
 
 import sys
@@ -35,25 +35,42 @@ def get_pid_on_port(port: int) -> Optional[int]:
 
 
 def is_port_listening(host: str, port: int, timeout: float = 1.0) -> bool:
-    """Checks if a TCP port is accepting socket connections."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(timeout)
+    """Checks if a TCP port is accepting socket connections (IPv4 and IPv6)."""
     try:
-        res = s.connect_ex((host, port))
+        s = socket.create_connection((host, port), timeout=timeout)
         s.close()
-        return res == 0
+        return True
     except Exception:
-        s.close()
         return False
 
 
-def is_cms_backend_listening() -> Tuple[bool, Optional[int]]:
-    """Checks if port 8000 is listening and belongs to CMS FastAPI backend."""
+def is_cms_backend_healthy(timeout: float = 2.0) -> bool:
+    """Checks if FastAPI backend is responding AND confirms database connectivity."""
+    if not is_port_listening("127.0.0.1", 8000, timeout=1.0):
+        return False
+
+    url = "http://127.0.0.1:8000/api/v1/health"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CMS-Launcher/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                return (
+                    data.get("status") == "ok"
+                    and data.get("database") == "connected"
+                    and data.get("tables_verified") is True
+                )
+    except Exception:
+        pass
+    return False
+
+
+def is_cms_backend_process() -> Tuple[bool, Optional[int]]:
+    """Checks if port 8000 is listening and belongs to our CMS backend (even if booting or 503)."""
     pid = get_pid_on_port(8000)
-    if not is_port_listening("127.0.0.1", 8000):
+    if not is_port_listening("127.0.0.1", 8000, timeout=1.0):
         return False, None
 
-    # Check if the process responds as our FastAPI server
     for path in ["/health", "/api/v1/health", "/api/v1/docs"]:
         try:
             req = urllib.request.Request(
@@ -71,44 +88,19 @@ def is_cms_backend_listening() -> Tuple[bool, Optional[int]]:
     return False, pid
 
 
-def is_backend_healthy(timeout: float = 2.0) -> bool:
-    """Checks if FastAPI backend is online AND confirms database connectivity."""
-    url = "http://127.0.0.1:8000/api/v1/health"
+def is_cms_frontend_responding(timeout: float = 2.0) -> bool:
+    """Checks if Vite frontend on port 5174 is responding with HTTP 200."""
+    if not is_port_listening("localhost", 5174, timeout=1.0):
+        return False
+
+    url = "http://localhost:5174"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "CMS-Launcher/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            if resp.status == 200:
-                data = json.loads(resp.read().decode("utf-8"))
-                return (
-                    data.get("status") == "ok"
-                    and data.get("database") == "connected"
-                    and data.get("tables_verified") is True
-                )
+            return resp.status == 200
     except Exception:
         pass
     return False
-
-
-def is_cms_frontend_listening() -> Tuple[bool, Optional[int]]:
-    """Checks if port 5174 is listening and serves Vite/CMS frontend."""
-    pid = get_pid_on_port(5174)
-    if not is_port_listening("127.0.0.1", 5174):
-        return False, None
-    try:
-        req = urllib.request.Request(
-            "http://localhost:5174", headers={"User-Agent": "CMS-Launcher/1.0"}
-        )
-        with urllib.request.urlopen(req, timeout=2.0) as resp:
-            if resp.status == 200:
-                return True, pid
-    except Exception:
-        pass
-    return False, pid
-
-
-def is_frontend_healthy(timeout: float = 2.0) -> bool:
-    """Checks if Vite frontend is responding with HTTP 200."""
-    return is_cms_frontend_listening()[0]
 
 
 def check_port_conflicts() -> bool:
@@ -119,21 +111,23 @@ def check_port_conflicts() -> bool:
     has_conflict = False
 
     # Check Port 8000
-    if is_port_listening("127.0.0.1", 8000):
-        is_cms, pid = is_cms_backend_listening()
+    if is_port_listening("127.0.0.1", 8000, timeout=1.0):
+        is_cms, pid = is_cms_backend_process()
         if not is_cms:
-            pid_str = f" (PID: {pid})" if pid else ""
-            print(f"[ERROR] Port 8000 is already occupied by an unrelated process{pid_str}.")
-            print("        Please close the conflicting application or stop the process before launching.")
+            pid_str = f"PID: {pid}" if pid else "PID: Unknown"
+            print(f"[ERROR] Port 8000 is occupied by another application.")
+            print(f"        {pid_str}")
+            print("        Please close the conflicting application before starting.")
             has_conflict = True
 
     # Check Port 5174
-    if is_port_listening("127.0.0.1", 5174):
-        is_cms, pid = is_cms_frontend_listening()
-        if not is_cms:
-            pid_str = f" (PID: {pid})" if pid else ""
-            print(f"[ERROR] Port 5174 is already occupied by an unrelated process{pid_str}.")
-            print("        Please close the conflicting application or stop the process before launching.")
+    if is_port_listening("localhost", 5174, timeout=1.0):
+        if not is_cms_frontend_responding():
+            pid = get_pid_on_port(5174)
+            pid_str = f"PID: {pid}" if pid else "PID: Unknown"
+            print(f"[ERROR] Port 5174 is occupied by another application.")
+            print(f"        {pid_str}")
+            print("        Please close the conflicting application before starting.")
             has_conflict = True
 
     return not has_conflict
@@ -203,15 +197,9 @@ def verify_database(timeout_seconds: int = 15) -> bool:
                     )
                     return False
 
-                # 4. Verify baseline record presence
+                # 4. Verify baseline record presence (without hardcoding specific numbers)
                 incidents_count = (
                     conn.execute(text("SELECT COUNT(*) FROM crime_incidents;")).scalar() or 0
-                )
-                districts_count = (
-                    conn.execute(text("SELECT COUNT(*) FROM districts;")).scalar() or 0
-                )
-                states_count = (
-                    conn.execute(text("SELECT COUNT(*) FROM states;")).scalar() or 0
                 )
                 users_count = conn.execute(text("SELECT COUNT(*) FROM users;")).scalar() or 0
 
@@ -222,9 +210,7 @@ def verify_database(timeout_seconds: int = 15) -> bool:
                     return False
 
                 print(f"[OK] {db_name} connected")
-                print(
-                    f"[OK] Required schema verified ({incidents_count:,} incidents, {districts_count} districts, {states_count} states/UTs, {users_count} users)"
-                )
+                print("[OK] Required schema verified")
                 return True
         except Exception as exc:
             last_error = exc
@@ -245,139 +231,181 @@ def verify_database(timeout_seconds: int = 15) -> bool:
 
 def wait_backend_health(timeout_seconds: int = 60) -> bool:
     """
-    Polls /api/v1/health until HTTP 200 with database verified or timeout.
+    Synchronized backend waiter:
+    1. Waits for TCP port 8000 to listen.
+    2. Polls GET /api/v1/health until status=ok, database=connected, tables_verified=true.
+    Never prints a Python traceback during retries.
     """
     url = "http://127.0.0.1:8000/api/v1/health"
+    print("[*] Waiting for backend...")
+
     start_time = time.time()
-    printed_notice = False
+    attempt = 0
 
     while time.time() - start_time < timeout_seconds:
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "CMS-Launcher/1.0"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    if (
-                        data.get("status") == "ok"
-                        and data.get("database") == "connected"
-                        and data.get("tables_verified") is True
-                    ):
-                        print("[OK] Backend ready")
-                        print(
-                            f"[OK] Database health check passed (Database: {data.get('database_name', 'connected')})"
-                        )
-                        print("      http://127.0.0.1:8000")
-                        return True
-                    else:
-                        print(
-                            f"[*] Backend online, waiting for database readiness ({data.get('status')})..."
-                        )
-        except urllib.error.HTTPError as e:
-            if not printed_notice:
-                print("[*] Waiting for backend and database connection...")
-                printed_notice = True
-        except Exception:
-            if not printed_notice:
-                print("[*] Waiting for backend server...")
-                printed_notice = True
-        time.sleep(2)
+        attempt += 1
 
-    print(f"[ERROR] Backend health check timed out after {timeout_seconds} seconds.")
-    print("        FastAPI did not confirm healthy database connectivity.")
+        # Step A: Check if TCP port 8000 is open
+        if is_port_listening("127.0.0.1", 8000, timeout=1.0):
+            # Step B: Port is open, test health endpoint
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "CMS-Launcher/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    if resp.status == 200:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        if (
+                            data.get("status") == "ok"
+                            and data.get("database") == "connected"
+                            and data.get("tables_verified") is True
+                        ):
+                            print("[OK] FastAPI backend is healthy")
+                            print("[OK] Database health check passed")
+                            return True
+            except urllib.error.HTTPError as e:
+                # 503 or degraded while database connects
+                pass
+            except Exception:
+                # Connection reset, refused, timeout during reboot - expected
+                pass
+
+        print(f"[.] Backend not ready yet... retry {attempt}/{timeout_seconds}")
+        time.sleep(1)
+
+    print()
+    print("=" * 60)
+    print("FASTAPI BACKEND STARTUP FAILED")
+    print("=" * 60)
+    print("Port:")
+    print("8000")
+    print()
+    print("Health URL:")
+    print("http://127.0.0.1:8000/api/v1/health")
+    print()
+    print(f"The backend process did not become healthy within {timeout_seconds} seconds.")
+    print("Check the \"CMS - FastAPI Backend\" terminal for the actual startup error.")
+    print("Project startup has been stopped.")
+    print("=" * 60)
     return False
 
 
 def wait_frontend_ready(timeout_seconds: int = 60) -> bool:
     """
-    Polls http://localhost:5174 until HTTP 200 is returned or timeout.
+    Synchronized frontend waiter:
+    1. Waits for TCP port 5174 to listen.
+    2. Polls http://localhost:5174 until HTTP 200 is returned.
+    Never prints a Python traceback during retries.
     """
     url = "http://localhost:5174"
+    print("[*] Waiting for frontend...")
+
     start_time = time.time()
-    printed_notice = False
+    attempt = 0
 
     while time.time() - start_time < timeout_seconds:
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "CMS-Launcher/1.0"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                if resp.status == 200:
-                    print("[OK] Frontend ready")
-                    print(f"      {url}")
-                    return True
-        except Exception:
-            if not printed_notice:
-                print("[*] Waiting for frontend development server...")
-                printed_notice = True
-        time.sleep(2)
+        attempt += 1
 
-    print(f"[ERROR] Frontend failed to respond with HTTP 200 within {timeout_seconds} seconds.")
+        if is_port_listening("localhost", 5174, timeout=1.0):
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "CMS-Launcher/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    if resp.status == 200:
+                        print("[OK] Frontend is responding")
+                        return True
+            except Exception:
+                pass
+
+        print(f"[.] Frontend not ready yet... retry {attempt}/{timeout_seconds}")
+        time.sleep(1)
+
+    print()
+    print("=" * 60)
+    print("FRONTEND STARTUP FAILED")
+    print("=" * 60)
+    print("Port:")
+    print("5174")
+    print()
+    print("Frontend URL:")
+    print("http://localhost:5174")
+    print()
+    print(f"The frontend dev server did not respond within {timeout_seconds} seconds.")
+    print("Check the \"CMS - Vite Frontend\" terminal for the actual startup error.")
+    print("Project startup has been stopped.")
+    print("=" * 60)
     return False
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: launcher_service.py <command>")
-        print(
-            "Commands: check-ports, verify-db, is-project-running, is-backend-running, is-frontend-running, wait-backend, wait-frontend"
-        )
-        sys.exit(1)
+    try:
+        if len(sys.argv) < 2:
+            print("Usage: launcher_service.py <command>")
+            sys.exit(1)
 
-    cmd = sys.argv[1].lower()
+        cmd = sys.argv[1].lower()
 
-    if cmd == "check-ports":
-        success = check_port_conflicts()
-        sys.exit(0 if success else 1)
+        if cmd == "check-ports":
+            success = check_port_conflicts()
+            sys.exit(0 if success else 1)
 
-    elif cmd == "verify-db":
-        timeout = 15
-        if len(sys.argv) > 2:
-            try:
-                timeout = int(sys.argv[2])
-            except ValueError:
-                pass
-        success = verify_database(timeout)
-        sys.exit(0 if success else 1)
+        elif cmd == "verify-db":
+            timeout = 15
+            if len(sys.argv) > 2:
+                try:
+                    timeout = int(sys.argv[2])
+                except ValueError:
+                    pass
+            success = verify_database(timeout)
+            sys.exit(0 if success else 1)
 
-    elif cmd == "is-project-running":
-        # Both backend healthy (with DB) and frontend healthy
-        running = is_backend_healthy() and is_frontend_healthy()
-        sys.exit(0 if running else 1)
+        elif cmd == "is-project-running":
+            running = is_cms_backend_healthy() and is_cms_frontend_responding()
+            sys.exit(0 if running else 1)
 
-    elif cmd == "is-backend-running":
-        # Check if backend is listening AND healthy
-        running = is_backend_healthy()
-        sys.exit(0 if running else 1)
+        elif cmd == "is-backend-healthy":
+            healthy = is_cms_backend_healthy()
+            sys.exit(0 if healthy else 1)
 
-    elif cmd == "is-backend-process-up":
-        # Check if backend process is listening (even if DB is 503)
-        listening, _ = is_cms_backend_listening()
-        sys.exit(0 if listening else 1)
+        elif cmd == "is-frontend-healthy":
+            healthy = is_cms_frontend_responding()
+            sys.exit(0 if healthy else 1)
 
-    elif cmd == "is-frontend-running":
-        running = is_frontend_healthy()
-        sys.exit(0 if running else 1)
+        elif cmd == "is-port-listening":
+            if len(sys.argv) < 3:
+                sys.exit(1)
+            port = int(sys.argv[2])
+            listening = is_port_listening("127.0.0.1", port)
+            sys.exit(0 if listening else 1)
 
-    elif cmd == "wait-backend":
-        timeout = 60
-        if len(sys.argv) > 2:
-            try:
-                timeout = int(sys.argv[2])
-            except ValueError:
-                pass
-        success = wait_backend_health(timeout)
-        sys.exit(0 if success else 1)
+        elif cmd == "wait-backend":
+            timeout = 60
+            if len(sys.argv) > 2:
+                try:
+                    timeout = int(sys.argv[2])
+                except ValueError:
+                    pass
+            success = wait_backend_health(timeout)
+            sys.exit(0 if success else 1)
 
-    elif cmd == "wait-frontend":
-        timeout = 60
-        if len(sys.argv) > 2:
-            try:
-                timeout = int(sys.argv[2])
-            except ValueError:
-                pass
-        success = wait_frontend_ready(timeout)
-        sys.exit(0 if success else 1)
+        elif cmd == "wait-frontend":
+            timeout = 60
+            if len(sys.argv) > 2:
+                try:
+                    timeout = int(sys.argv[2])
+                except ValueError:
+                    pass
+            success = wait_frontend_ready(timeout)
+            sys.exit(0 if success else 1)
 
-    else:
-        print(f"[ERROR] Unknown command '{cmd}'")
+        else:
+            print(f"[ERROR] Unknown command '{cmd}'")
+            sys.exit(1)
+
+    except SystemExit:
+        raise
+    except (KeyboardInterrupt, Exception):
         sys.exit(1)
 
 

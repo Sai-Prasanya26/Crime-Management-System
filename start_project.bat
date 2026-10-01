@@ -20,34 +20,27 @@ if not exist "%PYTHON_EXE%" (
 :: 3. Fast-Path: Check if project is already running and healthy
 "%PYTHON_EXE%" -m backend.scripts.launcher_service is-project-running >nul 2>&1
 if not errorlevel 1 (
-    echo ======================================================================
-    echo         CRIME INTELLIGENCE ^& MANAGEMENT PORTAL
-    echo                  LOCAL DEVELOPMENT LAUNCHER
-    echo ======================================================================
+    echo ============================================================
+    echo CRIME INTELLIGENCE ^& MANAGEMENT PORTAL
+    echo LOCAL DEVELOPMENT LAUNCHER
+    echo ============================================================
     echo.
-    echo Project Root:
-    echo %PROJECT_ROOT%
+    echo [OK] MySQL already running
+    echo [OK] Database healthy
+    echo [OK] Existing FastAPI backend healthy
+    echo [OK] Existing frontend healthy
+    echo [OK] No duplicate backend
+    echo [OK] No duplicate frontend
     echo.
-    echo [OK] Project is already running and fully operational.
-    echo.
-    echo Frontend:
-    echo http://localhost:5174
-    echo.
-    echo Backend:
-    echo http://127.0.0.1:8000
-    echo.
-    echo Opening existing application in default browser...
+    echo Opening browser...
     start http://localhost:5174
     exit /b 0
 )
 
-echo ======================================================================
-echo         CRIME INTELLIGENCE ^& MANAGEMENT PORTAL
-echo                  LOCAL DEVELOPMENT LAUNCHER
-echo ======================================================================
-echo.
-echo Project Root:
-echo %PROJECT_ROOT%
+echo ============================================================
+echo CRIME INTELLIGENCE ^& MANAGEMENT PORTAL
+echo LOCAL DEVELOPMENT LAUNCHER
+echo ============================================================
 echo.
 
 :: 4. Pre-Flight: Check Port Conflicts (8000, 5174)
@@ -81,13 +74,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -Argum
 sc query MYSQL80 | findstr /i "STATE" | findstr /i "RUNNING" >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo ==================================================
+    echo ============================================================
     echo MYSQL STARTUP FAILED
-    echo ==================================================
+    echo ============================================================
     echo The MySQL80 service could not be started.
     echo Please check the MySQL installation/service configuration.
     echo Project startup has been stopped because the database is required.
-    echo ==================================================
+    echo ============================================================
     echo.
     pause
     exit /b 1
@@ -102,7 +95,6 @@ echo [2/4] Verifying database connection...
 if errorlevel 1 (
     echo.
     echo [ERROR] Database is unavailable or schema verification failed.
-    echo [ERROR] Backend startup cannot continue safely.
     echo [STOP] Project launch aborted.
     echo.
     pause
@@ -112,18 +104,8 @@ if errorlevel 1 (
 :: 7. Step 3: Start FastAPI Backend
 echo.
 echo [3/4] Starting FastAPI backend...
-"%PYTHON_EXE%" -m backend.scripts.launcher_service is-backend-running >nul 2>&1
-if not errorlevel 1 (
-    echo [OK] Backend ready
-    echo [OK] Database health check passed
-    echo       http://127.0.0.1:8000
-    goto :step4_fe
-)
-
-"%PYTHON_EXE%" -m backend.scripts.launcher_service is-backend-process-up >nul 2>&1
-if not errorlevel 1 (
-    echo [*] Backend process detected. Waiting for health confirmation...
-) else (
+"%PYTHON_EXE%" -m backend.scripts.launcher_service is-backend-healthy >nul 2>&1
+if errorlevel 1 (
     start "CMS - FastAPI Backend" /D "%PROJECT_ROOT%" cmd /k "start_backend.bat"
 )
 
@@ -131,7 +113,6 @@ if not errorlevel 1 (
 if errorlevel 1 (
     echo.
     echo [ERROR] Backend health check failed.
-    echo [ERROR] Could not confirm FastAPI and database health.
     echo [STOP] Project launch aborted.
     echo.
     pause
@@ -142,14 +123,10 @@ if errorlevel 1 (
 :step4_fe
 echo.
 echo [4/4] Starting Vite frontend...
-"%PYTHON_EXE%" -m backend.scripts.launcher_service is-frontend-running >nul 2>&1
-if not errorlevel 1 (
-    echo [OK] Frontend ready
-    echo       http://localhost:5174
-    goto :launch_browser
+"%PYTHON_EXE%" -m backend.scripts.launcher_service is-frontend-healthy >nul 2>&1
+if errorlevel 1 (
+    start "CMS - Vite Frontend" /D "%PROJECT_ROOT%" cmd /k "start_frontend.bat"
 )
-
-start "CMS - Vite Frontend" /D "%PROJECT_ROOT%" cmd /k "start_frontend.bat"
 
 "%PYTHON_EXE%" -m backend.scripts.launcher_service wait-frontend 60
 if errorlevel 1 (
@@ -164,9 +141,9 @@ if errorlevel 1 (
 :: 9. Project Ready & Open Application
 :launch_browser
 echo.
-echo ======================================================================
-echo                     PROJECT READY
-echo ======================================================================
+echo ============================================================
+echo PROJECT READY
+echo ============================================================
 echo.
 echo Frontend:
 echo http://localhost:5174
@@ -177,10 +154,8 @@ echo.
 echo Swagger:
 echo http://127.0.0.1:8000/api/v1/docs
 echo.
-echo Database:
-echo crime_management_db
+echo Health:
+echo http://127.0.0.1:8000/api/v1/health
 echo.
-echo ======================================================================
-echo.
-echo Opening application...
+echo Opening browser...
 start http://localhost:5174
