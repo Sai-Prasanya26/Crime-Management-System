@@ -69,7 +69,7 @@ echo.
 echo [*] Starting Vite development server on port 5174...
 echo [*] Host Binding:        localhost
 echo [*] Port:                5174
-echo [*] Target API Base URL: http://127.0.0.1:8000/api/v1
+echo [*] Proxy Routing:       /api -> http://127.0.0.1:8000
 echo.
 echo Press Ctrl+C in this window to stop the frontend server.
 echo ============================================================
