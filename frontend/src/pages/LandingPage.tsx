@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   ArrowRight,
@@ -15,52 +15,14 @@ import {
   ClipboardCheck,
   Menu,
   X,
-  Layers,
-  CheckCircle2,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { analyticsApi } from '../api/analyticsApi';
 
 export const LandingPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Live or verified baseline system metrics
-  const [metrics, setMetrics] = useState({
-    totalIncidents: 191679,
-    closedCases: 93490,
-    openCases: 98189,
-    clearanceRate: 48.77,
-    statesCount: 36,
-    districtsCount: 789,
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    analyticsApi
-      .getOverview()
-      .then((data) => {
-        if (isMounted && data) {
-          setMetrics((prev) => ({
-            ...prev,
-            totalIncidents: data.total_incidents ?? prev.totalIncidents,
-            closedCases: data.cases?.closed ?? prev.closedCases,
-            openCases: data.cases?.open ?? prev.openCases,
-            clearanceRate: data.cases?.clearance_rate_pct ?? prev.clearanceRate,
-            statesCount: data.total_states ?? prev.statesCount,
-            districtsCount: data.total_districts ?? prev.districtsCount,
-          }));
-        }
-      })
-      .catch(() => {
-        // Retain verified baseline repository figures if backend is offline or starting
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -385,70 +347,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 3. Compact Operational Analytics Snapshot Bar */}
-        <section className="border-b border-[#D9E1EA] bg-[#F8FAFC] py-6 sm:py-7">
-          <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 divide-y md:divide-y-0 md:divide-x divide-[#D9E1EA]">
-              <div className="flex items-center gap-3.5 pr-4">
-                <div className="h-10 w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-[20px] sm:text-[22px] font-bold text-[#0B1F3A] leading-tight font-mono">
-                    {metrics.totalIncidents.toLocaleString()}
-                  </div>
-                  <div className="text-[11.5px] sm:text-[12px] font-medium text-[#5D6878] mt-0.5">
-                    Recorded Incidents
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 pt-4 md:pt-0 md:px-4">
-                <div className="h-10 w-10 rounded-lg bg-[#EBF7EE] text-[#16845B] flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-[20px] sm:text-[22px] font-bold text-[#0B1F3A] leading-tight font-mono">
-                    {metrics.clearanceRate.toFixed(1)}%
-                  </div>
-                  <div className="text-[11.5px] sm:text-[12px] font-medium text-[#5D6878] mt-0.5">
-                    {metrics.closedCases.toLocaleString()} Solved Cases
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 pt-4 md:pt-0 md:px-4">
-                <div className="h-10 w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0">
-                  <MapPinned className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-[20px] sm:text-[22px] font-bold text-[#0B1F3A] leading-tight font-mono">
-                    {metrics.districtsCount} Districts
-                  </div>
-                  <div className="text-[11.5px] sm:text-[12px] font-medium text-[#5D6878] mt-0.5">
-                    Across {metrics.statesCount} States &amp; UTs
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 pt-4 md:pt-0 md:pl-4">
-                <div className="h-10 w-10 rounded-lg bg-[#F1F5F9] text-[#415065] flex items-center justify-center shrink-0">
-                  <Layers className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-[20px] sm:text-[22px] font-bold text-[#0B1F3A] leading-tight font-mono">
-                    4 Classes &bull; 21 Types
-                  </div>
-                  <div className="text-[11.5px] sm:text-[12px] font-medium text-[#5D6878] mt-0.5">
-                    Standardized Classification
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. CORE INTELLIGENCE CAPABILITIES (6 Real Photograph-Topped Modules) */}
+        {/* 3. CORE INTELLIGENCE CAPABILITIES (6 Real Photograph-Topped Modules) */}
         <section id="modules" className="py-14 sm:py-16 max-w-[1440px] w-full mx-auto px-6 sm:px-8">
           <div className="text-left mb-8 sm:mb-9">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA]">
@@ -525,7 +424,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 5. Secure Operational Access Section (Aligned with Actual System) */}
+        {/* 4. Secure Operational Access Section (Aligned with Actual System) */}
         <section className="pb-14 sm:pb-16 max-w-[1440px] w-full mx-auto px-6 sm:px-8">
           <div className="rounded-[10px] border border-[#D9E1EA] bg-[#EAF3FA]/50 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5">
@@ -552,7 +451,7 @@ export const LandingPage: React.FC = () => {
         </section>
       </main>
 
-      {/* 6. Professional Compact Footer (3-column layout inside max-w-[1440px]) */}
+      {/* 5. Professional Compact Footer (3-column layout inside max-w-[1440px]) */}
       <footer className="border-t border-[#D9E1EA] bg-white py-4.5 sm:py-5">
         <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
           {/* LEFT: Shield Icon + Portal Name + Subtitle + Subtle Academic Project Title */}
