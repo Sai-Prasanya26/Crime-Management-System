@@ -10,6 +10,8 @@ from backend.app.schemas.auth import (
     UserResponse,
     CreateStaffRequest,
     AuditLogResponse,
+    UpdateProfileRequest,
+    ChangePasswordRequest,
 )
 from backend.app.models.auth import User
 
@@ -101,6 +103,109 @@ class AuthService:
     @staticmethod
     def get_current_user_profile(user: User) -> UserResponse:
         return UserResponse.model_validate(user)
+
+    @staticmethod
+    def update_profile(
+        db: Session,
+        current_user: User,
+        profile_data: UpdateProfileRequest,
+        ip_address: Optional[str] = None,
+    ) -> UserResponse:
+        clean_email = profile_data.email.strip().lower()
+        clean_name = profile_data.full_name.strip()
+
+        # Check if email is changing and if it is taken by another user
+        if clean_email != current_user.email.lower():
+            existing = UserRepository.get_by_username_or_email(db, clean_email)
+            if existing and existing.id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This email address is already registered by another staff member.",
+                )
+
+        updated_user = UserRepository.update_profile(
+            db=db,
+            user_id=current_user.id,
+            full_name=clean_name,
+            email=clean_email,
+        )
+
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User account record not found.",
+            )
+
+        # Audit log for PROFILE_UPDATED
+        UserRepository.log_auth_action(
+            db=db,
+            user_id=current_user.id,
+            action="PROFILE_UPDATED",
+            entity_type="USER",
+            entity_id=str(current_user.id),
+            ip_address=ip_address,
+            details={
+                "updated_fields": ["full_name", "email"],
+                "previous_full_name": current_user.full_name,
+                "new_full_name": clean_name,
+                "previous_email": current_user.email,
+                "new_email": clean_email,
+            },
+        )
+
+        return UserResponse.model_validate(updated_user)
+
+    @staticmethod
+    def change_password(
+        db: Session,
+        current_user: User,
+        password_data: ChangePasswordRequest,
+        ip_address: Optional[str] = None,
+    ) -> dict:
+        if password_data.new_password != password_data.confirm_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirmation password do not match.",
+            )
+
+        if len(password_data.new_password.strip()) < 6:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password must be at least 6 characters.",
+            )
+
+        # Verify current password using Argon2id
+        if not verify_password(password_data.current_password, current_user.password_hash):
+            UserRepository.log_auth_action(
+                db=db,
+                user_id=current_user.id,
+                action="PASSWORD_CHANGE_FAILED",
+                entity_type="USER",
+                entity_id=str(current_user.id),
+                ip_address=ip_address,
+                details={"reason": "Incorrect current password"},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect.",
+            )
+
+        # Hash new password securely
+        new_hash = hash_password(password_data.new_password)
+        UserRepository.update_password(db=db, user_id=current_user.id, password_hash=new_hash)
+
+        # Audit log success (strictly no passwords or hashes)
+        UserRepository.log_auth_action(
+            db=db,
+            user_id=current_user.id,
+            action="PASSWORD_CHANGED",
+            entity_type="USER",
+            entity_id=str(current_user.id),
+            ip_address=ip_address,
+            details={"status": "success"},
+        )
+
+        return {"status": "ok", "message": "Password updated successfully."}
 
     @staticmethod
     def list_staff(db: Session, skip: int = 0, limit: int = 100):

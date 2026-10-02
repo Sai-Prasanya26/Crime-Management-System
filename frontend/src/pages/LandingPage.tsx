@@ -9,22 +9,15 @@ import {
   TrendingUp,
   CarFront,
   FileText,
-  UserRound,
-  LogOut,
   ShieldCheck,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GlobalIntelligenceSearch from '../components/search/GlobalIntelligenceSearch';
+import UserAccountMenu from '../components/layout/UserAccountMenu';
 
 export const LandingPage: React.FC = () => {
-  const { user, isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const { user, isAuthenticated } = useAuth();
 
   // 6 Primary Operational Modules strictly mapped to the actual Crime Management System
   const capabilityModules = [
@@ -123,28 +116,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA] border border-[#D9E1EA]">
-                    <UserRound className="h-4 w-4" />
-                  </div>
-                  <div className="text-left hidden sm:block">
-                    <p className="text-[12.5px] font-semibold text-[#172033] leading-tight max-w-[120px] truncate">
-                      {user.full_name}
-                    </p>
-                    <span className="text-[10px] font-semibold text-[#415065] uppercase tracking-wide">
-                      {user.role}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex h-8 w-8 items-center justify-center rounded border border-[#D9E1EA] text-[#536174] hover:bg-[#EAF3FA] hover:text-[#C53B3B] transition-colors cursor-pointer"
-                  title="Sign out"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
+              <UserAccountMenu />
             ) : (
               <Link
                 to="/login"

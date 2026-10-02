@@ -9,6 +9,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<User>;
   logout: () => Promise<void>;
+  updateUser: (updatedUser: User) => void;
+  refreshUser: () => Promise<User>;
   hasRole: (allowedRoles: UserRole[]) => boolean;
 }
 
@@ -82,6 +84,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+  }, []);
+
+  const refreshUser = useCallback(async (): Promise<User> => {
+    const profile = await authApi.getMe();
+    setUser(profile);
+    return profile;
+  }, []);
+
   const hasRole = (allowedRoles: UserRole[]): boolean => {
     if (!user) return false;
     return allowedRoles.includes(user.role);
@@ -96,6 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         logout,
+        updateUser,
+        refreshUser,
         hasRole,
       }}
     >

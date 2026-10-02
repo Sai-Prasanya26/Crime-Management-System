@@ -19,6 +19,26 @@ export const authApi = {
   },
 
   /**
+   * Update current authenticated user's personal profile (full_name and email).
+   */
+  updateProfile: async (payload: { full_name: string; email: string }): Promise<User> => {
+    const response = await apiClient.patch<User>('/auth/profile', payload);
+    return response.data;
+  },
+
+  /**
+   * Change current authenticated user's password.
+   */
+  changePassword: async (payload: {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
+  }): Promise<{ status: string; message: string }> => {
+    const response = await apiClient.post<{ status: string; message: string }>('/auth/change-password', payload);
+    return response.data;
+  },
+
+  /**
    * Logout user and record audit log.
    */
   logout: async (): Promise<{ status: string; message: string }> => {

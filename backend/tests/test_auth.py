@@ -324,9 +324,184 @@ def test_controlled_staff_account_workflow(admin_token: str, analyst_token: str)
     print(f"[PASS] GET /api/v1/admin/audit-logs: 200 OK (Captured CREATE, STATUS_CHANGED, DELETED)")
 
 
+def test_user_profile_and_password_workflow(admin_token: str):
+    print("\n--- PHASE 7C.19 USER PROFILE & PASSWORD TESTS ---")
+    # 1. Create a dedicated test user for profile testing
+    create_resp = client.post(
+        "/api/v1/admin/users",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "full_name": "Test Officer Profile",
+            "username": "test_profile_user",
+            "email": "test_profile@crimeops.gov.in",
+            "password": "InitialPassword@123",
+            "role": "OFFICER",
+            "is_active": True,
+        },
+    )
+    assert create_resp.status_code == 201
+    test_user_id = create_resp.json()["id"]
+
+    # 2. Login as this new user
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "test_profile_user", "password": "InitialPassword@123"},
+    )
+    assert login_resp.status_code == 200
+    user_token = login_resp.json()["access_token"]
+    print("[PASS] User login with initial credentials: 200 OK")
+
+    # 3. Test duplicate email validation when updating profile
+    dup_resp = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "full_name": "Test Officer Updated",
+            "email": "admin@crimeops.gov.in",  # Taken by admin
+        },
+    )
+    assert dup_resp.status_code == 409
+    assert "already registered" in dup_resp.json()["detail"].lower()
+    print("[PASS] Profile update rejected duplicate email: 409 Conflict")
+
+    # 4. Successfully update profile (Full Name & Email)
+    update_resp = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "full_name": "Test Officer Senior",
+            "email": "test_profile_updated@crimeops.gov.in",
+        },
+    )
+    assert update_resp.status_code == 200
+    updated_data = update_resp.json()
+    assert updated_data["full_name"] == "Test Officer Senior"
+    assert updated_data["email"] == "test_profile_updated@crimeops.gov.in"
+    assert updated_data["username"] == "test_profile_user"  # Read-only, unmolested
+    assert updated_data["role"] == "OFFICER"  # Read-only, unmolested
+    print("[PASS] PATCH /api/v1/auth/profile: 200 OK (Full name & email updated)")
+
+    # 5. Verify GET /api/v1/auth/me returns updated details
+    me_resp = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert me_resp.status_code == 200
+    assert me_resp.json()["full_name"] == "Test Officer Senior"
+    assert me_resp.json()["email"] == "test_profile_updated@crimeops.gov.in"
+    print("[PASS] GET /api/v1/auth/me reflects updated profile data")
+
+    # 6. Bi-directional check: Admin User Management immediately sees updated details
+    admin_users_resp = client.get(
+        "/api/v1/admin/users",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert admin_users_resp.status_code == 200
+    matched = next((u for u in admin_users_resp.json() if u["id"] == test_user_id), None)
+    assert matched is not None
+    assert matched["full_name"] == "Test Officer Senior"
+    assert matched["email"] == "test_profile_updated@crimeops.gov.in"
+    print("[PASS] Bi-directional Sync: Admin user management list immediately reflects user's profile changes")
+
+    # 7. Change password - wrong current password
+    pwd_wrong_resp = client.post(
+        "/api/v1/auth/change-password",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "current_password": "WrongCurrentPassword@123",
+            "new_password": "NewSecretPassword@123",
+            "confirm_password": "NewSecretPassword@123",
+        },
+    )
+    assert pwd_wrong_resp.status_code == 400
+    assert "incorrect" in pwd_wrong_resp.json()["detail"].lower()
+    print("[PASS] Change password rejected invalid current password: 400 Bad Request")
+
+    # 8. Change password - mismatch new & confirm
+    pwd_mismatch_resp = client.post(
+        "/api/v1/auth/change-password",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "current_password": "InitialPassword@123",
+            "new_password": "NewSecretPassword@123",
+            "confirm_password": "DifferentPassword@123",
+        },
+    )
+    assert pwd_mismatch_resp.status_code == 400
+    assert "match" in pwd_mismatch_resp.json()["detail"].lower()
+    print("[PASS] Change password rejected mismatched passwords: 400 Bad Request")
+
+    # 9. Change password - too short (<6 characters)
+    pwd_short_resp = client.post(
+        "/api/v1/auth/change-password",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "current_password": "InitialPassword@123",
+            "new_password": "123",
+            "confirm_password": "123",
+        },
+    )
+    assert pwd_short_resp.status_code in [400, 422]
+    print("[PASS] Change password rejected short password (<6 chars)")
+
+    # 10. Change password - valid change
+    pwd_ok_resp = client.post(
+        "/api/v1/auth/change-password",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "current_password": "InitialPassword@123",
+            "new_password": "NewSecretPassword@123",
+            "confirm_password": "NewSecretPassword@123",
+        },
+    )
+    assert pwd_ok_resp.status_code == 200
+    assert pwd_ok_resp.json()["status"] == "ok"
+    print("[PASS] POST /api/v1/auth/change-password: 200 OK (Argon2id updated)")
+
+    # 11. Verify old password no longer works
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "test_profile_user", "password": "InitialPassword@123"},
+    )
+    assert old_login.status_code == 401
+    print("[PASS] Login with old password rejected: 401 Unauthorized")
+
+    # 12. Verify new password logs in successfully
+    new_login = client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "test_profile_user", "password": "NewSecretPassword@123"},
+    )
+    assert new_login.status_code == 200
+    print("[PASS] Login with new password succeeded: 200 OK")
+
+    # 13. Verify Audit Logs recorded PROFILE_UPDATED and PASSWORD_CHANGED
+    audit_resp = client.get(
+        "/api/v1/admin/audit-logs?limit=20",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert audit_resp.status_code == 200
+    recent_actions = [a["action"] for a in audit_resp.json()]
+    assert "PROFILE_UPDATED" in recent_actions
+    assert "PASSWORD_CHANGED" in recent_actions
+    # Verify no passwords in details
+    for item in audit_resp.json():
+        if item["action"] in ["PROFILE_UPDATED", "PASSWORD_CHANGED"]:
+            details_str = str(item.get("details", ""))
+            assert "password" not in details_str or "NewSecretPassword" not in details_str
+    print("[PASS] Audit log captured PROFILE_UPDATED & PASSWORD_CHANGED safely without sensitive credentials")
+
+    # 14. Clean up test user
+    del_resp = client.delete(
+        f"/api/v1/admin/users/{test_user_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert del_resp.status_code == 200
+    print(f"[PASS] Cleaned up test user {test_user_id} successfully")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("PHASE 6 & 7C.1: RUNNING AUTHENTICATION & RBAC VERIFICATION TEST SUITE")
+    print("PHASE 6 & 7C.1 & 7C.19: AUTHENTICATION & PROFILE VERIFICATION SUITE")
     print("=" * 70)
     admin_token = test_login_success_username()
     analyst_token = test_login_success_email()
@@ -336,9 +511,11 @@ if __name__ == "__main__":
     test_get_me(admin_token)
     test_admin_check(admin_token, analyst_token)
     test_controlled_staff_account_workflow(admin_token, analyst_token)
+    test_user_profile_and_password_workflow(admin_token)
     test_logout(admin_token)
     test_audit_logs_and_last_login()
     print("=" * 70)
-    print("ALL AUTHENTICATION & STAFF MANAGEMENT TESTS PASSED WITH 100% SUCCESS!")
+    print("ALL AUTHENTICATION, PROFILE & ACCOUNT MANAGEMENT TESTS PASSED!")
     print("=" * 70 + "\n")
+
 

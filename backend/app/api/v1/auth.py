@@ -9,6 +9,8 @@ from backend.app.schemas.auth import (
     CreateStaffRequest,
     UpdateUserStatusRequest,
     AuditLogResponse,
+    UpdateProfileRequest,
+    ChangePasswordRequest,
 )
 from backend.app.services.auth_service import AuthService
 from backend.app.repositories.user_repository import UserRepository
@@ -76,6 +78,37 @@ def logout(
         details={"username": current_user.username},
     )
     return {"status": "ok", "message": "Session terminated successfully"}
+
+
+@router.patch(
+    "/profile",
+    response_model=UserResponse,
+    summary="Update Current User Profile",
+    description="Update the authenticated user's personal details (full_name and email). User is determined strictly from JWT.",
+)
+def update_profile(
+    profile_data: UpdateProfileRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    ip_address = request.client.host if request.client else None
+    return AuthService.update_profile(db, current_user, profile_data, ip_address=ip_address)
+
+
+@router.post(
+    "/change-password",
+    summary="Change Password",
+    description="Update the authenticated user's password after verifying the current password.",
+)
+def change_password(
+    password_data: ChangePasswordRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    ip_address = request.client.host if request.client else None
+    return AuthService.change_password(db, current_user, password_data, ip_address=ip_address)
 
 
 # =====================================================================

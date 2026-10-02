@@ -13,6 +13,7 @@ import ResourceOptimizationPage from './pages/ResourceOptimizationPage';
 import BudgetIntelligencePage from './pages/BudgetIntelligencePage';
 import ReportsPage from './pages/ReportsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ProfilePage from './pages/ProfilePage';
 
 export const App: React.FC = () => {
   return (
@@ -95,6 +96,16 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* User Profile & Account Management Route (All Authenticated Roles) */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Home, LogOut, LogIn, Clock, Shield } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { RefreshCw, Home, LogIn, Clock, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import GlobalIntelligenceSearch from '../search/GlobalIntelligenceSearch';
+import UserAccountMenu from './UserAccountMenu';
 
 interface HeaderProps {
   title: string;
@@ -17,8 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing,
 }) => {
-  const { user, isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -43,13 +43,6 @@ export const Header: React.FC<HeaderProps> = ({
     const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-4 sm:px-6 shadow-2xs gap-3">
@@ -121,28 +114,9 @@ export const Header: React.FC<HeaderProps> = ({
           <Home className="h-3.5 w-3.5" />
         </Link>
 
-        {/* User Account / Profile */}
+        {/* User Account / Profile Menu */}
         {isAuthenticated && user ? (
-          <div className="flex items-center gap-2 rounded border border-[#D9E1EA] bg-white py-1 pl-2 pr-1.5 shadow-2xs">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0B1F3A] text-[11px] font-bold text-white shrink-0">
-              {userInitial}
-            </div>
-            <div className="hidden sm:block text-left pr-1">
-              <p className="text-[12px] font-semibold text-[#0B1F3A] leading-tight truncate max-w-[130px]">
-                {user.full_name}
-              </p>
-              <p className="text-[10px] text-[#5D6878] leading-tight uppercase font-medium">
-                {user.role}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-[#C53B3B] transition-colors cursor-pointer ml-0.5"
-              title="Sign Out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <UserAccountMenu />
         ) : (
           <Link
             to="/login"

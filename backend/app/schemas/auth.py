@@ -19,6 +19,7 @@ class UserResponse(BaseModel):
     is_active: bool
     last_login_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,4 +60,21 @@ class AuditLogResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(
+        ...,
+        min_length=5,
+        max_length=100,
+        pattern=r"^[\w\.\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$",
+        description="Official email address",
+    )
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
+    confirm_password: str = Field(..., min_length=6, max_length=128)
 

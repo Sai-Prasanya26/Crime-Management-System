@@ -71,6 +71,25 @@ class UserRepository:
         return user
 
     @staticmethod
+    def update_profile(db: Session, user_id: int, full_name: str, email: str) -> Optional[User]:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.full_name = full_name
+            user.email = email
+            db.commit()
+            db.refresh(user)
+        return user
+
+    @staticmethod
+    def update_password(db: Session, user_id: int, password_hash: str) -> Optional[User]:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.password_hash = password_hash
+            db.commit()
+            db.refresh(user)
+        return user
+
+    @staticmethod
     def delete_user(db: Session, user_id: int) -> bool:
         user = db.query(User).filter(User.id == user_id).first()
         if user:

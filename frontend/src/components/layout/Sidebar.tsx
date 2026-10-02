@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   BarChart3,
@@ -130,7 +130,11 @@ export const Sidebar: React.FC = () => {
       {/* Footer: User Details & Logout */}
       <div className="border-t border-[#12345B] p-2.5">
         <div className="flex items-center justify-between gap-2 rounded bg-white/5 px-2.5 py-2">
-          <div className="min-w-0 flex-1">
+          <Link
+            to="/profile"
+            className="min-w-0 flex-1 hover:opacity-85 transition-opacity block"
+            title="View & Edit Profile"
+          >
             <p className="text-[13px] font-semibold text-white truncate leading-tight">
               {user?.full_name || 'Authorized Staff'}
             </p>
@@ -141,7 +145,7 @@ export const Sidebar: React.FC = () => {
                 <span className="text-[#16845B] font-medium">Active</span>
               </p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-[#C53B3B] transition-colors cursor-pointer shrink-0"

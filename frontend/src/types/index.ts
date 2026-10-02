@@ -23,6 +23,18 @@ export interface User {
   is_active: boolean;
   last_login_at?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface UpdateProfilePayload {
+  full_name: string;
+  email: string;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export interface LoginCredentials {
