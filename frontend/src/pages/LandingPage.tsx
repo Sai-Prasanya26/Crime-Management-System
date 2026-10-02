@@ -240,159 +240,30 @@ export const LandingPage: React.FC = () => {
       </main>
 
       {/* ======================================================== */}
-      {/* 4. NON-REPETITIVE PROJECT CONTEXT & DATA FOOTER          */}
+      {/* 4. MINIMAL PROFESSIONAL ENTERPRISE FOOTER               */}
       {/* ======================================================== */}
-      <footer className="border-t border-[#152B4A] bg-[#071A33] text-white pt-8 pb-5 px-6 sm:px-8">
-        <div className="max-w-[1240px] w-full mx-auto">
-          {/* Brand & Description Section */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B1F3A] border border-[#1E3A5F] text-white shrink-0">
-                <Shield className="h-4.5 w-4.5 text-[#1D7FE2]" />
-              </div>
-              <h3 className="text-[16px] font-semibold text-white tracking-tight">
-                Crime Intelligence &amp; Management Portal
-              </h3>
+      <footer className="border-t border-[#152B4A] bg-[#071A33] text-white py-10 sm:py-12 px-6 sm:px-8">
+        <div className="max-w-[1440px] w-full mx-auto">
+          {/* Brand Row: [Shield Logo] Crime Intelligence & Management Portal */}
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg bg-[#0B1F3A] border border-[#1E3A5F] text-white shrink-0">
+              <Shield className="h-5 w-5 sm:h-5.5 sm:w-5.5 text-[#1D7FE2]" />
             </div>
-            <p className="text-[13px] text-[#94A3B8] leading-relaxed max-w-2xl pt-0.5">
-              An analytical platform for studying crime patterns, jurisdictional context and resource requirements.
-            </p>
+            <h3 className="text-[17px] sm:text-[18px] font-bold text-[#FFFFFF] tracking-tight">
+              Crime Intelligence &amp; Management Portal
+            </h3>
           </div>
 
-          {/* 3-Column Informational Data Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-6">
-            {/* COLUMN 1: DATA COVERAGE */}
-            <div>
-              <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3">
-                Data Coverage
-              </h4>
-              <div className="space-y-2.5">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Historical Period
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    2020–2025
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Geographic Level
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    State/UT and district-level analysis
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Incident Records
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Historical incident-level crime records
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Demographic Reference
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    District-level Census 2011 baseline
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Academic / Project Title */}
+          <p className="text-[13px] sm:text-[14px] text-[#AFC0D4] leading-relaxed mt-4 sm:mt-4.5 max-w-xl">
+            Data-Driven Crime Management System with
+            <br className="hidden sm:inline" /> AI-Based Resource Optimization
+          </p>
 
-            {/* COLUMN 2: DATA CONTEXT */}
-            <div>
-              <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3">
-                Data Context
-              </h4>
-              <div className="space-y-2.5">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Incident Data
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Historical crime incident records used for analytical modelling.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Demographic Data
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Census 2011 district demographic reference data.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Official Benchmarks
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Published aggregate crime statistics maintained separately from incident-level records.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 3: ANALYTICAL SCOPE */}
-            <div>
-              <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3">
-                Analytical Scope
-              </h4>
-              <div className="space-y-2.5">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Temporal Patterns
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Yearly, monthly and hourly analysis
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Jurisdictional Context
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    State and district comparisons
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Crime Characteristics
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Category, type, demographics and weapon analysis
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-200">
-                    Decision Support
-                  </p>
-                  <p className="text-[12px] text-[#94A3B8] leading-tight mt-0.5">
-                    Risk assessment, forecasting and resource planning
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Project Information & Architecture Context Note */}
-          <div className="mt-6 pt-4 border-t border-[#182C4E]/80 space-y-1">
-            <div className="text-[12px] text-[#8E9EB5]">
-              <span className="font-semibold text-slate-300">PROJECT:</span>{' '}
-              <span>Data-Driven Crime Management System with AI-Based Resource Optimization</span>
-            </div>
-            <p className="text-[11.5px] text-[#718096] leading-relaxed">
-              Incident-level historical data, demographic reference data and official aggregate benchmarks are maintained as separate analytical contexts.
-            </p>
-          </div>
-
-          {/* Bottom Bar with Subtle Divider */}
-          <div className="mt-4 pt-3 border-t border-[#182C4E]/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[#8E9EB5]">
-            <span>Crime Intelligence &amp; Management Portal</span>
-            <span>&copy; 2026</span>
-          </div>
+          {/* Copyright */}
+          <p className="text-[12px] text-[#8FA5BC] mt-4 sm:mt-5">
+            &copy; 2026 Crime Intelligence &amp; Management Portal
+          </p>
         </div>
       </footer>
     </div>
