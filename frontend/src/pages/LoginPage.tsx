@@ -69,7 +69,7 @@ export const LoginPage: React.FC = () => {
         <div className="relative hidden md:flex md:col-span-5 flex-col justify-between p-7 bg-[#0B1F3A] text-white overflow-hidden">
           {/* Background Image with Dark Navy Gradient */}
           <img
-            src="/images/hero/control_room.jpg"
+            src="/images/hero-investigation.jpg"
             alt="Security Operations Center"
             className="absolute inset-0 h-full w-full object-cover opacity-35"
             onError={(e) => {

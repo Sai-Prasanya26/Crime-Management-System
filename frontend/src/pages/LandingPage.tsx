@@ -27,7 +27,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Analyse crime incidents across categories, types, jurisdictions, demographics, weapons and time periods.',
       icon: BarChart3,
-      image: '/images/modules/crime_analytics.jpg',
+      image: '/images/crime-analytics.jpg',
       link: '/dashboard',
       actionText: 'View Crime Analytics',
     },
@@ -37,7 +37,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Explore crime distribution across states and districts with geographic and population-based context.',
       icon: MapPinned,
-      image: '/images/modules/geographic_intelligence.jpg',
+      image: '/images/geographic-intelligence.jpg',
       link: '/districts',
       actionText: 'Explore Jurisdictions',
     },
@@ -47,7 +47,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Analyse historical crime trends and support future crime forecasting using temporal patterns.',
       icon: TrendingUp,
-      image: '/images/modules/crime_trends.jpg',
+      image: '/images/crime-trends.jpg',
       link: '/trends',
       actionText: 'View Crime Trends',
     },
@@ -57,7 +57,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Assess jurisdiction-level risk using crime volume, severity, trends and population-based indicators.',
       icon: ShieldAlert,
-      image: '/images/modules/risk_assessment.jpg',
+      image: '/images/risk-assessment.jpg',
       link: '/risk',
       actionText: 'Assess Risk',
     },
@@ -67,7 +67,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Compare available resources with recommended requirements and identify operational shortfalls.',
       icon: CarFront,
-      image: '/images/modules/resource_optimization.jpg',
+      image: '/images/resource-optimization.jpg',
       link: '/resources',
       actionText: 'Optimize Resources',
     },
@@ -77,7 +77,7 @@ export const LandingPage: React.FC = () => {
       description:
         'Estimate resource costs and generate structured intelligence, risk, resource and executive reports.',
       icon: FileText,
-      image: '/images/modules/intelligence_reports.jpg',
+      image: '/images/intelligence-reports.jpg',
       link: '/reports',
       actionText: 'View Reports',
     },
@@ -160,7 +160,7 @@ export const LandingPage: React.FC = () => {
             <div className="lg:col-span-6 flex justify-end">
               <div className="relative rounded-[10px] border border-[#D9E1EA] overflow-hidden bg-[#0B1F3A] shadow-xs w-full max-w-[650px] h-[360px] sm:h-[410px] md:h-[420px]">
                 <img
-                  src="/images/hero/control_room.jpg"
+                  src="/images/hero-investigation.jpg"
                   alt="Crime Intelligence Operations Center"
                   className="w-full h-full object-cover"
                   onError={(e) => {

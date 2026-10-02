@@ -238,7 +238,7 @@ export const DistrictsPage: React.FC = () => {
           {/* GIS Visual Graphic */}
           <div className="relative h-[240px] sm:h-[280px] bg-[#0B1F3A] overflow-hidden">
             <img
-              src="/images/modules/geographic_intelligence.jpg"
+              src="/images/geographic-intelligence.jpg"
               alt="Geographic Crime Map"
               className="w-full h-full object-cover"
               onError={(e) => {
