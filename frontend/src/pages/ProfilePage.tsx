@@ -160,35 +160,35 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 1. DEDICATED PROFILE HEADER: Clean, No Operational Clutter */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="max-w-[1240px] w-full mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-[68px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <div className="w-[calc(100%-48px)] max-w-[1240px] mx-auto h-full flex items-center justify-between gap-4">
           {/* LEFT: [Shield Logo] My Profile + Subtitle */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0 shadow-2xs">
               <Shield className="h-5 w-5 text-[#1D7FE2]" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-[15px] sm:text-[17px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
+              <h1 className="text-[16px] sm:text-[18px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
                 My Profile
               </h1>
-              <p className="text-[11px] sm:text-xs text-[#5D6878] leading-tight mt-0.5 truncate hidden sm:block">
+              <p className="text-[11.5px] sm:text-xs text-[#5D6878] leading-tight mt-0.5 truncate hidden sm:block">
                 Manage your personal information and account security.
               </p>
             </div>
           </div>
 
-          {/* RIGHT: [Home Link] + [User Account Menu] */}
+          {/* RIGHT: [Home Link (42–44px)] + [User Account Menu (42–44px)] */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-3 py-1.5 text-xs font-semibold text-[#172033] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs"
+              className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#D9E1EA] bg-white px-4 text-[13px] font-semibold text-[#172033] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs shrink-0 cursor-pointer"
               title="Return to Homepage"
             >
-              <Home className="h-3.5 w-3.5 text-[#1769AA]" />
+              <Home className="h-4 w-4 text-[#1769AA]" />
               <span>Home</span>
             </Link>
 
-            <UserAccountMenu />
+            <UserAccountMenu triggerClassName="h-[42px] px-3" />
           </div>
         </div>
       </header>
@@ -196,19 +196,19 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. MAIN PROFILE CONTENT: Two-Column Dedicated Layout     */}
       {/* ======================================================== */}
-      <main className="flex-1 w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <main className="w-[calc(100%-48px)] max-w-[1240px] mx-auto py-8 sm:py-10 flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,32%)_minmax(0,68%)] gap-6 items-start">
           {/* ---------------------------------------------------- */}
-          {/* LEFT COLUMN: Profile Summary (Smaller/Compact Card, ~32%) */}
+          {/* LEFT COLUMN: Profile Summary (Compact Card, ~32%)    */}
           {/* ---------------------------------------------------- */}
-          <div className="lg:col-span-4">
+          <div>
             <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               {/* Avatar, Name, Role Badge */}
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-18 w-18 items-center justify-center rounded-full bg-[#0B1F3A] text-2xl font-bold text-white shadow-xs ring-4 ring-[#EAF3FA]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0B1F3A] text-xl font-bold text-white shadow-xs ring-4 ring-[#EAF3FA]">
                   {userInitial}
                 </div>
-                <h2 className="text-base font-bold text-[#0B1F3A] mt-3.5 leading-snug">
+                <h2 className="text-base font-bold text-[#0B1F3A] mt-2.5 leading-snug">
                   {user?.full_name || 'Staff User'}
                 </h2>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase bg-slate-100 text-slate-700 border border-slate-200 mt-1">
@@ -217,10 +217,10 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               {/* Clean Horizontal Divider */}
-              <div className="my-5 border-t border-[#E5EAF0]" />
+              <div className="my-4 border-t border-[#E5EAF0]" />
 
               {/* Essential User Details List */}
-              <div className="space-y-4 text-left">
+              <div className="space-y-3.5 text-left">
                 {/* FULL NAME */}
                 <div>
                   <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
@@ -290,9 +290,9 @@ export const ProfilePage: React.FC = () => {
           {/* ---------------------------------------------------- */}
           {/* RIGHT COLUMN: Editable Content (~68%)                */}
           {/* ---------------------------------------------------- */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="space-y-6 w-full">
             {/* Card 1: PERSONAL INFORMATION (Primary / Large Card) */}
-            <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
+            <div className="w-full rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
                   <UserRound className="h-4.5 w-4.5 text-[#1769AA]" />
@@ -384,7 +384,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Card 2: CHANGE PASSWORD (Smaller Card) */}
-            <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
+            <div className="w-full rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-4.5 w-4.5 text-[#1769AA]" />
@@ -524,8 +524,8 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. SUBTLE PROFILE FOOTER                                */}
       {/* ======================================================== */}
-      <footer className="border-t border-[#D9E1EA] bg-white py-3.5 px-4 sm:px-6 text-center text-[11.5px] text-[#64748B]">
-        <div className="max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="border-t border-[#D9E1EA] bg-white py-3.5 text-center text-[11.5px] text-[#64748B]">
+        <div className="w-[calc(100%-48px)] max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Crime Intelligence &amp; Management Portal &bull; Staff Profile &amp; Account Management</span>
           <span className="text-[#5D6878]">Authorized Personnel Only</span>
         </div>

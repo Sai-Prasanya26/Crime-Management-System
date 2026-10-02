@@ -13,9 +13,10 @@ const ROLE_BADGES: Record<string, { label: string; bg: string; text: string; bor
 
 interface UserAccountMenuProps {
   className?: string;
+  triggerClassName?: string;
 }
 
-export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({ className = '' }) => {
+export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({ className = '', triggerClassName = '' }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +69,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({ className = ''
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-lg border border-[#D9E1EA] bg-white py-1.5 pl-2 pr-2.5 shadow-2xs hover:bg-[#F4F7FA] hover:border-[#BAC7D5] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20"
+        className={`flex items-center gap-2 rounded-lg border border-[#D9E1EA] bg-white py-1.5 pl-2 pr-2.5 shadow-2xs hover:bg-[#F4F7FA] hover:border-[#BAC7D5] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 ${triggerClassName}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label="User Account Menu"
