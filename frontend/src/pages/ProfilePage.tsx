@@ -197,30 +197,30 @@ export const ProfilePage: React.FC = () => {
       {/* 2. MAIN PROFILE CONTENT: Two-Column Dedicated Layout     */}
       {/* ======================================================== */}
       <main className="w-[calc(100%-48px)] max-w-[1240px] mx-auto py-8 sm:py-10 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,32%)_minmax(0,68%)] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] gap-6 items-stretch">
           {/* ---------------------------------------------------- */}
-          {/* LEFT COLUMN: Profile Summary (Compact Card, ~32%)    */}
+          {/* LEFT COLUMN: Profile Summary (Tall Card, 380px)      */}
           {/* ---------------------------------------------------- */}
-          <div>
-            <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
-              {/* Avatar, Name, Role Badge */}
+          <div className="h-full">
+            <div className="w-full rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs flex flex-col justify-between h-full">
+              {/* TOP: Avatar, Name, Role Badge */}
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0B1F3A] text-xl font-bold text-white shadow-xs ring-4 ring-[#EAF3FA]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#0B1F3A] text-2xl font-bold text-white shadow-xs ring-4 ring-[#EAF3FA]">
                   {userInitial}
                 </div>
-                <h2 className="text-base font-bold text-[#0B1F3A] mt-2.5 leading-snug">
+                <h2 className="text-[19px] font-bold text-[#0B1F3A] mt-3 leading-snug">
                   {user?.full_name || 'Staff User'}
                 </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase bg-slate-100 text-slate-700 border border-slate-200 mt-1">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold tracking-wide uppercase bg-slate-100 text-slate-700 border border-slate-200 mt-1.5">
                   {user?.role || 'OFFICER'}
                 </span>
               </div>
 
-              {/* Clean Horizontal Divider */}
-              <div className="my-4 border-t border-[#E5EAF0]" />
+              {/* Top Divider */}
+              <div className="my-5 border-t border-[#E5EAF0]" />
 
-              {/* Essential User Details List */}
-              <div className="space-y-3.5 text-left">
+              {/* MIDDLE: Essential Details */}
+              <div className="flex-1 flex flex-col justify-between gap-3.5 text-left py-1">
                 {/* FULL NAME */}
                 <div>
                   <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
@@ -273,26 +273,29 @@ export const ProfilePage: React.FC = () => {
                     </span>
                   </div>
                 </div>
+              </div>
 
-                {/* MEMBER SINCE */}
-                <div>
-                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
-                    Member Since
-                  </p>
-                  <p className="text-sm font-medium text-[#0B1F3A] mt-0.5">
-                    {formatMemberSince(user?.created_at)}
-                  </p>
-                </div>
+              {/* Bottom Divider */}
+              <div className="my-5 border-t border-[#E5EAF0]" />
+
+              {/* BOTTOM: Member Since */}
+              <div className="text-left">
+                <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
+                  Member Since
+                </p>
+                <p className="text-sm font-medium text-[#0B1F3A] mt-0.5">
+                  {formatMemberSince(user?.created_at)}
+                </p>
               </div>
             </div>
           </div>
 
           {/* ---------------------------------------------------- */}
-          {/* RIGHT COLUMN: Editable Content (~68%)                */}
+          {/* RIGHT COLUMN: Editable Content Cards                 */}
           {/* ---------------------------------------------------- */}
-          <div className="space-y-6 w-full">
-            {/* Card 1: PERSONAL INFORMATION (Primary / Large Card) */}
-            <div className="w-full rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
+          <div className="flex flex-col gap-6 w-full">
+            {/* Card 1: PERSONAL INFORMATION (Smaller Card, ~250px) */}
+            <div className="w-full flex-none rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
                   <UserRound className="h-4.5 w-4.5 text-[#1769AA]" />
@@ -336,7 +339,7 @@ export const ProfilePage: React.FC = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="w-full rounded-lg border border-[#D9E1EA] bg-white px-3.5 py-2 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
+                      className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
                     />
                   </div>
 
@@ -355,7 +358,7 @@ export const ProfilePage: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email address"
-                      className="w-full rounded-lg border border-[#D9E1EA] bg-white px-3.5 py-2 text-xs font-mono font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
+                      className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 text-xs font-mono font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
                     />
                   </div>
                 </div>
@@ -366,7 +369,7 @@ export const ProfilePage: React.FC = () => {
                     type="button"
                     onClick={handleResetProfile}
                     disabled={isUpdatingProfile}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-4 py-2 text-xs font-semibold text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#0B1F3A] transition-colors cursor-pointer disabled:opacity-50"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-4 text-xs font-semibold text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#0B1F3A] transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     <span>Cancel</span>
@@ -374,7 +377,7 @@ export const ProfilePage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isUpdatingProfile}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#0B1F3A] px-5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors cursor-pointer disabled:opacity-50"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#0B1F3A] px-5 text-xs font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Save className="h-3.5 w-3.5 text-[#1D7FE2]" />
                     <span>{isUpdatingProfile ? 'Saving...' : 'Save Changes'}</span>
@@ -383,8 +386,8 @@ export const ProfilePage: React.FC = () => {
               </form>
             </div>
 
-            {/* Card 2: CHANGE PASSWORD (Smaller Card) */}
-            <div className="w-full rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
+            {/* Card 2: CHANGE PASSWORD (Larger Card, ~290px) */}
+            <div className="w-full flex-none rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-4.5 w-4.5 text-[#1769AA]" />
@@ -428,7 +431,7 @@ export const ProfilePage: React.FC = () => {
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="Enter your current password"
-                      className="w-full rounded-lg border border-[#D9E1EA] bg-white px-3.5 py-2 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
+                      className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
                     />
                     <button
                       type="button"
@@ -458,7 +461,7 @@ export const ProfilePage: React.FC = () => {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Enter new password"
-                        className="w-full rounded-lg border border-[#D9E1EA] bg-white px-3.5 py-2 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
+                        className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
                       />
                       <button
                         type="button"
@@ -490,7 +493,7 @@ export const ProfilePage: React.FC = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm new password"
-                        className="w-full rounded-lg border border-[#D9E1EA] bg-white px-3.5 py-2 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
+                        className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 pr-10 text-xs font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
                       />
                       <button
                         type="button"
@@ -509,7 +512,7 @@ export const ProfilePage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#0B1F3A] px-5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors cursor-pointer disabled:opacity-50"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#0B1F3A] px-5 text-xs font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <KeyRound className="h-3.5 w-3.5 text-[#1D7FE2]" />
                     <span>{isChangingPassword ? 'Changing Password...' : 'Change Password'}</span>
