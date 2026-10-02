@@ -196,7 +196,7 @@ export const LandingPage: React.FC = () => {
                   aria-label={`Open ${module.title}`}
                   className="group rounded-[10px] border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-2xs h-[405px] sm:h-[420px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/40 focus:ring-offset-2 block text-left"
                 >
-                  {/* Top Real Photograph: 230–235px height with Badges */}
+                  {/* Top Real Photograph: 230–235px height */}
                   <div className="relative h-[230px] sm:h-[235px] w-full overflow-hidden bg-[#0B1F3A] shrink-0">
                     <img
                       src={module.image}
@@ -206,17 +206,6 @@ export const LandingPage: React.FC = () => {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/70 via-transparent to-transparent pointer-events-none" />
-
-                    {/* Top Left Numbered Badge */}
-                    <div className="absolute top-3 left-3 bg-[#0B1F3A]/90 backdrop-blur-xs px-2.5 py-0.5 rounded text-[11px] font-bold text-white border border-white/10 font-mono">
-                      <span>{module.number}</span>
-                    </div>
-
-                    {/* Top Right Lucide Icon Overlay */}
-                    <div className="absolute top-3 right-3 bg-[#0B1F3A]/90 backdrop-blur-xs p-1.5 rounded text-[#1D7FE2] border border-white/10">
-                      <Icon className="h-4 w-4" />
-                    </div>
                   </div>
 
                   {/* Content (160–180px with 20px padding) */}
