@@ -237,69 +237,162 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 4. Secure Operational Access Section (Aligned with Actual System) */}
-        <section className="pb-14 sm:pb-16 max-w-[1440px] w-full mx-auto px-6 sm:px-8">
-          <div className="rounded-[10px] border border-[#D9E1EA] bg-[#EAF3FA]/50 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div className="h-10 w-10 rounded-lg bg-[#0B1F3A] text-white flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-5 w-5 text-[#1D7FE2]" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA] block">
-                  SECURE OPERATIONAL ACCESS
-                </span>
-                <p className="text-[13px] sm:text-[14px] text-[#5D6878] mt-0.5 leading-relaxed">
-                  Designed for authorized personnel working with crime intelligence, jurisdictional analysis, risk assessment and operational resource planning.
-                </p>
-              </div>
-            </div>
-            <Link
-              to={isAuthenticated ? '/dashboard' : '/login'}
-              className="inline-flex h-10 items-center gap-2 rounded bg-[#0B1F3A] px-4.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
-            >
-              <span>Authorized Personnel Access</span>
-              <ArrowRight className="h-4 w-4 text-[#1D7FE2]" />
-            </Link>
-          </div>
-        </section>
       </main>
 
-      {/* 5. Professional Compact Footer (3-column layout inside max-w-[1440px]) */}
-      <footer className="border-t border-[#D9E1EA] bg-white py-4.5 sm:py-5">
-        <div className="max-w-[1440px] w-full mx-auto px-6 sm:px-8 grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
-          {/* LEFT: Shield Icon + Portal Name + Subtitle + Subtle Academic Project Title */}
-          <div className="md:col-span-6 flex items-start gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0 mt-0.5">
-              <Shield className="h-3.5 w-3.5 text-[#1D7FE2]" />
-            </div>
-            <div className="min-w-0 max-w-[650px]">
-              <p className="text-[13px] sm:text-[14px] font-semibold text-[#172033] leading-tight">
-                Crime Intelligence &amp; Management Portal
-              </p>
-              <p className="text-[11px] sm:text-[11.5px] font-medium text-[#5D6878] leading-tight mt-0.5">
-                Operations &amp; Analysis Center
-              </p>
-              <p className="text-[11px] sm:text-[11.5px] font-normal text-[#64748B] mt-1.5 leading-snug">
+      {/* ======================================================== */}
+      {/* 4. PROFESSIONAL ENTERPRISE PROJECT FOOTER               */}
+      {/* ======================================================== */}
+      <footer className="border-t border-[#152B4A] bg-[#071A33] text-white pt-12 pb-6 px-6 sm:px-8">
+        <div className="max-w-[1240px] w-full mx-auto">
+          {/* Main 4-Part Footer Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+            {/* LEFT: Project Identity & Description (~40% on Desktop) */}
+            <div className="lg:col-span-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0B1F3A] border border-[#1E3A5F] text-white shrink-0">
+                  <Shield className="h-5 w-5 text-[#1D7FE2]" />
+                </div>
+                <h3 className="text-[17px] font-semibold text-white tracking-tight">
+                  Crime Intelligence &amp; Management Portal
+                </h3>
+              </div>
+
+              <p className="text-[13px] font-medium text-slate-300 leading-snug">
                 Data-Driven Crime Management System with AI-Based Resource Optimization
               </p>
+
+              <p className="text-[13.5px] text-[#94A3B8] leading-relaxed max-w-md pt-1">
+                A unified platform for crime analytics, geographic intelligence, trend analysis, risk assessment and resource planning.
+              </p>
+            </div>
+
+            {/* RIGHT: Three Navigation Columns (~60% on Desktop) */}
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-8">
+              {/* COLUMN 1: PLATFORM */}
+              <div>
+                <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3.5">
+                  Platform
+                </h4>
+                <ul className="space-y-2.5 text-[13.5px]">
+                  <li>
+                    <Link
+                      to="/"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Home
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/dashboard"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Crime Analytics
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/districts"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Geographic Intelligence
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/trends"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Crime Trends
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* COLUMN 2: INTELLIGENCE */}
+              <div>
+                <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3.5">
+                  Intelligence
+                </h4>
+                <ul className="space-y-2.5 text-[13.5px]">
+                  <li>
+                    <Link
+                      to="/risk"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Risk Assessment
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/predictions"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Predictions
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/resources"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Resource Optimization
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/budget"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Budget Intelligence
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/reports"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Reports
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* COLUMN 3: ACCOUNT */}
+              <div>
+                <h4 className="text-[11.5px] font-semibold uppercase tracking-wider text-white mb-3.5">
+                  Account
+                </h4>
+                <ul className="space-y-2.5 text-[13.5px]">
+                  <li>
+                    <Link
+                      to="/login"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      Staff Portal
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/profile"
+                      className="text-[#94A3B8] hover:text-white transition-colors"
+                    >
+                      My Profile
+                    </Link>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* CENTER: Operational Intelligence Platform */}
-          <div className="md:col-span-3 text-left md:text-center">
-            <span className="text-[12px] sm:text-[12.5px] text-[#64748B] font-medium">
-              Operational Intelligence Platform
+          {/* Bottom Bar with Subtle Divider */}
+          <div className="mt-12 pt-6 border-t border-[#182C4E]/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-[#8E9EB5]">
+            <span>
+              Data-Driven Crime Management System with AI-Based Resource Optimization
             </span>
-          </div>
-
-          {/* RIGHT: Secure Staff Access */}
-          <div className="md:col-span-3 text-left md:text-right">
-            <Link
-              to="/login"
-              className="text-[12px] sm:text-[12.5px] text-[#1769AA] hover:text-[#0B1F3A] font-medium transition-colors"
-            >
-              Secure Staff Access
-            </Link>
+            <span>
+              &copy; 2026 Crime Intelligence &amp; Management Portal
+            </span>
           </div>
         </div>
       </footer>
