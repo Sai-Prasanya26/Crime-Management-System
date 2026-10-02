@@ -190,16 +190,18 @@ export const LandingPage: React.FC = () => {
             {capabilityModules.map((module) => {
               const Icon = module.icon;
               return (
-                <div
+                <Link
                   key={module.number}
-                  className="rounded-[10px] border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs h-[405px] sm:h-[420px]"
+                  to={module.link}
+                  aria-label={`Open ${module.title}`}
+                  className="group rounded-[10px] border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-2xs h-[405px] sm:h-[420px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/40 focus:ring-offset-2 block text-left"
                 >
                   {/* Top Real Photograph: 230–235px height with Badges */}
                   <div className="relative h-[230px] sm:h-[235px] w-full overflow-hidden bg-[#0B1F3A] shrink-0">
                     <img
                       src={module.image}
                       alt={module.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.01]"
                       onError={(e) => {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
@@ -221,10 +223,10 @@ export const LandingPage: React.FC = () => {
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-2.5">
-                        <div className="h-10 w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0">
+                        <div className="h-10 w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0 group-hover:bg-[#1769AA] group-hover:text-white transition-colors duration-200">
                           <Icon className="h-5 w-5" />
                         </div>
-                        <h3 className="text-[17px] sm:text-[18px] font-bold text-[#0B1F3A] leading-tight">
+                        <h3 className="text-[17px] sm:text-[18px] font-bold text-[#0B1F3A] leading-tight group-hover:text-[#1769AA] transition-colors">
                           {module.title}
                         </h3>
                       </div>
@@ -234,16 +236,13 @@ export const LandingPage: React.FC = () => {
                     </div>
 
                     <div className="pt-3.5 border-t border-[#D9E1EA] mt-auto">
-                      <Link
-                        to={module.link}
-                        className="text-[13px] sm:text-[13.5px] font-semibold text-[#1769AA] hover:text-[#0B1F3A] flex items-center justify-between group transition-colors"
-                      >
+                      <div className="text-[13px] sm:text-[13.5px] font-semibold text-[#1769AA] group-hover:text-[#0B1F3A] flex items-center justify-between transition-colors">
                         <span>{module.actionText}</span>
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
