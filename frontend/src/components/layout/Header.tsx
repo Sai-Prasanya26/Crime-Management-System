@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, Home, LogOut, LogIn, Clock, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import GlobalIntelligenceSearch from '../search/GlobalIntelligenceSearch';
 
 interface HeaderProps {
   title: string;
@@ -51,27 +52,36 @@ export const Header: React.FC<HeaderProps> = ({
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-5 sm:px-6 shadow-2xs">
+    <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-4 sm:px-6 shadow-2xs gap-3">
       {/* Left: Shield Emblem & Page Title / Breadcrumb */}
-      <div className="flex items-center gap-3 min-w-0 pr-4">
+      <div className="flex items-center gap-3 min-w-0 shrink-0 pr-2">
         <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0">
           <Shield className="h-4 w-4 text-[#1D7FE2]" />
         </div>
         <div className="h-6 w-px bg-[#D9E1EA] hidden sm:block shrink-0" />
         <div className="min-w-0">
-          <h1 className="text-[16px] sm:text-[18px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
+          <h1 className="text-[15px] sm:text-[17px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-[11.5px] sm:text-[12px] text-[#5D6878] mt-0.5 leading-tight truncate">
+            <p className="text-[11px] sm:text-[11.5px] text-[#5D6878] mt-0.5 leading-tight truncate">
               {subtitle}
             </p>
           )}
         </div>
       </div>
 
+      {/* Center: Global Intelligence Search (accessible on dashboard pages too) */}
+      <div className="hidden xl:flex items-center flex-1 max-w-[340px] 2xl:max-w-[380px] mx-3">
+        <GlobalIntelligenceSearch />
+      </div>
+
       {/* Right: Operational Status, Time & Controls */}
       <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* Mobile / Tablet search trigger button */}
+        <div className="xl:hidden">
+          <GlobalIntelligenceSearch />
+        </div>
         {/* Operational Date/Time */}
         <div className="hidden lg:flex items-center gap-1.5 rounded border border-[#D9E1EA] bg-[#F4F7FA] px-2.5 py-1 text-[11px] font-medium text-[#5D6878]">
           <Clock className="h-3 w-3 text-[#1769AA]" />

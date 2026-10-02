@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GlobalIntelligenceSearch from '../components/search/GlobalIntelligenceSearch';
 
 export const LandingPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -95,28 +96,26 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-[#172033] flex flex-col justify-between selection:bg-[#1769AA] selection:text-white">
-      {/* 1. Professional Header: 3 clearly separated zones (Brand, Navigation, User) */}
+      {/* 1. Professional Header: 4 clearly separated zones (Brand, Navigation, Search, User) */}
       <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="max-w-[1440px] w-full mx-auto h-full px-6 sm:px-8 flex items-center justify-between">
-          {/* ZONE 1: LEFT BRAND AREA (width ~300-330px, margin-right 32-40px) */}
-          <div className="flex items-center gap-3.5 shrink-0 mr-6 lg:mr-10 min-w-[280px] max-w-[340px]">
+        <div className="max-w-[1440px] w-full mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 lg:gap-4">
+          {/* ZONE 1: LEFT BRAND AREA (Shield + Portal Name, NO subtitle) */}
+          <div className="flex items-center gap-3 shrink-0 mr-1 sm:mr-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0">
               <Shield className="h-5 w-5 text-[#1D7FE2]" />
             </div>
             <div className="min-w-0">
               <Link to="/" className="block">
-                <span className="font-bold text-[15px] sm:text-[16px] tracking-tight text-[#0B1F3A] block leading-tight truncate">
-                  Crime Intelligence &amp; Management Portal
-                </span>
-                <span className="text-[11.5px] font-medium text-[#5D6878] block leading-none mt-1">
-                  Operations &amp; Analysis Center
+                <span className="font-bold text-[14.5px] sm:text-[16px] tracking-tight text-[#0B1F3A] block leading-tight truncate">
+                  <span className="hidden sm:inline">Crime Intelligence &amp; Management Portal</span>
+                  <span className="sm:hidden">Crime Intelligence Portal</span>
                 </span>
               </Link>
             </div>
           </div>
 
-          {/* ZONE 2: CENTER PRIMARY NAVIGATION (gap 24-28px, font 13-14px, weight 500, color #536174, active #1769AA) */}
-          <nav className="hidden xl:flex items-center justify-center gap-6 lg:gap-7 flex-1">
+          {/* ZONE 2: CENTER PRIMARY NAVIGATION */}
+          <nav className="hidden 2xl:flex items-center justify-center gap-5 xl:gap-6 shrink-0">
             <Link
               to="/"
               className="text-[13.5px] font-semibold text-[#1769AA] border-b-2 border-[#1769AA] py-5 px-1 -mb-[2px] transition-colors"
@@ -149,26 +148,36 @@ export const LandingPage: React.FC = () => {
             </a>
           </nav>
 
-          {/* ZONE 3: RIGHT USER CONTROLS (min-width ~220-260px, flex justify-end) */}
-          <div className="hidden sm:flex items-center justify-end gap-3 min-w-[200px] lg:min-w-[240px]">
+          {/* ZONE 3: GLOBAL INTELLIGENCE SEARCH (approx. 320–400px wide on desktop) */}
+          <div className="hidden lg:flex items-center flex-1 max-w-[340px] xl:max-w-[380px] mx-1 sm:mx-2">
+            <GlobalIntelligenceSearch />
+          </div>
+
+          {/* ZONE 4: RIGHT USER CONTROLS */}
+          <div className="flex items-center justify-end gap-2.5 sm:gap-3 shrink-0">
+            {/* Mobile / Tablet search trigger button (visible below lg) */}
+            <div className="lg:hidden">
+              <GlobalIntelligenceSearch />
+            </div>
+
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA] border border-[#D9E1EA]">
                     <UserRound className="h-4 w-4" />
                   </div>
-                  <div className="text-left hidden md:block">
-                    <p className="text-[12.5px] font-semibold text-[#172033] leading-tight">
+                  <div className="text-left hidden sm:block">
+                    <p className="text-[12.5px] font-semibold text-[#172033] leading-tight max-w-[120px] truncate">
                       {user.full_name}
                     </p>
-                    <span className="text-[10.5px] font-semibold text-[#415065] uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold text-[#415065] uppercase tracking-wide">
                       {user.role}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex h-8 w-8 items-center justify-center rounded border border-[#D9E1EA] text-[#536174] hover:bg-[#EAF3FA] hover:text-[#C53B3B] transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded border border-[#D9E1EA] text-[#536174] hover:bg-[#EAF3FA] hover:text-[#C53B3B] transition-colors cursor-pointer"
                   title="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
@@ -177,29 +186,35 @@ export const LandingPage: React.FC = () => {
             ) : (
               <Link
                 to="/login"
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-[#0B1F3A] px-3.5 text-[12.5px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors"
+                className="inline-flex h-9 items-center gap-1.5 rounded bg-[#0B1F3A] px-3 sm:px-3.5 text-[12.5px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
               >
                 <LockKeyhole className="h-3.5 w-3.5 text-[#1D7FE2]" />
-                <span>Access Staff Portal</span>
+                <span className="hidden sm:inline">Access Staff Portal</span>
+                <span className="sm:hidden">Staff Portal</span>
               </Link>
             )}
-          </div>
 
-          {/* Mobile hamburger trigger */}
-          <div className="flex xl:hidden">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 text-[#536174] hover:text-[#0B1F3A]"
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Mobile hamburger trigger */}
+            <div className="flex 2xl:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-1.5 text-[#536174] hover:text-[#0B1F3A] cursor-pointer"
+                aria-label="Toggle navigation menu"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="xl:hidden border-b border-[#D9E1EA] bg-white px-6 py-4 space-y-3 shadow-md">
+          <div className="2xl:hidden border-b border-[#D9E1EA] bg-white px-5 sm:px-6 py-4 space-y-3 shadow-md">
+            {/* Search bar inside mobile drawer */}
+            <div className="pb-2 border-b border-[#EDF2F7]">
+              <GlobalIntelligenceSearch onNavigateCallback={() => setMobileMenuOpen(false)} />
+            </div>
+
             <nav className="flex flex-col space-y-2 text-[14px]">
               <Link
                 to="/"

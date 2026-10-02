@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import DashboardFilters from '../components/filters/DashboardFilters';
 import CrimeTrendChart from '../components/charts/CrimeTrendChart';
@@ -9,12 +10,26 @@ import type { FilterParams, TrendResponse } from '../types';
 import { TrendingUp, BarChart2, CalendarRange } from 'lucide-react';
 
 export const TrendsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({});
   const [interval, setInterval] = useState<'year' | 'month' | 'day'>('month');
   const [trends, setTrends] = useState<TrendResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync filters from URL search params (year, state_id)
+  useEffect(() => {
+    const year = searchParams.get('year');
+    const stateId = searchParams.get('state_id');
+    if (year || stateId) {
+      setFilters((prev) => ({
+        ...prev,
+        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
+        ...(stateId ? { state_id: Number(stateId) } : {}),
+      }));
+    }
+  }, [searchParams]);
 
   const fetchTrends = useCallback(async (isRefresh = false) => {
     if (isRefresh) {

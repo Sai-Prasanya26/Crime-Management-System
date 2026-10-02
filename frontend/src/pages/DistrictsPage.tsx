@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
 import LoadingState from '../components/common/LoadingState';
@@ -16,6 +17,7 @@ import DataFreshnessBanner from '../components/common/DataFreshnessBanner';
 import StateCoverageCard from '../components/common/StateCoverageCard';
 
 export const DistrictsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>();
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
@@ -30,21 +32,38 @@ export const DistrictsPage: React.FC = () => {
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load States
+  // Load States and apply initial state param if present
   useEffect(() => {
+    let isMounted = true;
     const loadStates = async () => {
       try {
         const res = await geographyApi.getStates();
-        setStates(res.items);
+        if (isMounted) {
+          setStates(res.items);
+          const stateParam = searchParams.get('state');
+          const stateIdParam = searchParams.get('state_id');
+          if (stateIdParam) {
+            setSelectedStateId(Number(stateIdParam));
+          } else if (stateParam) {
+            const found = res.items.find(
+              (s) => s.state_name.toLowerCase() === stateParam.toLowerCase()
+            );
+            if (found) setSelectedStateId(found.id);
+          }
+        }
       } catch (err) {
         console.error('Failed to load states:', err);
       }
     };
     loadStates();
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams]);
 
-  // Load Districts when state changes
+  // Load Districts when state changes and apply district param if present
   useEffect(() => {
+    let isMounted = true;
     const loadDistricts = async () => {
       if (!selectedStateId) {
         setDistricts([]);
@@ -52,13 +71,28 @@ export const DistrictsPage: React.FC = () => {
       }
       try {
         const res = await geographyApi.getDistricts(selectedStateId);
-        setDistricts(res.items);
+        if (isMounted) {
+          setDistricts(res.items);
+          const districtParam = searchParams.get('district');
+          const districtIdParam = searchParams.get('district_id');
+          if (districtIdParam) {
+            setSelectedDistrictId(Number(districtIdParam));
+          } else if (districtParam) {
+            const found = res.items.find(
+              (d) => d.district_name.toLowerCase() === districtParam.toLowerCase()
+            );
+            if (found) setSelectedDistrictId(found.id);
+          }
+        }
       } catch (err) {
         console.error('Failed to load districts:', err);
       }
     };
     loadDistricts();
-  }, [selectedStateId]);
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedStateId, searchParams]);
 
   // Load District Detail with Demographics
   useEffect(() => {

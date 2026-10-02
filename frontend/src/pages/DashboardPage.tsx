@@ -21,6 +21,7 @@ import WeaponDistributionChart from '../components/charts/WeaponDistributionChar
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
 
 import { analyticsApi } from '../api';
+import { useSearchParams } from 'react-router-dom';
 import type {
   FilterParams,
   CrimeOverviewResponse,
@@ -34,9 +35,36 @@ import type {
 } from '../types';
 
 export const DashboardPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({});
   const [trendInterval, setTrendInterval] = useState<'year' | 'month' | 'day'>('month');
   const [rankingMetric, setRankingMetric] = useState<'volume' | 'rate'>('volume');
+
+  // Sync with URL query parameters (state_id, district_id, year, dimension)
+  useEffect(() => {
+    const stateId = searchParams.get('state_id');
+    const districtId = searchParams.get('district_id');
+    const year = searchParams.get('year');
+
+    if (stateId || districtId || year) {
+      setFilters((prev) => ({
+        ...prev,
+        ...(stateId ? { state_id: Number(stateId) } : {}),
+        ...(districtId ? { district_id: Number(districtId) } : {}),
+        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
+      }));
+    }
+
+    const dimension = searchParams.get('dimension');
+    if (dimension) {
+      setTimeout(() => {
+        const el = document.getElementById(`${dimension}-section`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 400);
+    }
+  }, [searchParams]);
 
   // API State
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
@@ -203,7 +231,7 @@ export const DashboardPage: React.FC = () => {
           <div id="analytics" className="space-y-4 pt-1">
             {/* Row 1: LEFT 65% Crime Trend, RIGHT 35% Crime Category Distribution */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-8">
+              <div id="trends-section" className="lg:col-span-8 scroll-mt-20">
                 {trends && (
                   <CrimeTrendChart
                     data={trends.items}
@@ -213,7 +241,7 @@ export const DashboardPage: React.FC = () => {
                   />
                 )}
               </div>
-              <div className="lg:col-span-4">
+              <div id="categories-section" className="lg:col-span-4 scroll-mt-20">
                 {categories && (
                   <CrimeCategoryChart
                     data={categories.items}
@@ -225,7 +253,7 @@ export const DashboardPage: React.FC = () => {
 
             {/* Row 2: Crime Type Analysis & Geographic Crime Distribution (Top Jurisdictions) */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-6">
+              <div id="types-section" className="lg:col-span-6 scroll-mt-20">
                 {types && (
                   <CrimeTypeChart
                     data={types.items}
@@ -233,7 +261,7 @@ export const DashboardPage: React.FC = () => {
                   />
                 )}
               </div>
-              <div className="lg:col-span-6">
+              <div id="districts-section" className="lg:col-span-6 scroll-mt-20">
                 {topDistricts && (
                   <TopDistrictsTable
                     districts={topDistricts.items}
@@ -247,7 +275,7 @@ export const DashboardPage: React.FC = () => {
 
             {/* Row 3: Hourly Crime Pattern, Victim Demographics, Weapon Analysis */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-4">
+              <div id="hourly-section" className="lg:col-span-4 scroll-mt-20">
                 {hourly && (
                   <HourlyDistributionChart
                     data={hourly.items}
@@ -255,12 +283,12 @@ export const DashboardPage: React.FC = () => {
                   />
                 )}
               </div>
-              <div className="lg:col-span-4">
+              <div id="demographics-section" className="lg:col-span-4 scroll-mt-20">
                 {demographics && (
                   <VictimDemographicsChart data={demographics} />
                 )}
               </div>
-              <div className="lg:col-span-4">
+              <div id="weapons-section" className="lg:col-span-4 scroll-mt-20">
                 {weapons && (
                   <WeaponDistributionChart
                     data={weapons.items}
