@@ -197,7 +197,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
               value={query}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search intelligence, states, districts..."
+              placeholder="Search intelligence, states, districts, reports..."
               className="w-full bg-transparent text-[14px] text-[#172033] placeholder:text-[#8896A6] outline-none"
               aria-label="Global intelligence search"
               autoComplete="off"
@@ -338,7 +338,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search intelligence, states, districts..."
+                placeholder="Search intelligence, states, districts, reports..."
                 className="w-full bg-transparent text-[14px] text-[#172033] placeholder:text-[#8896A6] outline-none"
                 autoComplete="off"
                 spellCheck="false"

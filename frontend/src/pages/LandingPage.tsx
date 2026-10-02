@@ -12,7 +12,6 @@ import {
   UserRound,
   LogOut,
   ShieldCheck,
-  ClipboardCheck,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -111,8 +110,8 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* CENTER: [ 🔍 Search intelligence, states, districts... ] (320–420px wide on desktop/tablet) */}
-          <div className="hidden md:flex items-center justify-center flex-1 max-w-[420px] mx-2 lg:mx-4">
+          {/* CENTER: [ 🔍 Search intelligence, states, districts, reports... ] (500–600px wide on desktop) */}
+          <div className="hidden md:flex items-center justify-center flex-1 max-w-[560px] xl:max-w-[600px] mx-2 lg:mx-4">
             <GlobalIntelligenceSearch variant="desktop-only" className="w-full" />
           </div>
 
@@ -183,40 +182,6 @@ export const LandingPage: React.FC = () => {
                 A secure operational platform for analysing crime patterns, assessing jurisdictional risk, forecasting crime trends and supporting data-driven resource planning.
               </p>
 
-              {/* Action Buttons */}
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <Link
-                  to={isAuthenticated ? '/dashboard' : '/login'}
-                  className="inline-flex h-10 items-center gap-2 rounded bg-[#0B1F3A] px-5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors"
-                >
-                  <LockKeyhole className="h-4 w-4 text-[#1D7FE2]" />
-                  <span>Access Staff Portal</span>
-                </Link>
-
-                <Link
-                  to="/dashboard"
-                  className="inline-flex h-10 items-center gap-2 rounded border border-[#D9E1EA] bg-white px-5 text-[13px] font-medium text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors"
-                >
-                  <span>Explore Intelligence</span>
-                  <ArrowRight className="h-4 w-4 text-[#1769AA]" />
-                </Link>
-              </div>
-
-              {/* Security Indicators with Lucide Icons */}
-              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-5 text-[12px] text-[#5D6878]">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#16845B]" />
-                  <span className="font-medium text-[#172033]">Secure Staff Access</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <LockKeyhole className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span className="font-medium text-[#172033]">Role-Based Access</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <ClipboardCheck className="h-3.5 w-3.5 text-[#C98512]" />
-                  <span className="font-medium text-[#172033]">Audit Trail</span>
-                </div>
-              </div>
             </div>
 
             {/* Right 50–52%: Large Clean Realistic Crime-Intelligence Image */}
@@ -332,7 +297,7 @@ export const LandingPage: React.FC = () => {
               to={isAuthenticated ? '/dashboard' : '/login'}
               className="inline-flex h-10 items-center gap-2 rounded bg-[#0B1F3A] px-4.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
             >
-              <span>Access Staff Portal</span>
+              <span>Authorized Personnel Access</span>
               <ArrowRight className="h-4 w-4 text-[#1D7FE2]" />
             </Link>
           </div>

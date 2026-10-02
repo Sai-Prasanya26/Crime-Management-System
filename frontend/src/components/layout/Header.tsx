@@ -72,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center: Global Intelligence Search (accessible on dashboard pages too) */}
-      <div className="hidden xl:flex items-center flex-1 max-w-[420px] mx-3">
+      <div className="hidden xl:flex items-center flex-1 max-w-[560px] 2xl:max-w-[600px] mx-3">
         <GlobalIntelligenceSearch variant="desktop-only" className="w-full" />
       </div>
 
