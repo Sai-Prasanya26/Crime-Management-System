@@ -72,15 +72,15 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center: Global Intelligence Search (accessible on dashboard pages too) */}
-      <div className="hidden xl:flex items-center flex-1 max-w-[340px] 2xl:max-w-[380px] mx-3">
-        <GlobalIntelligenceSearch />
+      <div className="hidden xl:flex items-center flex-1 max-w-[420px] mx-3">
+        <GlobalIntelligenceSearch variant="desktop-only" className="w-full" />
       </div>
 
       {/* Right: Operational Status, Time & Controls */}
       <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         {/* Mobile / Tablet search trigger button */}
         <div className="xl:hidden">
-          <GlobalIntelligenceSearch />
+          <GlobalIntelligenceSearch variant="mobile-only" />
         </div>
         {/* Operational Date/Time */}
         <div className="hidden lg:flex items-center gap-1.5 rounded border border-[#D9E1EA] bg-[#F4F7FA] px-2.5 py-1 text-[11px] font-medium text-[#5D6878]">

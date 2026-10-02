@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Shield,
   ArrowRight,
@@ -13,8 +13,6 @@ import {
   LogOut,
   ShieldCheck,
   ClipboardCheck,
-  Menu,
-  X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -23,7 +21,6 @@ import GlobalIntelligenceSearch from '../components/search/GlobalIntelligenceSea
 export const LandingPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -96,11 +93,11 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-[#172033] flex flex-col justify-between selection:bg-[#1769AA] selection:text-white">
-      {/* 1. Professional Header: 4 clearly separated zones (Brand, Navigation, Search, User) */}
+      {/* 1. Simplified Enterprise Header (Logo | Global Search | Access Staff Portal) */}
       <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="max-w-[1440px] w-full mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 lg:gap-4">
-          {/* ZONE 1: LEFT BRAND AREA (Shield + Portal Name, NO subtitle) */}
-          <div className="flex items-center gap-3 shrink-0 mr-1 sm:mr-3">
+        <div className="max-w-[1440px] w-full mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 sm:gap-4">
+          {/* LEFT: [Shield Logo] Crime Intelligence & Management Portal */}
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0">
               <Shield className="h-5 w-5 text-[#1D7FE2]" />
             </div>
@@ -114,50 +111,16 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ZONE 2: CENTER PRIMARY NAVIGATION */}
-          <nav className="hidden 2xl:flex items-center justify-center gap-5 xl:gap-6 shrink-0">
-            <Link
-              to="/"
-              className="text-[13.5px] font-semibold text-[#1769AA] border-b-2 border-[#1769AA] py-5 px-1 -mb-[2px] transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              to="/dashboard"
-              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] py-5 px-1 transition-colors"
-            >
-              Crime Analytics
-            </Link>
-            <Link
-              to="/districts"
-              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] py-5 px-1 transition-colors"
-            >
-              Geographic Intelligence
-            </Link>
-            <Link
-              to="/trends"
-              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] py-5 px-1 transition-colors"
-            >
-              Crime Trends
-            </Link>
-            <a
-              href="#modules"
-              className="text-[13.5px] font-medium text-[#536174] hover:text-[#0B1F3A] py-5 px-1 transition-colors"
-            >
-              Capabilities
-            </a>
-          </nav>
-
-          {/* ZONE 3: GLOBAL INTELLIGENCE SEARCH (approx. 320–400px wide on desktop) */}
-          <div className="hidden lg:flex items-center flex-1 max-w-[340px] xl:max-w-[380px] mx-1 sm:mx-2">
-            <GlobalIntelligenceSearch />
+          {/* CENTER: [ 🔍 Search intelligence, states, districts... ] (320–420px wide on desktop/tablet) */}
+          <div className="hidden md:flex items-center justify-center flex-1 max-w-[420px] mx-2 lg:mx-4">
+            <GlobalIntelligenceSearch variant="desktop-only" className="w-full" />
           </div>
 
-          {/* ZONE 4: RIGHT USER CONTROLS */}
+          {/* RIGHT: [ 🔍 Search (Mobile) ] + [ 🔐 Access Staff Portal ] */}
           <div className="flex items-center justify-end gap-2.5 sm:gap-3 shrink-0">
-            {/* Mobile / Tablet search trigger button (visible below lg) */}
-            <div className="lg:hidden">
-              <GlobalIntelligenceSearch />
+            {/* Mobile search trigger button (visible below md) */}
+            <div className="md:hidden">
+              <GlobalIntelligenceSearch variant="mobile-only" />
             </div>
 
             {isAuthenticated && user ? (
@@ -186,106 +149,16 @@ export const LandingPage: React.FC = () => {
             ) : (
               <Link
                 to="/login"
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-[#0B1F3A] px-3 sm:px-3.5 text-[12.5px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
+                className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#0B1F3A] px-3.5 sm:px-4 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12345B] transition-colors shrink-0"
               >
                 <LockKeyhole className="h-3.5 w-3.5 text-[#1D7FE2]" />
-                <span className="hidden sm:inline">Access Staff Portal</span>
+                <span className="hidden lg:inline">Access Staff Portal</span>
+                <span className="hidden sm:inline lg:hidden">Staff Portal</span>
                 <span className="sm:hidden">Staff Portal</span>
               </Link>
             )}
-
-            {/* Mobile hamburger trigger */}
-            <div className="flex 2xl:hidden">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-1.5 text-[#536174] hover:text-[#0B1F3A] cursor-pointer"
-                aria-label="Toggle navigation menu"
-              >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
-            </div>
           </div>
         </div>
-
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="2xl:hidden border-b border-[#D9E1EA] bg-white px-5 sm:px-6 py-4 space-y-3 shadow-md">
-            {/* Search bar inside mobile drawer */}
-            <div className="pb-2 border-b border-[#EDF2F7]">
-              <GlobalIntelligenceSearch onNavigateCallback={() => setMobileMenuOpen(false)} />
-            </div>
-
-            <nav className="flex flex-col space-y-2 text-[14px]">
-              <Link
-                to="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="font-semibold text-[#1769AA] py-1"
-              >
-                Home
-              </Link>
-              <Link
-                to="/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
-              >
-                Crime Analytics
-              </Link>
-              <Link
-                to="/districts"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
-              >
-                Geographic Intelligence
-              </Link>
-              <Link
-                to="/trends"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
-              >
-                Crime Trends
-              </Link>
-              <a
-                href="#modules"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#536174] hover:text-[#0B1F3A] py-1 font-medium"
-              >
-                Capabilities
-              </a>
-            </nav>
-
-            <div className="pt-3 border-t border-[#D9E1EA]">
-              {isAuthenticated && user ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA]">
-                      <UserRound className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#172033]">{user.full_name}</p>
-                      <span className="text-[11px] font-semibold text-[#415065] uppercase">{user.role}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex h-8 w-8 items-center justify-center rounded border border-[#D9E1EA] text-[#536174] hover:bg-[#EAF3FA] hover:text-[#C53B3B]"
-                    title="Sign out"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full h-10 rounded bg-[#0B1F3A] text-white text-[13px] font-semibold"
-                >
-                  <LockKeyhole className="h-3.5 w-3.5 text-[#1D7FE2]" />
-                  <span>Access Staff Portal</span>
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Main Content */}

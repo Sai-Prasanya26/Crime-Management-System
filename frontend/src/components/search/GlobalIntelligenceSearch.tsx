@@ -17,6 +17,7 @@ import {
   Clock,
   ArrowRight,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -55,11 +56,13 @@ const CATEGORY_ORDER: SearchCategory[] = [
 interface GlobalIntelligenceSearchProps {
   className?: string;
   onNavigateCallback?: () => void;
+  variant?: 'auto' | 'desktop-only' | 'mobile-only';
 }
 
 export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> = ({
   className = '',
   onNavigateCallback,
+  variant = 'auto',
 }) => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +71,9 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   const [isOpen, setIsOpen] = useState(false);
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const showDesktop = variant === 'auto' || variant === 'desktop-only';
+  const showMobile = variant === 'auto' || variant === 'mobile-only';
 
   // Geographic caches
   const [states, setStates] = useState<StateItem[]>([]);
@@ -109,7 +115,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsOpen(true);
-        if (window.innerWidth < 1024) {
+        if (window.innerWidth < 768) {
           setMobileModalOpen(true);
           setTimeout(() => mobileInputRef.current?.focus(), 100);
         } else {
@@ -135,6 +141,16 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   // Static Application Capabilities Index
   const staticModules: SearchResultItem[] = useMemo(
     () => [
+      {
+        id: 'mod-overview',
+        category: 'INTELLIGENCE',
+        title: 'Crime Intelligence',
+        description: 'Multi-dimensional crime management, intelligence analysis and operational tracking',
+        icon: ShieldCheck,
+        route: '/dashboard',
+        badge: 'Intelligence',
+        authRequired: true,
+      },
       {
         id: 'mod-analytics',
         category: 'INTELLIGENCE',
@@ -298,6 +314,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
     if (!raw) {
       // Suggest high-priority operational capabilities when search input is empty
       const defaultSuggestions: SearchResultItem[] = [
+        staticModules.find((m) => m.id === 'mod-overview')!,
         staticModules.find((m) => m.id === 'mod-analytics')!,
         staticModules.find((m) => m.id === 'mod-districts')!,
         staticModules.find((m) => m.id === 'mod-trends')!,
@@ -500,6 +517,13 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
       }
 
       // Keyword associations
+      if (
+        (raw.includes('crime intelligence') || raw.includes('intelligence') || raw.includes('incident')) &&
+        mod.id === 'mod-overview'
+      ) {
+        matched = true;
+      }
+      if (raw.includes('state') && mod.id === 'mod-districts') matched = true;
       if (isTrendsIntent && mod.id === 'mod-trends') matched = true;
       if (isRiskIntent && mod.id === 'mod-risk') matched = true;
       if (isResourceIntent && mod.id === 'mod-resources') matched = true;
@@ -613,32 +637,36 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   return (
     <>
       {/* 1. Desktop Search Input Field Container */}
-      <div ref={containerRef} className={`relative w-full ${className}`}>
+      {showDesktop && (
         <div
-          className={`flex h-[42px] w-full items-center rounded-lg border bg-white px-3 transition-all duration-150 shadow-2xs ${
-            isOpen
-              ? 'border-[#1769AA] ring-2 ring-[#1769AA]/15'
-              : 'border-[#D9E1EA] hover:border-[#BAC7D5]'
-          }`}
+          ref={containerRef}
+          className={`relative w-full ${variant === 'auto' ? 'hidden md:block' : ''} ${className}`}
         >
-          <Search className="h-4 w-4 text-[#5D6878] shrink-0 mr-2.5" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setIsOpen(true);
-              setSelectedIndex(0);
-            }}
-            onFocus={() => setIsOpen(true)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search intelligence, states, districts, tasks..."
-            className="w-full bg-transparent text-[13.5px] text-[#172033] placeholder:text-[#8896A6] outline-none"
-            aria-label="Global intelligence search"
-            autoComplete="off"
-            spellCheck="false"
-          />
+          <div
+            className={`flex h-[42px] w-full items-center rounded-lg border bg-white px-3 transition-all duration-150 shadow-2xs ${
+              isOpen
+                ? 'border-[#1769AA] ring-2 ring-[#1769AA]/15'
+                : 'border-[#D9E1EA] hover:border-[#BAC7D5]'
+            }`}
+          >
+            <Search className="h-4 w-4 text-[#5D6878] shrink-0 mr-2.5" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setIsOpen(true);
+                setSelectedIndex(0);
+              }}
+              onFocus={() => setIsOpen(true)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search intelligence, states, districts..."
+              className="w-full bg-transparent text-[14px] text-[#172033] placeholder:text-[#8896A6] outline-none"
+              aria-label="Global intelligence search"
+              autoComplete="off"
+              spellCheck="false"
+            />
 
           {query && (
             <button
@@ -788,23 +816,29 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
           </div>
         )}
       </div>
+      )}
 
       {/* 3. Mobile Trigger Button (Visible when full search bar is hidden on smaller screens) */}
-      <button
-        onClick={() => {
-          setMobileModalOpen(true);
-          setTimeout(() => mobileInputRef.current?.focus(), 100);
-        }}
-        className="flex lg:hidden h-9 w-9 items-center justify-center rounded-lg border border-[#D9E1EA] bg-white text-[#5D6878] hover:text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors"
-        title="Open intelligence search"
-        aria-label="Open intelligence search"
-      >
-        <Search className="h-4 w-4" />
-      </button>
+      {showMobile && (
+        <button
+          type="button"
+          onClick={() => {
+            setMobileModalOpen(true);
+            setTimeout(() => mobileInputRef.current?.focus(), 100);
+          }}
+          className={`${
+            variant === 'auto' ? 'flex md:hidden' : 'flex'
+          } h-9 w-9 items-center justify-center rounded-lg border border-[#D9E1EA] bg-white text-[#5D6878] hover:text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors cursor-pointer shrink-0`}
+          title="Open intelligence search"
+          aria-label="Open intelligence search"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+      )}
 
       {/* 4. Mobile Full-Width Command Palette Dialog */}
       {mobileModalOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-black/50 backdrop-blur-xs p-3 sm:p-4">
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/50 backdrop-blur-xs p-3 sm:p-4">
           <div className="bg-white rounded-xl border border-[#D9E1EA] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden my-auto w-full max-w-lg mx-auto">
             {/* Search Header Input */}
             <div className="flex h-12 items-center border-b border-[#D9E1EA] px-3.5 bg-white">
