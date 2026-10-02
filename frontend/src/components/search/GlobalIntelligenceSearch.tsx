@@ -221,12 +221,6 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
               </button>
             )}
 
-            {/* Keyboard Focus Shortcut Chip */}
-            <div className="hidden sm:flex items-center gap-1 pl-1 shrink-0 select-none pointer-events-none">
-              <kbd className="inline-flex items-center justify-center rounded border border-[#D9E1EA] bg-[#F4F7FA] px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-[#718294] leading-none">
-                Ctrl K
-              </kbd>
-            </div>
           </form>
 
           {/* Minimal Inline Feedback for Ambiguity Resolution */}
