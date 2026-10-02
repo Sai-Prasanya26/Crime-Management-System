@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  Shield,
+  Home,
   UserRound,
   KeyRound,
   CheckCircle2,
@@ -9,9 +12,9 @@ import {
   Save,
   RotateCcw,
 } from 'lucide-react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api';
+import UserAccountMenu from '../components/layout/UserAccountMenu';
 
 const formatMemberSince = (isoString?: string | null): string => {
   if (!isoString) return 'Not Available';
@@ -29,7 +32,7 @@ const formatMemberSince = (isoString?: string | null): string => {
 };
 
 export const ProfilePage: React.FC = () => {
-  const { user, updateUser, refreshUser } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Profile Edit State
   const [fullName, setFullName] = useState<string>('');
@@ -49,7 +52,7 @@ export const ProfilePage: React.FC = () => {
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState<string | null>(null);
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
 
-  // Sync initial values
+  // Sync initial values from user state
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || '');
@@ -88,7 +91,7 @@ export const ProfilePage: React.FC = () => {
         email: trimmedEmail,
       });
 
-      // Update AuthContext so Header and Sidebar update immediately
+      // Update AuthContext so Header and user menus update immediately
       updateUser(updatedUser);
       setProfileSuccessMsg('Profile details updated successfully.');
     } catch (err: any) {
@@ -153,39 +156,74 @@ export const ProfilePage: React.FC = () => {
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <DashboardLayout
-      title="My Profile"
-      subtitle="Manage your personal information and account security."
-      onRefresh={refreshUser}
-    >
-      <div className="max-w-[1240px] mx-auto pb-10">
+    <div className="min-h-screen bg-[#F4F7FA] text-[#172033] flex flex-col justify-between selection:bg-[#1769AA] selection:text-white">
+      {/* ======================================================== */}
+      {/* 1. DEDICATED PROFILE HEADER: Clean, No Operational Clutter */}
+      {/* ======================================================== */}
+      <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <div className="max-w-[1240px] w-full mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+          {/* LEFT: [Shield Logo] My Profile + Subtitle */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0">
+              <Shield className="h-5 w-5 text-[#1D7FE2]" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-[15px] sm:text-[17px] font-bold tracking-tight text-[#0B1F3A] leading-tight truncate">
+                My Profile
+              </h1>
+              <p className="text-[11px] sm:text-xs text-[#5D6878] leading-tight mt-0.5 truncate hidden sm:block">
+                Manage your personal information and account security.
+              </p>
+            </div>
+          </div>
+
+          {/* RIGHT: [Home Link] + [User Account Menu] */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-3 py-1.5 text-xs font-semibold text-[#172033] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs"
+              title="Return to Homepage"
+            >
+              <Home className="h-3.5 w-3.5 text-[#1769AA]" />
+              <span>Home</span>
+            </Link>
+
+            <UserAccountMenu />
+          </div>
+        </div>
+      </header>
+
+      {/* ======================================================== */}
+      {/* 2. MAIN PROFILE CONTENT: Two-Column Dedicated Layout     */}
+      {/* ======================================================== */}
+      <main className="flex-1 w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* ======================================================== */}
-          {/* LEFT COLUMN: Clean, Compact Profile Summary Card (~33%)  */}
-          {/* ======================================================== */}
+          {/* ---------------------------------------------------- */}
+          {/* LEFT COLUMN: Profile Summary (Smaller/Compact Card, ~32%) */}
+          {/* ---------------------------------------------------- */}
           <div className="lg:col-span-4">
             <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
-              {/* Avatar & Header */}
+              {/* Avatar, Name, Role Badge */}
               <div className="flex flex-col items-center text-center">
                 <div className="flex h-18 w-18 items-center justify-center rounded-full bg-[#0B1F3A] text-2xl font-bold text-white shadow-xs ring-4 ring-[#EAF3FA]">
                   {userInitial}
                 </div>
-                <h3 className="text-base font-bold text-[#0B1F3A] mt-3.5 leading-snug">
+                <h2 className="text-base font-bold text-[#0B1F3A] mt-3.5 leading-snug">
                   {user?.full_name || 'Staff User'}
-                </h3>
+                </h2>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase bg-slate-100 text-slate-700 border border-slate-200 mt-1">
                   {user?.role || 'OFFICER'}
                 </span>
               </div>
 
-              {/* Divider */}
+              {/* Clean Horizontal Divider */}
               <div className="my-5 border-t border-[#E5EAF0]" />
 
-              {/* Summary Details List */}
+              {/* Essential User Details List */}
               <div className="space-y-4 text-left">
-                {/* Full Name */}
+                {/* FULL NAME */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Full Name
                   </p>
                   <p className="text-sm font-semibold text-[#0B1F3A] mt-0.5">
@@ -193,9 +231,9 @@ export const ProfilePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Username */}
+                {/* USERNAME */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Username
                   </p>
                   <p className="text-sm font-mono font-medium text-[#0B1F3A] mt-0.5">
@@ -203,9 +241,9 @@ export const ProfilePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Email */}
+                {/* EMAIL */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Email
                   </p>
                   <p className="text-sm font-mono font-medium text-[#0B1F3A] mt-0.5 truncate" title={user?.email}>
@@ -213,9 +251,9 @@ export const ProfilePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Role */}
+                {/* ROLE */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Role
                   </p>
                   <p className="text-sm font-semibold text-[#0B1F3A] mt-0.5">
@@ -223,9 +261,9 @@ export const ProfilePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Status */}
+                {/* STATUS */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Status
                   </p>
                   <div className="mt-1 flex items-center gap-2">
@@ -236,9 +274,9 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Member Since */}
+                {/* MEMBER SINCE */}
                 <div>
-                  <p className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                  <p className="text-[11px] font-bold text-[#5D6878] uppercase tracking-wider">
                     Member Since
                   </p>
                   <p className="text-sm font-medium text-[#0B1F3A] mt-0.5">
@@ -249,11 +287,11 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* RIGHT COLUMN: Personal Information & Password (~67%)     */}
-          {/* ======================================================== */}
+          {/* ---------------------------------------------------- */}
+          {/* RIGHT COLUMN: Editable Content (~68%)                */}
+          {/* ---------------------------------------------------- */}
           <div className="lg:col-span-8 space-y-6">
-            {/* Card 1: Personal Information */}
+            {/* Card 1: PERSONAL INFORMATION (Primary / Large Card) */}
             <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
@@ -345,7 +383,7 @@ export const ProfilePage: React.FC = () => {
               </form>
             </div>
 
-            {/* Card 2: Change Password */}
+            {/* Card 2: CHANGE PASSWORD (Smaller Card) */}
             <div className="rounded-xl border border-[#D9E1EA] bg-white p-6 shadow-2xs">
               <div className="border-b border-[#E5EAF0] pb-3 mb-5">
                 <div className="flex items-center gap-2">
@@ -481,8 +519,18 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </main>
+
+      {/* ======================================================== */}
+      {/* 3. SUBTLE PROFILE FOOTER                                */}
+      {/* ======================================================== */}
+      <footer className="border-t border-[#D9E1EA] bg-white py-3.5 px-4 sm:px-6 text-center text-[11.5px] text-[#64748B]">
+        <div className="max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>Crime Intelligence &amp; Management Portal &bull; Staff Profile &amp; Account Management</span>
+          <span className="text-[#5D6878]">Authorized Personnel Only</span>
+        </div>
+      </footer>
+    </div>
   );
 };
 
