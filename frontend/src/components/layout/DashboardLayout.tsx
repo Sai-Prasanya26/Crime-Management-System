@@ -23,7 +23,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="pl-[240px] flex flex-col min-h-screen">
+      <div className="pl-[240px] flex flex-col min-h-screen min-w-0">
         <Header
           title={title}
           subtitle={subtitle}
@@ -31,8 +31,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           isRefreshing={isRefreshing}
         />
 
-        <main className="flex-1 p-4 sm:p-5 lg:p-6">
-          <div className="mx-auto max-w-[1600px] space-y-4 sm:space-y-5">{children}</div>
+        <main className="flex-1 p-4 sm:p-5 lg:p-6 min-w-0">
+          <div className="mx-auto max-w-[1600px] space-y-4 sm:space-y-5 min-w-0">{children}</div>
         </main>
 
         {/* Subtle Operational Footer */}

@@ -115,13 +115,6 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({ className = ''
                 {roleBadge.label}
               </span>
             </div>
-
-            <div className="mt-2 flex items-center gap-1.5 text-[10.5px] text-[#718096]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-              <span className="font-mono">@{user.username}</span>
-              <span className="text-[#CBD5E1]">•</span>
-              <span className="text-emerald-700 font-medium">Active Account</span>
-            </div>
           </div>
 
           {/* Action Links */}

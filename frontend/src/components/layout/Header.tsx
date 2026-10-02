@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-4 sm:px-6 shadow-2xs gap-3">
       {/* Left: Shield Emblem & Page Title / Breadcrumb */}
-      <div className="flex items-center gap-3 min-w-0 shrink-0 pr-2">
+      <div className="flex items-center gap-3 min-w-0 pr-2">
         <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0">
           <Shield className="h-4 w-4 text-[#1D7FE2]" />
         </div>
