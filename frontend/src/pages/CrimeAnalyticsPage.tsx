@@ -107,6 +107,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Crime Analytics"
       subtitle="Analyze reported crime patterns and characteristics across jurisdictions and periods."
       onRefresh={() => fetchAnalyticsData(true)}

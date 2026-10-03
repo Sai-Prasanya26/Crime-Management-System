@@ -66,6 +66,7 @@ export const TrendsPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Crime Trends"
       subtitle="Review temporal patterns in reported crime activity across selected jurisdictions."
       onRefresh={() => fetchTrends(true)}

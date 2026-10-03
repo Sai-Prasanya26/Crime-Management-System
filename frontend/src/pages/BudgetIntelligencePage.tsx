@@ -95,6 +95,7 @@ export const BudgetIntelligencePage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Budget Intelligence"
       subtitle="Financial modeling and estimated capital allocations for operational crime response"
       onRefresh={() => fetchData(true)}

@@ -87,6 +87,7 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Intelligence Reports"
       subtitle="Standardized operational briefing packages and analytical summaries"
     >

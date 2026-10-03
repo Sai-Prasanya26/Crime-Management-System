@@ -75,6 +75,7 @@ export const PredictionsPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Predictive Intelligence"
       subtitle="Statistical forecasting and longitudinal incident projection"
     >

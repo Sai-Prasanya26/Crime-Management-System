@@ -138,6 +138,7 @@ export const RiskAssessmentPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       title="Crime Risk Assessment"
       subtitle="Operational threat indices and high-priority jurisdictional profiles"
       onRefresh={() => fetchRiskData(true)}

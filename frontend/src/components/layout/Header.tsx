@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Home, LogIn, Clock, Shield, Menu } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { RefreshCw, Home, LogIn, Clock, Shield, Menu, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import GlobalIntelligenceSearch from '../search/GlobalIntelligenceSearch';
 import UserAccountMenu from './UserAccountMenu';
@@ -11,6 +11,7 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onToggleSidebar?: () => void;
+  hideSidebar?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,8 +20,10 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing,
   onToggleSidebar,
+  hideSidebar = false,
 }) => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -46,20 +49,42 @@ export const Header: React.FC<HeaderProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-3 sm:px-5 lg:px-6 shadow-2xs gap-2 sm:gap-3">
-      {/* Left: Mobile Drawer Trigger + Shield Emblem & Page Title */}
+      {/* Left: Mobile Drawer Trigger / Back Button + Shield Emblem & Page Title */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-1 sm:pr-2">
-        {/* Hamburger Menu Toggle Button (Visible below lg / 1024px) */}
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg border border-[#D9E1EA] bg-white text-[#5D6878] hover:text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors cursor-pointer shrink-0"
-          title="Open navigation menu"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
+        {hideSidebar ? (
+          /* Operation Workspace Mode: Back button to return to previous portal page */
+          <button
+            type="button"
+            onClick={handleBack}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-2.5 text-[12px] font-semibold text-[#0B1F3A] hover:bg-[#F4F7FA] hover:text-[#1769AA] transition-colors cursor-pointer shrink-0 shadow-2xs"
+            title="Return to previous portal page"
+            aria-label="Return to previous portal page"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 text-[#1769AA]" />
+            <span className="hidden xs:inline sm:inline">Back</span>
+          </button>
+        ) : (
+          /* Normal Portal Mode: Hamburger Menu Toggle Button (Visible below lg / 1024px) */
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg border border-[#D9E1EA] bg-white text-[#5D6878] hover:text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors cursor-pointer shrink-0"
+            title="Open navigation menu"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Shield Emblem Link to Home */}
         <Link
