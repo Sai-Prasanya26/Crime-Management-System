@@ -351,47 +351,80 @@ def test_user_profile_and_password_workflow(admin_token: str):
     user_token = login_resp.json()["access_token"]
     print("[PASS] User login with initial credentials: 200 OK")
 
-    # 3. Test duplicate email validation when updating profile
-    dup_resp = client.patch(
+    # 3. TEST 3: Attempt to modify email directly via self-service profile API
+    email_tamper_resp = client.patch(
         "/api/v1/auth/profile",
         headers={"Authorization": f"Bearer {user_token}"},
         json={
-            "full_name": "Test Officer Updated",
-            "email": "admin@crimeops.gov.in",  # Taken by admin
+            "email": "attacker@example.com",
         },
     )
-    assert dup_resp.status_code == 409
-    assert "already registered" in dup_resp.json()["detail"].lower()
-    print("[PASS] Profile update rejected duplicate email: 409 Conflict")
+    assert email_tamper_resp.status_code == 400
+    assert "cannot be changed from the user profile" in email_tamper_resp.json()["detail"].lower()
+    print("[PASS] TEST 3: Profile update rejected direct email change: 400 Bad Request")
 
-    # 4. Successfully update profile (Full Name & Email)
+    # Also test tampering with full_name + different email
+    email_tamper_combo_resp = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "full_name": "Test Officer Attacker",
+            "email": "attacker2@example.com",
+        },
+    )
+    assert email_tamper_combo_resp.status_code == 400
+    assert "cannot be changed from the user profile" in email_tamper_combo_resp.json()["detail"].lower()
+    print("[PASS] TEST 3 (Combo): Profile update rejected combined full_name + email change: 400 Bad Request")
+
+    # 4. TEST 4: Attempt to modify role, username, or is_active via profile update
+    role_tamper_resp = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "role": "ADMIN",
+        },
+    )
+    assert role_tamper_resp.status_code == 400
+    assert "cannot be changed" in role_tamper_resp.json()["detail"].lower()
+
+    user_tamper_resp = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={
+            "username": "hacker_root",
+        },
+    )
+    assert user_tamper_resp.status_code == 400
+    assert "cannot be changed" in user_tamper_resp.json()["detail"].lower()
+    print("[PASS] TEST 4: Profile update rejected privilege escalation attempts (role, username): 400 Bad Request")
+
+    # 5. TEST 2: Successfully update ONLY full_name (email is immutable and unmolested)
     update_resp = client.patch(
         "/api/v1/auth/profile",
         headers={"Authorization": f"Bearer {user_token}"},
         json={
             "full_name": "Test Officer Senior",
-            "email": "test_profile_updated@crimeops.gov.in",
         },
     )
     assert update_resp.status_code == 200
     updated_data = update_resp.json()
     assert updated_data["full_name"] == "Test Officer Senior"
-    assert updated_data["email"] == "test_profile_updated@crimeops.gov.in"
+    assert updated_data["email"] == "test_profile@crimeops.gov.in"  # Immutable original email
     assert updated_data["username"] == "test_profile_user"  # Read-only, unmolested
     assert updated_data["role"] == "OFFICER"  # Read-only, unmolested
-    print("[PASS] PATCH /api/v1/auth/profile: 200 OK (Full name & email updated)")
+    print("[PASS] TEST 2: PATCH /api/v1/auth/profile: 200 OK (Full name updated, email preserved)")
 
-    # 5. Verify GET /api/v1/auth/me returns updated details
+    # 6. Verify GET /api/v1/auth/me returns updated name and immutable email
     me_resp = client.get(
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {user_token}"},
     )
     assert me_resp.status_code == 200
     assert me_resp.json()["full_name"] == "Test Officer Senior"
-    assert me_resp.json()["email"] == "test_profile_updated@crimeops.gov.in"
-    print("[PASS] GET /api/v1/auth/me reflects updated profile data")
+    assert me_resp.json()["email"] == "test_profile@crimeops.gov.in"
+    print("[PASS] GET /api/v1/auth/me reflects updated profile data with immutable email")
 
-    # 6. Bi-directional check: Admin User Management immediately sees updated details
+    # 7. Bi-directional check: Admin User Management immediately sees updated details
     admin_users_resp = client.get(
         "/api/v1/admin/users",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -400,7 +433,7 @@ def test_user_profile_and_password_workflow(admin_token: str):
     matched = next((u for u in admin_users_resp.json() if u["id"] == test_user_id), None)
     assert matched is not None
     assert matched["full_name"] == "Test Officer Senior"
-    assert matched["email"] == "test_profile_updated@crimeops.gov.in"
+    assert matched["email"] == "test_profile@crimeops.gov.in"
     print("[PASS] Bi-directional Sync: Admin user management list immediately reflects user's profile changes")
 
     # 7. Change password - wrong current password

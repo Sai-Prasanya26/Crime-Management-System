@@ -19,9 +19,10 @@ export const authApi = {
   },
 
   /**
-   * Update current authenticated user's personal profile (full_name and email).
+   * Update current authenticated user's personal profile (full_name).
+   * Email is immutable for staff and managed by administrator.
    */
-  updateProfile: async (payload: { full_name: string; email: string }): Promise<User> => {
+  updateProfile: async (payload: { full_name: string; email?: string }): Promise<User> => {
     const response = await apiClient.patch<User>('/auth/profile', payload);
     return response.data;
   },

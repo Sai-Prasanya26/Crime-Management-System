@@ -111,23 +111,52 @@ class AuthService:
         profile_data: UpdateProfileRequest,
         ip_address: Optional[str] = None,
     ) -> UserResponse:
-        clean_email = profile_data.email.strip().lower()
-        clean_name = profile_data.full_name.strip()
+        # Enforce email immutability: staff accounts cannot modify their registered email address
+        if profile_data.email is not None and profile_data.email.strip().lower() != current_user.email.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email address cannot be changed from the user profile. Contact an administrator.",
+            )
 
-        # Check if email is changing and if it is taken by another user
-        if clean_email != current_user.email.lower():
-            existing = UserRepository.get_by_username_or_email(db, clean_email)
-            if existing and existing.id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="This email address is already registered by another staff member.",
-                )
+        # Enforce username immutability from self-service profile
+        if profile_data.username is not None and profile_data.username.strip().lower() != current_user.username.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username cannot be changed from the user profile. Contact an administrator.",
+            )
+
+        # Enforce role immutability from self-service profile
+        if profile_data.role is not None and profile_data.role != current_user.role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role cannot be changed from the user profile. Contact an administrator.",
+            )
+
+        # Enforce account status immutability from self-service profile
+        if profile_data.is_active is not None and profile_data.is_active != current_user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Account status cannot be changed from the user profile. Contact an administrator.",
+            )
+
+        clean_name = (profile_data.full_name or "").strip()
+        if not clean_name or len(clean_name) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full Name must be at least 2 characters.",
+            )
+        if len(clean_name) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full Name cannot exceed 100 characters.",
+            )
+
+        previous_full_name = current_user.full_name
 
         updated_user = UserRepository.update_profile(
             db=db,
             user_id=current_user.id,
             full_name=clean_name,
-            email=clean_email,
         )
 
         if not updated_user:
@@ -145,11 +174,10 @@ class AuthService:
             entity_id=str(current_user.id),
             ip_address=ip_address,
             details={
-                "updated_fields": ["full_name", "email"],
-                "previous_full_name": current_user.full_name,
+                "updated_fields": ["full_name"],
+                "previous_full_name": previous_full_name,
                 "new_full_name": clean_name,
-                "previous_email": current_user.email,
-                "new_email": clean_email,
+                "email": current_user.email,
             },
         )
 

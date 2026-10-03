@@ -11,6 +11,7 @@ import {
   EyeOff,
   Save,
   RotateCcw,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api';
@@ -60,14 +61,13 @@ export const ProfilePage: React.FC = () => {
     }
   }, [user]);
 
-  // Handle Profile Update Submission
+  // Handle Profile Update Submission (Only editable fields are submitted)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSuccessMsg(null);
     setProfileErrorMsg(null);
 
     const trimmedName = fullName.trim();
-    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedName || trimmedName.length < 2) {
       setProfileErrorMsg('Full Name must be at least 2 characters.');
@@ -78,17 +78,11 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    const emailRegex = /^[\w.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setProfileErrorMsg('Please enter a valid email address.');
-      return;
-    }
-
     setIsUpdatingProfile(true);
     try {
+      // Submit ONLY editable field (full_name); registered email is immutable and managed by admin
       const updatedUser = await authApi.updateProfile({
         full_name: trimmedName,
-        email: trimmedEmail,
       });
 
       // Update AuthContext so Header and user menus update immediately
@@ -304,7 +298,7 @@ export const ProfilePage: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-[#5D6878] mt-1">
-                  Update your name and email address.
+                  Update your personal account details.
                 </p>
               </div>
 
@@ -343,23 +337,38 @@ export const ProfilePage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Email Address */}
+                  {/* Email Address (Read-only / Administrator-governed) */}
                   <div>
-                    <label
-                      htmlFor="profileEmail"
-                      className="block text-xs font-semibold text-[#0B1F3A] mb-1.5"
-                    >
-                      Email Address
-                    </label>
-                    <input
-                      id="profileEmail"
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-white px-3.5 text-xs font-mono font-medium text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition-all"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label
+                        htmlFor="profileEmail"
+                        className="block text-xs font-semibold text-[#0B1F3A]"
+                      >
+                        Email Address
+                      </label>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#7E8B9B]">
+                        <Lock className="h-3 w-3 text-[#7E8B9B]" />
+                        <span>Read-only</span>
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="profileEmail"
+                        type="email"
+                        readOnly
+                        tabIndex={-1}
+                        value={user?.email || email}
+                        aria-readonly="true"
+                        placeholder="Registered email address"
+                        className="w-full h-10 rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] pl-3.5 pr-10 text-xs font-mono font-medium text-[#415164] cursor-default select-all focus:outline-none focus:border-[#D9E1EA] transition-all"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#7E8B9B]">
+                        <Lock className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[#5D6878] mt-1.5 flex items-center gap-1">
+                      Email address is managed by your administrator.
+                    </p>
                   </div>
                 </div>
 

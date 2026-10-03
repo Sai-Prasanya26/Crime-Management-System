@@ -63,14 +63,11 @@ class AuditLogResponse(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    full_name: str = Field(..., min_length=2, max_length=100)
-    email: str = Field(
-        ...,
-        min_length=5,
-        max_length=100,
-        pattern=r"^[\w\.\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$",
-        description="Official email address",
-    )
+    full_name: Optional[str] = Field(None, max_length=100)
+    email: Optional[str] = Field(None, max_length=100, description="Read-only account identity field")
+    username: Optional[str] = Field(None, max_length=50, description="Read-only account identity field")
+    role: Optional[str] = Field(None, description="Read-only account identity field")
+    is_active: Optional[bool] = Field(None, description="Read-only account identity field")
 
 
 class ChangePasswordRequest(BaseModel):

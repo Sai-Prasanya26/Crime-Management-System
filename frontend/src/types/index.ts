@@ -28,7 +28,7 @@ export interface User {
 
 export interface UpdateProfilePayload {
   full_name: string;
-  email: string;
+  email?: string;
 }
 
 export interface ChangePasswordPayload {
