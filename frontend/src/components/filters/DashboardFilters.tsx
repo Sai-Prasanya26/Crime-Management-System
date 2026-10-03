@@ -114,10 +114,10 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
   return (
     <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
         {/* Left: Geography Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 items-center gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA]">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
+          <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
             <Filter className="h-3.5 w-3.5 text-[#1769AA]" />
             <span>Analysis Filters</span>
           </div>
@@ -125,7 +125,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           {/* Geography Layer Switcher */}
           <button
             onClick={toggleGeoView}
-            className="inline-flex h-10 items-center gap-1.5 rounded border border-[#D9E1EA] bg-[#F4F7FA] px-2.5 text-[13px] font-medium text-[#172033] hover:bg-slate-100 transition-colors cursor-pointer"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-[#F4F7FA] px-2.5 text-[13px] font-medium text-[#172033] hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
             title="Toggle between Current Administrative and Census 2011 Historical Geography"
           >
             <Globe className="h-3.5 w-3.5 text-[#7C8796]" />
@@ -133,7 +133,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           </button>
 
           {/* State Selector */}
-          <div className="relative min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:min-w-[190px]">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#7C8796]">
               <MapPin className="h-3.5 w-3.5" />
             </div>
@@ -157,7 +157,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           </div>
 
           {/* District Selector (active only when State is selected) */}
-          <div className="relative min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:min-w-[190px]">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#7C8796]">
               <Building className="h-3.5 w-3.5" />
             </div>
@@ -184,7 +184,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
         </div>
 
         {/* Right: Date Range Picker & Reset */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
           <DateRangeFilter
             startDate={filters.start_date}
             endDate={filters.end_date}
@@ -195,7 +195,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           {hasActiveFilters && (
             <button
               onClick={handleReset}
-              className="inline-flex h-10 items-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
               title="Reset all active filters"
             >
               <RotateCcw className="h-3.5 w-3.5" />

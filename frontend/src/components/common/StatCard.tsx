@@ -47,7 +47,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   const styles = colorStyles[color] || colorStyles.blue;
 
   return (
-    <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[110px] max-h-[125px]">
+    <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[105px]">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
           {title}
@@ -58,8 +58,8 @@ export const StatCard: React.FC<StatCardProps> = ({
       </div>
 
       <div className="mt-1">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-[24px] sm:text-[26px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <h3 className="text-[22px] sm:text-[24px] lg:text-[26px] font-bold tracking-tight text-[#0B1F3A] leading-none">
             {value}
           </h3>
           {trend && (

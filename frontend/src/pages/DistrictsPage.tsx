@@ -153,9 +153,9 @@ export const DistrictsPage: React.FC = () => {
 
       {/* State & District Lookup Filter Toolbar */}
       <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex h-10 items-center gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA]">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+            <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
               <MapPin className="h-3.5 w-3.5 text-[#1769AA]" />
               <span>Jurisdiction Filter:</span>
             </div>
@@ -167,7 +167,7 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(val);
                 setSelectedDistrictId(undefined);
               }}
-              className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
               <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
@@ -184,7 +184,7 @@ export const DistrictsPage: React.FC = () => {
                   const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                   setSelectedDistrictId(val);
                 }}
-                className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
                 <option value="">Select District ({districts.length})</option>
                 {districts.map((d) => (
@@ -202,7 +202,7 @@ export const DistrictsPage: React.FC = () => {
                 setSelectedStateId(undefined);
                 setSelectedDistrictId(undefined);
               }}
-              className="inline-flex h-10 items-center rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center justify-center rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
             >
               Clear Filter
             </button>
@@ -336,7 +336,7 @@ export const DistrictsPage: React.FC = () => {
               Loading Census metrics from district_demographics table...
             </div>
           ) : districtDetail?.demographics ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded border border-[#D9E1EA] bg-[#F4F7FA] p-2.5">
                 <div className="flex items-center gap-1.5 text-[#5D6878]">
                   <Users className="h-3.5 w-3.5 text-[#1769AA]" />

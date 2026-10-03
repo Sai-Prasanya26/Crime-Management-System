@@ -145,9 +145,9 @@ export const RiskAssessmentPage: React.FC = () => {
     >
       {/* State Filter Toolbar */}
       <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA] shrink-0 text-center sm:text-left">
               Risk Assessment Scope
             </span>
             <select
@@ -156,7 +156,7 @@ export const RiskAssessmentPage: React.FC = () => {
                 const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                 setFilters({ ...filters, state_id: val });
               }}
-              className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
               <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
@@ -170,7 +170,7 @@ export const RiskAssessmentPage: React.FC = () => {
           {filters.state_id && (
             <button
               onClick={() => setFilters({})}
-              className="inline-flex h-10 items-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset Filter</span>
@@ -209,7 +209,7 @@ export const RiskAssessmentPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {/* Overall Risk */}
               <div className="rounded border border-[#D9E1EA] bg-[#F4F7FA] p-3.5 flex flex-col justify-between min-h-[105px]">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
@@ -314,9 +314,9 @@ export const RiskAssessmentPage: React.FC = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-[13px]">
+                <table className="w-full min-w-[620px] text-left text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
+                    <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] whitespace-nowrap">
                       <th className="py-2.5 pl-3">Rank</th>
                       <th className="py-2.5 px-3">District</th>
                       <th className="py-2.5 px-3">State / UT</th>
@@ -330,7 +330,7 @@ export const RiskAssessmentPage: React.FC = () => {
                     {topDistricts.items.map((d, index) => {
                       const tier = getDistrictRiskTier(d.crime_rate_per_100k);
                       return (
-                        <tr key={d.district_id} className="transition-colors hover:bg-slate-50/70 h-11">
+                        <tr key={d.district_id} className="transition-colors hover:bg-slate-50/70 h-11 whitespace-nowrap">
                           <td className="py-2 pl-3 font-mono font-bold text-[#5D6878]">
                             #{index + 1}
                           </td>

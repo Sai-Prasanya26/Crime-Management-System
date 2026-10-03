@@ -135,9 +135,9 @@ export const ResourceOptimizationPage: React.FC = () => {
     >
       {/* State Filter Toolbar */}
       <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA] shrink-0 text-center sm:text-left">
               Deployment Jurisdiction:
             </span>
             <select
@@ -146,7 +146,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                 const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                 setSelectedStateId(val);
               }}
-              className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
               <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
@@ -160,7 +160,7 @@ export const ResourceOptimizationPage: React.FC = () => {
           {selectedStateId && (
             <button
               onClick={() => setSelectedStateId(undefined)}
-              className="inline-flex h-10 items-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset Filter</span>
@@ -255,9 +255,9 @@ export const ResourceOptimizationPage: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
+              <table className="w-full min-w-[700px] text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
+                  <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] whitespace-nowrap">
                     <th className="py-2.5 pl-3">District</th>
                     <th className="py-2.5 px-3">Resource Type</th>
                     <th className="py-2.5 px-3 text-right">Available</th>
@@ -269,7 +269,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {allocations.map((row, idx) => (
-                    <tr key={`${row.districtName}-${idx}`} className="h-11 hover:bg-slate-50/70 transition-colors">
+                    <tr key={`${row.districtName}-${idx}`} className="h-11 hover:bg-slate-50/70 transition-colors whitespace-nowrap">
                       <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">
                         {row.districtName}
                         <span className="block text-[11px] font-normal text-[#5D6878]">

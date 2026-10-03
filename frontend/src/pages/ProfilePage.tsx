@@ -155,7 +155,7 @@ export const ProfilePage: React.FC = () => {
       {/* 1. DEDICATED PROFILE HEADER: Clean, No Operational Clutter */}
       {/* ======================================================== */}
       <header className="sticky top-0 z-30 border-b border-[#D9E1EA] bg-white h-[68px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="w-[calc(100%-48px)] max-w-[1240px] mx-auto h-full flex items-center justify-between gap-4">
+        <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-3 sm:gap-4">
           {/* LEFT: [Shield Logo] My Profile + Subtitle */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B1F3A] text-white shrink-0 shadow-2xs">
@@ -172,17 +172,17 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* RIGHT: [Home Link (42–44px)] + [User Account Menu (42–44px)] */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link
               to="/"
-              className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#D9E1EA] bg-white px-4 text-[13px] font-semibold text-[#172033] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs shrink-0 cursor-pointer"
+              className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#D9E1EA] bg-white px-3 sm:px-4 text-[13px] font-semibold text-[#172033] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs shrink-0 cursor-pointer"
               title="Return to Homepage"
             >
               <Home className="h-4 w-4 text-[#1769AA]" />
-              <span>Home</span>
+              <span className="hidden sm:inline">Home</span>
             </Link>
 
-            <UserAccountMenu triggerClassName="h-[42px] px-3" />
+            <UserAccountMenu triggerClassName="h-[42px] px-2.5 sm:px-3" />
           </div>
         </div>
       </header>
@@ -190,8 +190,8 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. MAIN PROFILE CONTENT: Two-Column Dedicated Layout     */}
       {/* ======================================================== */}
-      <main className="w-[calc(100%-48px)] max-w-[1240px] mx-auto py-8 sm:py-10 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] gap-6 items-stretch">
+      <main className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)] gap-6 items-stretch">
           {/* ---------------------------------------------------- */}
           {/* LEFT COLUMN: Profile Summary (Tall Card, 380px)      */}
           {/* ---------------------------------------------------- */}
@@ -537,7 +537,7 @@ export const ProfilePage: React.FC = () => {
       {/* 3. SUBTLE PROFILE FOOTER                                */}
       {/* ======================================================== */}
       <footer className="border-t border-[#D9E1EA] bg-white py-3.5 text-center text-[11.5px] text-[#64748B]">
-        <div className="w-[calc(100%-48px)] max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Crime Intelligence &amp; Management Portal &bull; Staff Profile &amp; Account Management</span>
           <span className="text-[#5D6878]">Authorized Personnel Only</span>
         </div>

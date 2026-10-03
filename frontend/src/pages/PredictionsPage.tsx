@@ -293,9 +293,9 @@ export const PredictionsPage: React.FC = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-[12px]">
+                <table className="w-full min-w-[500px] text-left text-[12px]">
                   <thead>
-                    <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase text-[#5D6878]">
+                    <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase text-[#5D6878] whitespace-nowrap">
                       <th className="py-2 pl-3">Period</th>
                       <th className="py-2 px-3 text-right">Type</th>
                       <th className="py-2 px-3 text-right">Volume</th>
@@ -305,7 +305,7 @@ export const PredictionsPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {forecastData.map((row) => (
-                      <tr key={row.period} className="h-10 hover:bg-slate-50/70">
+                      <tr key={row.period} className="h-10 hover:bg-slate-50/70 whitespace-nowrap">
                         <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">{row.period}</td>
                         <td className="py-2 px-3 text-right">
                           {row.historical !== null ? (

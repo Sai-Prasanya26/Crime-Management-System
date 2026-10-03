@@ -95,7 +95,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({ className = ''
       {/* Dropdown Popover */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-64 sm:w-72 origin-top-right rounded-lg border border-[#D9E1EA] bg-white shadow-xl ring-1 ring-black/5 z-50 py-1.5 focus:outline-none transition-all"
+          className="absolute right-0 mt-2 w-64 sm:w-72 max-w-[calc(100vw-24px)] origin-top-right rounded-lg border border-[#D9E1EA] bg-white shadow-xl ring-1 ring-black/5 z-50 py-1.5 focus:outline-none transition-all"
           role="menu"
           aria-orientation="vertical"
         >

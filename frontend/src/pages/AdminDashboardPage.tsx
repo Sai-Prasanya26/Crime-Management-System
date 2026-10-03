@@ -272,10 +272,10 @@ export const AdminDashboardPage: React.FC = () => {
           )}
 
           {/* Section Navigation Tabs */}
-          <div className="flex items-center border-b border-[#DCE2EA] gap-5 h-10">
+          <div className="flex items-center border-b border-[#DCE2EA] gap-5 h-10 overflow-x-auto whitespace-nowrap">
             <button
               onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
                 activeTab === 'users'
                   ? 'border-[#1D4ED8] text-[#1D4ED8]'
                   : 'border-transparent text-[#5B6577] hover:text-[#172033]'
@@ -287,7 +287,7 @@ export const AdminDashboardPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('security')}
-              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
                 activeTab === 'security'
                   ? 'border-[#1D4ED8] text-[#1D4ED8]'
                   : 'border-transparent text-[#5B6577] hover:text-[#172033]'
@@ -299,7 +299,7 @@ export const AdminDashboardPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('audit')}
-              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 pb-2 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
                 activeTab === 'audit'
                   ? 'border-[#1D4ED8] text-[#1D4ED8]'
                   : 'border-transparent text-[#5B6577] hover:text-[#172033]'
@@ -332,7 +332,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <button
                     onClick={loadStaffData}
                     disabled={loadingUsers}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-md border border-[#DCE2EA] bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50 shadow-2xs disabled:opacity-50 transition-colors cursor-pointer"
+                    className="inline-flex h-10 items-center gap-1.5 rounded-md border border-[#DCE2EA] bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50 shadow-2xs disabled:opacity-50 transition-colors cursor-pointer shrink-0"
                     title="Refresh staff list"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingUsers ? 'animate-spin' : ''}`} />
@@ -344,7 +344,7 @@ export const AdminDashboardPage: React.FC = () => {
                       setFormError(null);
                       setIsCreateModalOpen(true);
                     }}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-md bg-[#1D4ED8] px-3.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#1E40AF] transition-colors cursor-pointer"
+                    className="inline-flex h-10 items-center gap-1.5 rounded-md bg-[#1D4ED8] px-3.5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#1E40AF] transition-colors cursor-pointer shrink-0"
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>Provision Staff Account</span>
@@ -353,9 +353,9 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
 
               {/* Staff Accounts Table */}
-              <div className="overflow-hidden rounded-lg border border-[#DCE2EA] bg-white shadow-2xs">
-                <table className="w-full text-left text-[13px]">
-                  <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577] border-b border-[#DCE2EA]">
+              <div className="overflow-x-auto rounded-lg border border-[#DCE2EA] bg-white shadow-2xs">
+                <table className="w-full min-w-[640px] text-left text-[13px]">
+                  <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-[#5B6577] border-b border-[#DCE2EA] whitespace-nowrap">
                     <tr>
                       <th className="py-2.5 px-3.5">Staff Member</th>
                       <th className="py-2.5 px-3.5">Official Email</th>
@@ -365,7 +365,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <th className="py-2.5 px-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-slate-100 text-slate-700 whitespace-nowrap">
                     {loadingUsers ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-slate-500">
@@ -566,8 +566,8 @@ export const AdminDashboardPage: React.FC = () => {
 
           {/* TAB 3: SECURITY AUDIT TRAIL */}
           {activeTab === 'audit' && (
-            <div className="overflow-hidden rounded-lg border border-[#DCE2EA] bg-white shadow-2xs">
-              <div className="p-3 border-b border-[#DCE2EA] flex items-center justify-between">
+            <div className="overflow-x-auto rounded-lg border border-[#DCE2EA] bg-white shadow-2xs">
+              <div className="p-3 border-b border-[#DCE2EA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-[14px] font-bold text-[#172033]">Security Audit Log</h3>
                   <p className="text-[12px] text-[#5B6577]">Recent authentication, staff provisioning, and credential events</p>
@@ -575,15 +575,15 @@ export const AdminDashboardPage: React.FC = () => {
                 <button
                   onClick={loadAuditData}
                   disabled={loadingAudit}
-                  className="inline-flex items-center gap-1.5 rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer shrink-0"
                 >
                   <RefreshCw className={`h-3 w-3 ${loadingAudit ? 'animate-spin' : ''}`} />
                   <span>Refresh Log</span>
                 </button>
               </div>
 
-              <table className="w-full text-left text-[12px]">
-                <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-[#5B6577] border-b border-[#DCE2EA]">
+              <table className="w-full min-w-[640px] text-left text-[12px]">
+                <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-[#5B6577] border-b border-[#DCE2EA] whitespace-nowrap">
                   <tr>
                     <th className="py-2.5 px-3">Timestamp</th>
                     <th className="py-2.5 px-3">Action</th>
@@ -592,7 +592,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <th className="py-2.5 px-3">IP Address</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 text-slate-700 whitespace-nowrap">
                   {loadingAudit ? (
                     <tr>
                       <td colSpan={5} className="py-6 text-center text-slate-500">
@@ -640,8 +640,8 @@ export const AdminDashboardPage: React.FC = () => {
 
           {/* CREATE STAFF ACCOUNT MODAL */}
           {isCreateModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-              <div className="w-full max-w-[520px] rounded-xl border border-[#DCE2EA] bg-white p-6 shadow-xl">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+              <div className="w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-xl border border-[#DCE2EA] bg-white p-5 sm:p-6 shadow-xl my-auto">
                 <div className="flex items-center justify-between border-b border-[#DCE2EA] pb-3.5">
                   <div className="flex items-center gap-2.5">
                     <div className="rounded p-2 bg-blue-50 text-[#1D4ED8]">

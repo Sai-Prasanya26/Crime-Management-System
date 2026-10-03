@@ -69,9 +69,9 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
       </div>
 
       <div className="mt-3.5 overflow-x-auto">
-        <table className="w-full text-left text-[13px]">
+        <table className="w-full min-w-[560px] text-left text-[13px]">
           <thead>
-            <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
+            <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] whitespace-nowrap">
               <th className="py-2.5 pl-3"># Rank</th>
               <th className="py-2.5 px-3">District</th>
               <th className="py-2.5 px-3">State / UT</th>
@@ -82,7 +82,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
               <th className="py-2.5 pl-3 pr-3">Relative Intensity</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 whitespace-nowrap">
             {districts.map((d, index) => {
               const currentVal =
                 metric === 'volume' ? d.incident_count : d.crime_rate_per_100k || 0;

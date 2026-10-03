@@ -50,9 +50,9 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
       {/* Year Dropdown */}
-      <div className="relative min-w-[160px]">
+      <div className="relative w-full sm:w-auto sm:min-w-[150px]">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-[#7C8796]">
           <Calendar className="h-3.5 w-3.5" />
         </div>
@@ -78,8 +78,8 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       </div>
 
       {/* Custom Date Pickers */}
-      <div className="flex h-10 items-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs">
-        <span className="text-[#5D6878] text-[11px] font-medium uppercase">From:</span>
+      <div className="flex h-10 items-center justify-between sm:justify-start gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs w-full sm:w-auto overflow-hidden">
+        <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">From:</span>
         <input
           type="date"
           aria-label="Start date"
@@ -88,9 +88,9 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           max="2025-12-31"
           disabled={disabled}
           onChange={(e) => onChange(e.target.value || undefined, endDate)}
-          className="bg-transparent text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
+          className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
         />
-        <span className="text-[#5D6878] text-[11px] font-medium uppercase">To:</span>
+        <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">To:</span>
         <input
           type="date"
           aria-label="End date"
@@ -99,7 +99,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           max="2025-12-31"
           disabled={disabled}
           onChange={(e) => onChange(startDate, e.target.value || undefined)}
-          className="bg-transparent text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60"
+          className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
         />
       </div>
     </div>

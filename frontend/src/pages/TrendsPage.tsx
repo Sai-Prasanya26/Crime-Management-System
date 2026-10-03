@@ -94,7 +94,7 @@ export const TrendsPage: React.FC = () => {
       {!isLoading && !error && trends && (
         <div className="space-y-4">
           {/* Trend Summary Cards */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
               <div className="flex items-center gap-2 text-[#5D6878]">
                 <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">

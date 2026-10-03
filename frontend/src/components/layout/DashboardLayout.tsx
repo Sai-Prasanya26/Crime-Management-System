@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -17,26 +17,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   isRefreshing,
   children,
 }) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-[#F6F8FB] text-[#172033]">
-      {/* Sidebar navigation */}
-      <Sidebar />
+    <div className="min-h-screen bg-[#F6F8FB] text-[#172033] flex flex-col">
+      {/* Sidebar navigation (persistent on desktop lg+, drawer on mobile/tablet) */}
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content Area */}
-      <div className="pl-[240px] flex flex-col min-h-screen min-w-0">
+      <div className="lg:pl-[240px] pl-0 flex flex-col min-h-screen min-w-0 w-full transition-all">
         <Header
           title={title}
           subtitle={subtitle}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
 
-        <main className="flex-1 p-4 sm:p-5 lg:p-6 min-w-0">
-          <div className="mx-auto max-w-[1600px] space-y-4 sm:space-y-5 min-w-0">{children}</div>
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-6 min-w-0 w-full">
+          <div className="mx-auto max-w-[1600px] w-full space-y-4 sm:space-y-5 min-w-0">{children}</div>
         </main>
 
         {/* Subtle Operational Footer */}
-        <footer className="border-t border-[#D9E1EA] bg-white px-5 sm:px-6 py-3 mt-auto">
+        <footer className="border-t border-[#D9E1EA] bg-white px-4 sm:px-6 py-3 mt-auto">
           <div className="mx-auto max-w-[1600px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-[#64748B]">
             <div className="min-w-0">
               <span className="font-semibold text-[#172033]">Crime Intelligence &amp; Management Portal</span>

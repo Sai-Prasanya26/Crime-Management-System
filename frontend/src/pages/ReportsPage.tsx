@@ -129,12 +129,12 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-5 pt-3.5 border-t border-[#D9E1EA] flex items-center justify-between">
+            <div className="mt-5 pt-3.5 border-t border-[#D9E1EA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
               <span className="text-[11px] font-medium text-[#7C8796]">
                 Format: <span className="font-semibold text-[#172033]">{report.format}</span>
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   onClick={handlePrint}
                   className="inline-flex h-8 items-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 text-[12px] font-medium text-[#5D6878] hover:bg-slate-50 transition-colors cursor-pointer"
@@ -156,12 +156,12 @@ export const ReportsPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs flex items-center justify-between text-[12px] text-[#5D6878]">
+      <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[12px] text-[#5D6878]">
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-[#1769AA]" />
+          <Shield className="h-4 w-4 text-[#1769AA] shrink-0" />
           <span>All intelligence exports are digitally signed and recorded in the audit trail.</span>
         </div>
-        <span className="font-mono text-[11px]">CLASSIFICATION: RESTRICTED</span>
+        <span className="font-mono text-[11px] shrink-0">CLASSIFICATION: RESTRICTED</span>
       </div>
     </DashboardLayout>
   );
