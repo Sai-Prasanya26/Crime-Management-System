@@ -18,15 +18,17 @@ export const TrendsPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync filters from URL search params (year, state_id)
+  // Sync filters from URL search params (year, state_id, district_id)
   useEffect(() => {
     const year = searchParams.get('year');
     const stateId = searchParams.get('state_id');
-    if (year || stateId) {
+    const districtId = searchParams.get('district_id');
+    if (year || stateId || districtId) {
       setFilters((prev) => ({
         ...prev,
         ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
         ...(stateId ? { state_id: Number(stateId) } : {}),
+        ...(districtId ? { district_id: Number(districtId) } : {}),
       }));
     }
   }, [searchParams]);

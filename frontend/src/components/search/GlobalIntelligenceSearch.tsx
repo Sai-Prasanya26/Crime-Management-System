@@ -1,13 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, MapPin } from 'lucide-react';
+import {
+  Search,
+  X,
+  MapPin,
+  BarChart3,
+  TrendingUp,
+  ShieldAlert,
+  CarFront,
+  FileText,
+  Layers,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { geographyApi } from '../../api/geographyApi';
 import type { StateItem, DistrictItem } from '../../types';
 import {
   interpretQuery,
+  generateSearchSuggestions,
   type QueryResolution,
   type AmbiguousLocationMatch,
+  type SearchSuggestion,
+  type SuggestionIconType,
 } from './queryInterpreter';
 
 interface GlobalIntelligenceSearchProps {
@@ -25,6 +38,11 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ambiguousMatches, setAmbiguousMatches] = useState<AmbiguousLocationMatch[] | null>(null);
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
@@ -37,6 +55,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,27 +84,34 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
     };
   }, []);
 
-  // Global Ctrl+K / Cmd+K Hotkey Listener — ONLY focuses input, NO dropdown/command palette
+  // Debounce query input (150ms) for high-performance responsive autocomplete
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (window.innerWidth < 768) {
-          setMobileModalOpen(true);
-          setTimeout(() => mobileInputRef.current?.focus(), 100);
-        } else {
-          inputRef.current?.focus();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [query]);
 
-  // Close disambiguation/error on outside click
+  // Generate dynamic, context-aware suggestions whenever debouncedQuery or caches update
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < 1) {
+      setSuggestions([]);
+      setSelectedIndex(-1);
+      return;
+    }
+    const results = generateSearchSuggestions(trimmed, states, districts);
+    setSuggestions(results);
+    setSelectedIndex(-1);
+  }, [debouncedQuery, states, districts]);
+
+  // Close suggestions / error on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        setIsDropdownOpen(false);
+        setSelectedIndex(-1);
         setAmbiguousMatches(null);
         setErrorMessage(null);
       }
@@ -98,6 +124,8 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   const executeResolution = (resolution: QueryResolution) => {
     setErrorMessage(null);
     setAmbiguousMatches(null);
+    setIsDropdownOpen(false);
+    setSelectedIndex(-1);
     setMobileModalOpen(false);
 
     if (resolution.adminOnly && !isAdmin) {
@@ -116,10 +144,37 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
     }
   };
 
+  // Handle Selection of an Autocomplete Suggestion
+  const handleSelectSuggestion = (suggestion: SearchSuggestion) => {
+    setIsDropdownOpen(false);
+    setSelectedIndex(-1);
+    setQuery('');
+    setSuggestions([]);
+    setErrorMessage(null);
+    setAmbiguousMatches(null);
+    setMobileModalOpen(false);
+
+    if (suggestion.authRequired && !isAuthenticated) {
+      navigate('/login', { state: { from: suggestion.route } });
+    } else {
+      navigate(suggestion.route);
+    }
+
+    if (onNavigateCallback) {
+      onNavigateCallback();
+    }
+  };
+
   // Submit Query on Enter or Search Click
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
+    }
+
+    // If an autocomplete item is actively highlighted with keyboard, select it
+    if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+      handleSelectSuggestion(suggestions[selectedIndex]);
+      return;
     }
 
     const trimmed = query.trim();
@@ -127,6 +182,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
       return;
     }
 
+    setIsDropdownOpen(false);
     setErrorMessage(null);
     setAmbiguousMatches(null);
 
@@ -147,6 +203,13 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
   // Handle Input Changes
   const handleInputChange = (val: string) => {
     setQuery(val);
+    if (val.trim().length >= 1) {
+      setIsDropdownOpen(true);
+    } else {
+      setIsDropdownOpen(false);
+      setSuggestions([]);
+      setSelectedIndex(-1);
+    }
     if (errorMessage) {
       setErrorMessage(null);
     }
@@ -155,22 +218,71 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
     }
   };
 
-  // Handle Escape key: clears and blurs
+  // Keyboard navigation for suggestions (Arrow Up, Arrow Down, Enter, Escape)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const isTyping = query.trim().length >= 1;
+    const showDropdown = isDropdownOpen && isTyping;
+
+    if (showDropdown && suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+        return;
+      }
+      if (e.key === 'Enter' && selectedIndex >= 0 && selectedIndex < suggestions.length) {
+        e.preventDefault();
+        handleSelectSuggestion(suggestions[selectedIndex]);
+        return;
+      }
+    }
+
     if (e.key === 'Escape') {
       e.preventDefault();
-      setQuery('');
+      setIsDropdownOpen(false);
+      setSelectedIndex(-1);
       setErrorMessage(null);
       setAmbiguousMatches(null);
       inputRef.current?.blur();
       mobileInputRef.current?.blur();
-      setMobileModalOpen(false);
+      if (!isTyping) {
+        setMobileModalOpen(false);
+      }
     }
   };
 
+  // Map icon types to appropriate Lucide components and semantic colors
+  const renderSuggestionIcon = (icon: SuggestionIconType) => {
+    switch (icon) {
+      case 'MapPin':
+        return <MapPin className="h-4 w-4 text-[#1769AA]" />;
+      case 'BarChart3':
+        return <BarChart3 className="h-4 w-4 text-[#1769AA]" />;
+      case 'TrendingUp':
+        return <TrendingUp className="h-4 w-4 text-emerald-600" />;
+      case 'ShieldAlert':
+        return <ShieldAlert className="h-4 w-4 text-amber-600" />;
+      case 'CarFront':
+        return <CarFront className="h-4 w-4 text-indigo-600" />;
+      case 'FileText':
+        return <FileText className="h-4 w-4 text-blue-600" />;
+      case 'Layers':
+        return <Layers className="h-4 w-4 text-purple-600" />;
+      default:
+        return <Search className="h-4 w-4 text-[#5D6878]" />;
+    }
+  };
+
+  const isTyping = query.trim().length >= 1;
+  const showDropdown = isDropdownOpen && isTyping;
+
   return (
     <>
-      {/* 1. Desktop Search Field Container (No Popup, User-Driven Input) */}
+      {/* 1. Desktop Search Field Container with Professional Autocomplete Dropdown */}
       {showDesktop && (
         <div
           ref={containerRef}
@@ -196,6 +308,11 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
               type="text"
               value={query}
               onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => {
+                if (query.trim().length >= 1) {
+                  setIsDropdownOpen(true);
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Search intelligence, states, districts, reports..."
               className="w-full bg-transparent text-[14px] text-[#172033] placeholder:text-[#8896A6] outline-none"
@@ -210,6 +327,9 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                 type="button"
                 onClick={() => {
                   setQuery('');
+                  setSuggestions([]);
+                  setIsDropdownOpen(false);
+                  setSelectedIndex(-1);
                   setErrorMessage(null);
                   setAmbiguousMatches(null);
                   inputRef.current?.focus();
@@ -220,11 +340,63 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
-
           </form>
 
-          {/* Minimal Inline Feedback for Ambiguity Resolution */}
-          {ambiguousMatches && ambiguousMatches.length > 0 && (
+          {/* Context-Aware Search Suggestions Dropdown */}
+          {showDropdown && (
+            <div
+              className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-lg border border-[#D9E1EA] bg-white shadow-xl overflow-hidden animate-in fade-in-50 duration-100"
+              role="listbox"
+            >
+              {suggestions.length > 0 ? (
+                <div className="py-1 divide-y divide-slate-100">
+                  {suggestions.map((suggestion, index) => {
+                    const isSelected = index === selectedIndex;
+                    return (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                        className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                          isSelected ? 'bg-[#EAF3FA]' : 'hover:bg-[#F8FAFC]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`shrink-0 p-1 rounded-md ${
+                              isSelected ? 'bg-white shadow-2xs' : 'bg-[#F4F7FA]'
+                            }`}
+                          >
+                            {renderSuggestionIcon(suggestion.icon)}
+                          </span>
+                          <span
+                            className={`text-[13px] font-semibold truncate leading-tight ${
+                              isSelected ? 'text-[#1769AA]' : 'text-[#172033]'
+                            }`}
+                          >
+                            {suggestion.title}
+                          </span>
+                        </div>
+                        <span className="text-[10.5px] font-semibold text-[#5D6878] shrink-0 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
+                          {suggestion.subtitle}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="px-4 py-3.5 text-center text-[12.5px] font-medium text-[#5D6878]">
+                  No matching intelligence found
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Inline Feedback for Ambiguity Resolution */}
+          {ambiguousMatches && ambiguousMatches.length > 0 && !showDropdown && (
             <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-lg border border-[#D9E1EA] bg-white p-2 shadow-xl animate-in fade-in-50 duration-100">
               <p className="text-[11px] font-semibold text-[#5D6878] px-2.5 py-1 uppercase tracking-wider">
                 Select matching jurisdiction:
@@ -248,8 +420,8 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
             </div>
           )}
 
-          {/* Minimal Inline Unrecognized Query Message */}
-          {errorMessage && (
+          {/* Inline Unrecognized Query Message */}
+          {errorMessage && !showDropdown && (
             <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-[12px] text-amber-900 shadow-md flex items-center justify-between gap-2 animate-in fade-in-50 duration-100">
               <span className="leading-snug">{errorMessage}</span>
               <button
@@ -283,7 +455,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
         </button>
       )}
 
-      {/* 3. Mobile Clean Query Dialog (No Command Palette, Just Query Field) */}
+      {/* 3. Mobile Query Dialog with Autocomplete Support */}
       {mobileModalOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-black/50 backdrop-blur-xs p-3 sm:p-4"
@@ -292,10 +464,14 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
               setMobileModalOpen(false);
               setErrorMessage(null);
               setAmbiguousMatches(null);
+              setIsDropdownOpen(false);
             }
           }}
         >
-          <div className="bg-white rounded-xl border border-[#D9E1EA] shadow-2xl p-4 my-auto w-full max-w-lg mx-auto space-y-3">
+          <div
+            ref={mobileContainerRef}
+            className="bg-white rounded-xl border border-[#D9E1EA] shadow-2xl p-4 my-auto w-full max-w-lg mx-auto space-y-3"
+          >
             <div className="flex items-center justify-between pb-2 border-b border-[#EDF2F7]">
               <span className="text-[12px] font-bold uppercase tracking-wider text-[#0B1F3A] flex items-center gap-1.5">
                 <Search className="h-3.5 w-3.5 text-[#1769AA]" />
@@ -307,6 +483,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                   setMobileModalOpen(false);
                   setErrorMessage(null);
                   setAmbiguousMatches(null);
+                  setIsDropdownOpen(false);
                 }}
                 className="p-1 text-[#8896A6] hover:text-[#172033] rounded cursor-pointer"
                 title="Close"
@@ -331,6 +508,11 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                 type="text"
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
+                onFocus={() => {
+                  if (query.trim().length >= 1) {
+                    setIsDropdownOpen(true);
+                  }
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Search intelligence, states, districts, reports..."
                 className="w-full bg-transparent text-[14px] text-[#172033] placeholder:text-[#8896A6] outline-none"
@@ -342,6 +524,9 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
                   type="button"
                   onClick={() => {
                     setQuery('');
+                    setSuggestions([]);
+                    setIsDropdownOpen(false);
+                    setSelectedIndex(-1);
                     setErrorMessage(null);
                     setAmbiguousMatches(null);
                     mobileInputRef.current?.focus();
@@ -353,8 +538,60 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
               )}
             </form>
 
+            {/* Mobile Context-Aware Suggestions Dropdown */}
+            {showDropdown && (
+              <div
+                className="rounded-lg border border-[#D9E1EA] bg-white shadow-md overflow-hidden animate-in fade-in-50 duration-100 max-h-60 overflow-y-auto"
+                role="listbox"
+              >
+                {suggestions.length > 0 ? (
+                  <div className="py-1 divide-y divide-slate-100">
+                    {suggestions.map((suggestion, index) => {
+                      const isSelected = index === selectedIndex;
+                      return (
+                        <button
+                          key={`mob-${suggestion.id}`}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => handleSelectSuggestion(suggestion)}
+                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                            isSelected ? 'bg-[#EAF3FA]' : 'hover:bg-[#F8FAFC]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`shrink-0 p-1 rounded-md ${
+                                isSelected ? 'bg-white shadow-2xs' : 'bg-[#F4F7FA]'
+                              }`}
+                            >
+                              {renderSuggestionIcon(suggestion.icon)}
+                            </span>
+                            <span
+                              className={`text-[13px] font-semibold truncate leading-tight ${
+                                isSelected ? 'text-[#1769AA]' : 'text-[#172033]'
+                              }`}
+                            >
+                              {suggestion.title}
+                            </span>
+                          </div>
+                          <span className="text-[10.5px] font-semibold text-[#5D6878] shrink-0 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
+                            {suggestion.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 text-center text-[12.5px] font-medium text-[#5D6878]">
+                    No matching intelligence found
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Mobile Ambiguity list */}
-            {ambiguousMatches && ambiguousMatches.length > 0 && (
+            {ambiguousMatches && ambiguousMatches.length > 0 && !showDropdown && (
               <div className="rounded-lg border border-[#D9E1EA] bg-slate-50 p-2 space-y-1">
                 <p className="text-[11px] font-semibold text-[#5D6878] px-2 py-0.5 uppercase tracking-wider">
                   Select matching jurisdiction:
@@ -374,7 +611,7 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
             )}
 
             {/* Mobile Error Message */}
-            {errorMessage && (
+            {errorMessage && !showDropdown && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 leading-snug">
                 {errorMessage}
               </div>
@@ -382,9 +619,9 @@ export const GlobalIntelligenceSearch: React.FC<GlobalIntelligenceSearchProps> =
 
             <p className="text-[11.5px] text-[#5D6878] leading-relaxed">
               Enter any location, temporal filter, or analysis type (e.g.{' '}
-              <span className="font-medium text-[#172033]">"Telangana crime trends"</span>,{' '}
-              <span className="font-medium text-[#172033]">"Hyderabad"</span>,{' '}
-              <span className="font-medium text-[#172033]">"Weapons in Maharashtra"</span>) and press Enter.
+              <span className="font-medium text-[#172033]">"Telangana trends"</span>,{' '}
+              <span className="font-medium text-[#172033]">"Hyderabad crime"</span>,{' '}
+              <span className="font-medium text-[#172033]">"risk Hyderabad"</span>).
             </p>
           </div>
         </div>

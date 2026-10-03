@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ShieldAlert,
   Activity,
@@ -19,7 +20,24 @@ import type {
 } from '../types';
 
 export const RiskAssessmentPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({});
+
+  // Sync filters from URL search params (year, state_id, district_id)
+  useEffect(() => {
+    const year = searchParams.get('year');
+    const stateId = searchParams.get('state_id');
+    const districtId = searchParams.get('district_id');
+    if (year || stateId || districtId) {
+      setFilters((prev) => ({
+        ...prev,
+        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
+        ...(stateId ? { state_id: Number(stateId) } : {}),
+        ...(districtId ? { district_id: Number(districtId) } : {}),
+      }));
+    }
+  }, [searchParams]);
+
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
   const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);

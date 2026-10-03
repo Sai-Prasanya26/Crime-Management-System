@@ -25,6 +25,24 @@ export interface InterpretationResult {
   errorMessage?: string;
 }
 
+export type SuggestionIconType =
+  | 'MapPin'
+  | 'BarChart3'
+  | 'TrendingUp'
+  | 'ShieldAlert'
+  | 'CarFront'
+  | 'FileText'
+  | 'Layers';
+
+export interface SearchSuggestion {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: SuggestionIconType;
+  route: string;
+  authRequired: boolean;
+}
+
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -589,4 +607,484 @@ export function interpretQuery(
     errorMessage:
       "Could not identify a project destination. Try a state, district, year, or analysis such as 'Telangana crime trends'.",
   };
+}
+
+const SUPPORTED_YEARS = ['2020', '2021', '2022', '2023', '2024', '2025'];
+
+function formatTitleCase(name: string): string {
+  if (!name) return name;
+  if (name === name.toUpperCase()) {
+    return name
+      .toLowerCase()
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+  return name;
+}
+
+/**
+ * Context-aware autocomplete suggestion engine.
+ * Generates dynamically ranked, structured suggestions for search queries.
+ * Supports:
+ * - Direct state/district matches (e.g. "tel", "hyd", "maha", "thane")
+ * - Specific operational module intents (e.g. "crime", "trend", "risk", "forecast", "resource", "report")
+ * - Combined queries (e.g. "Hyderabad crime", "Telangana trends", "risk Hyderabad", "Hyderabad 2025")
+ * - Preserves validated year context (2020-2025)
+ * Returns up to 5 strictly relevant suggestions.
+ */
+export function generateSearchSuggestions(
+  rawQuery: string,
+  states: StateItem[],
+  districts: DistrictItem[]
+): SearchSuggestion[] {
+  const trimmed = rawQuery.trim();
+  if (trimmed.length < 1) {
+    return [];
+  }
+
+  const lower = trimmed.toLowerCase();
+  const clean = lower.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  // 1. Detect Supported Year (2020-2025)
+  let matchedYear: string | undefined;
+  for (const y of SUPPORTED_YEARS) {
+    if (new RegExp(`\\b${y}\\b`).test(clean)) {
+      matchedYear = y;
+      break;
+    }
+  }
+
+  // 2. Intent Flags
+  const hasCrime = /\b(crime|crimes|records?|incidents?|analytics?)\b/i.test(clean);
+  const hasTrends = /\b(trend|trends|trending|forecast|forecasts|forecasting|patterns?|temporal)\b/i.test(clean);
+  const hasRisk = /\b(risk|risks|threat|threats|vulnerability|severity)\b/i.test(clean);
+  const hasPredict = /\b(predict|prediction|predictions|predictive)\b/i.test(clean);
+  const hasResource = /\b(resource|resources|optimization|patrol|patrols|deployment|allocation)\b/i.test(clean);
+  const hasReports = /\b(report|reports|briefing|briefings)\b/i.test(clean);
+  const hasBudget = /\b(budget|budgets|cost|costs|expenditure)\b/i.test(clean);
+  const hasGeo = /\b(geographic|geography|map|hotspots?|districts?)\b/i.test(clean);
+
+  const hasAnyIntent = hasCrime || hasTrends || hasRisk || hasPredict || hasResource || hasReports || hasBudget || hasGeo;
+
+  // 3. Strip Year and pure Intent words to identify Location tokens
+  const stripRegex = new RegExp(
+    `\\b(${SUPPORTED_YEARS.join('|')}|crime|crimes|records?|incidents?|analytics?|trends?|trending|forecasts?|forecasting|patterns?|temporal|risk|risks?|threats?|severity|predict|predictions?|predictive|resources?|optimization|patrols?|deployment|reports?|briefings?|budgets?|costs?|geographic|geography|map)\\b`,
+    'gi'
+  );
+  const locToken = clean.replace(stripRegex, '').replace(/\s+/g, ' ').trim();
+
+  let matchedDistrict: DistrictItem | undefined;
+  let matchedState: StateItem | undefined;
+  const prefixDistricts: DistrictItem[] = [];
+  const prefixStates: StateItem[] = [];
+
+  if (locToken.length >= 2 || (locToken.length >= 1 && !hasAnyIntent)) {
+    // 3A. Match District by prefix or exact
+    districts.forEach((d) => {
+      const dName = d.district_name.toLowerCase();
+      if (dName.startsWith(locToken) || dName === locToken) {
+        prefixDistricts.push(d);
+      }
+    });
+    if (prefixDistricts.length === 0) {
+      districts.forEach((d) => {
+        if (d.district_name.toLowerCase().includes(locToken)) {
+          prefixDistricts.push(d);
+        }
+      });
+    }
+
+    // 3B. Match State by prefix or exact
+    states.forEach((s) => {
+      const sName = s.state_name.toLowerCase();
+      if (sName.startsWith(locToken) || sName === locToken) {
+        prefixStates.push(s);
+      }
+    });
+    if (prefixStates.length === 0) {
+      states.forEach((s) => {
+        if (s.state_name.toLowerCase().includes(locToken)) {
+          prefixStates.push(s);
+        }
+      });
+    }
+
+    matchedDistrict = prefixDistricts[0];
+    matchedState = prefixStates[0];
+  }
+
+  // If district matched but state not explicitly found, associate state from district
+  if (matchedDistrict && !matchedState) {
+    matchedState = states.find((s) => s.id === matchedDistrict?.state_id) || {
+      id: matchedDistrict.state_id,
+      state_name: matchedDistrict.state_name,
+      entity_type: 'STATE',
+    };
+  }
+
+  const suggestions: SearchSuggestion[] = [];
+
+  // Helper to build URL query parameters
+  const buildUrl = (base: string): string => {
+    const params = new URLSearchParams();
+    if (matchedDistrict) {
+      params.set('state', matchedState?.state_name || '');
+      params.set('state_id', String(matchedDistrict.state_id));
+      params.set('district', matchedDistrict.district_name);
+      params.set('district_id', String(matchedDistrict.id));
+    } else if (matchedState) {
+      params.set('state', matchedState.state_name);
+      params.set('state_id', String(matchedState.id));
+    }
+    if (matchedYear) {
+      params.set('year', matchedYear);
+    }
+    const q = params.toString();
+    return q ? `${base}?${q}` : base;
+  };
+
+  // --------------------------------------------------------------------------
+  // PATTERN 1: COMBINED LOCATION + INTENT / YEAR (e.g. "Hyderabad crime", "Telangana trends", "Hyderabad 2025", "risk Hyderabad")
+  // --------------------------------------------------------------------------
+  if ((matchedDistrict || matchedState) && (hasRisk || hasTrends || hasCrime || hasResource || hasReports || hasBudget || hasPredict || matchedYear)) {
+    const locName = matchedDistrict
+      ? formatTitleCase(matchedDistrict.district_name)
+      : formatTitleCase(matchedState!.state_name);
+    const isDist = Boolean(matchedDistrict);
+    const stateName = matchedState ? formatTitleCase(matchedState.state_name) : 'State';
+
+    // 1A. User explicitly searched "risk [location]"
+    if (hasRisk && !hasTrends && !hasCrime) {
+      suggestions.push({
+        id: `sug-risk-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Risk Assessment`,
+        subtitle: 'Risk Assessment',
+        icon: 'ShieldAlert',
+        route: buildUrl('/risk'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+    }
+    // 1B. User searched "[location] trends"
+    else if (hasTrends && !hasRisk) {
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-trends-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Crime Trends${matchedYear ? ` — ${matchedYear}` : ''}`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: buildUrl('/trends'),
+        authRequired: true,
+      });
+    }
+    // 1C. User searched "[location] 2025" (Year combination without conflicting intent)
+    else if (matchedYear && !hasCrime && !hasTrends && !hasRisk) {
+      suggestions.push({
+        id: `sug-records-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Crime Records — ${matchedYear}`,
+        subtitle: 'Crime Intelligence',
+        icon: 'BarChart3',
+        route: buildUrl('/dashboard'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-trends-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Crime Trends — ${matchedYear}`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: buildUrl('/trends'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+    }
+    // 1D. User searched "[location] crime"
+    else if (hasCrime) {
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-intel-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Crime Intelligence${matchedYear ? ` — ${matchedYear}` : ''}`,
+        subtitle: 'Crime Analytics',
+        icon: 'BarChart3',
+        route: buildUrl('/dashboard'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-trends-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Crime Trends${matchedYear ? ` — ${matchedYear}` : ''}`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: buildUrl('/trends'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-risk-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Risk Assessment`,
+        subtitle: 'Risk Assessment',
+        icon: 'ShieldAlert',
+        route: buildUrl('/risk'),
+        authRequired: true,
+      });
+    }
+    // 1E. Other specific combined intents
+    else if (hasResource) {
+      suggestions.push({
+        id: `sug-res-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Resource Optimization`,
+        subtitle: 'Resource Optimization',
+        icon: 'CarFront',
+        route: buildUrl('/resources'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+    } else if (hasReports) {
+      suggestions.push({
+        id: `sug-rep-${matchedDistrict?.id || matchedState?.id}`,
+        title: `${locName} Intelligence Reports`,
+        subtitle: 'Intelligence Reports',
+        icon: 'FileText',
+        route: buildUrl('/reports'),
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-loc-${matchedDistrict?.id || matchedState?.id}`,
+        title: locName,
+        subtitle: isDist ? `District in ${stateName}` : 'State',
+        icon: 'MapPin',
+        route: buildUrl('/districts'),
+        authRequired: true,
+      });
+    }
+  }
+  // --------------------------------------------------------------------------
+  // PATTERN 2: LOCATION PREFIX / MATCH ONLY (e.g. "hyd", "tel", "maha", "thane")
+  // --------------------------------------------------------------------------
+  else if (matchedDistrict || matchedState) {
+    if (matchedDistrict) {
+      const dName = formatTitleCase(matchedDistrict.district_name);
+      const sName = matchedState ? formatTitleCase(matchedState.state_name) : '';
+      suggestions.push({
+        id: `sug-dist-${matchedDistrict.id}`,
+        title: dName,
+        subtitle: sName ? `District in ${sName}` : 'District',
+        icon: 'MapPin',
+        route: `/districts?state_id=${matchedDistrict.state_id}&district_id=${matchedDistrict.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-dash-${matchedDistrict.id}`,
+        title: `${dName} Crime Intelligence`,
+        subtitle: 'Crime Analytics',
+        icon: 'BarChart3',
+        route: `/dashboard?state_id=${matchedDistrict.state_id}&district_id=${matchedDistrict.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-trends-${matchedDistrict.id}`,
+        title: `${dName} Crime Trends`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: `/trends?state_id=${matchedDistrict.state_id}&district_id=${matchedDistrict.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-risk-${matchedDistrict.id}`,
+        title: `${dName} Risk Assessment`,
+        subtitle: 'Risk Assessment',
+        icon: 'ShieldAlert',
+        route: `/risk?state_id=${matchedDistrict.state_id}&district_id=${matchedDistrict.id}`,
+        authRequired: true,
+      });
+    } else if (matchedState) {
+      const sName = formatTitleCase(matchedState.state_name);
+      suggestions.push({
+        id: `sug-state-${matchedState.id}`,
+        title: sName,
+        subtitle: 'State',
+        icon: 'MapPin',
+        route: `/districts?state_id=${matchedState.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-dash-${matchedState.id}`,
+        title: `${sName} Crime Intelligence`,
+        subtitle: 'Crime Analytics',
+        icon: 'BarChart3',
+        route: `/dashboard?state_id=${matchedState.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-trends-${matchedState.id}`,
+        title: `${sName} Crime Trends`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: `/trends?state_id=${matchedState.id}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-risk-${matchedState.id}`,
+        title: `${sName} Risk Assessment`,
+        subtitle: 'Risk Assessment',
+        icon: 'ShieldAlert',
+        route: `/risk?state_id=${matchedState.id}`,
+        authRequired: true,
+      });
+    }
+  }
+  // --------------------------------------------------------------------------
+  // PATTERN 3: INTENT / OPERATION ONLY (e.g. "crime", "trend", "risk", "forecast", "resource", "report")
+  // --------------------------------------------------------------------------
+  else {
+    if (hasCrime) {
+      suggestions.push({
+        id: 'sug-mod-crime-analytics',
+        title: 'Crime Analytics',
+        subtitle: 'Crime Intelligence Overview',
+        icon: 'BarChart3',
+        route: '/dashboard',
+        authRequired: true,
+      });
+      suggestions.push({
+        id: 'sug-mod-crime-records',
+        title: 'Crime Records & Incidents',
+        subtitle: 'Operational Crime Intelligence',
+        icon: 'BarChart3',
+        route: '/dashboard',
+        authRequired: true,
+      });
+      suggestions.push({
+        id: 'sug-mod-crime-trends',
+        title: 'Crime Trends & Forecasting',
+        subtitle: 'Temporal Analysis & Forecasting',
+        icon: 'TrendingUp',
+        route: '/trends',
+        authRequired: true,
+      });
+    } else if (hasTrends) {
+      suggestions.push({
+        id: 'sug-mod-trends',
+        title: 'Crime Trends & Forecasting',
+        subtitle: 'Temporal Patterns & Forecasting',
+        icon: 'TrendingUp',
+        route: '/trends',
+        authRequired: true,
+      });
+      suggestions.push({
+        id: 'sug-mod-predictions',
+        title: 'Predictive Intelligence',
+        subtitle: 'Multi-Year Extrapolations',
+        icon: 'Layers',
+        route: '/predictions',
+        authRequired: true,
+      });
+    } else if (hasRisk) {
+      suggestions.push({
+        id: 'sug-mod-risk',
+        title: 'Crime Risk Assessment',
+        subtitle: 'Jurisdictional Risk Analysis',
+        icon: 'ShieldAlert',
+        route: '/risk',
+        authRequired: true,
+      });
+    } else if (hasPredict) {
+      suggestions.push({
+        id: 'sug-mod-trends',
+        title: 'Crime Trends & Forecasting',
+        subtitle: 'Temporal Patterns & Forecasting',
+        icon: 'TrendingUp',
+        route: '/trends',
+        authRequired: true,
+      });
+      suggestions.push({
+        id: 'sug-mod-predict',
+        title: 'Predictive Intelligence',
+        subtitle: 'Statistical Projections',
+        icon: 'Layers',
+        route: '/predictions',
+        authRequired: true,
+      });
+    } else if (hasResource) {
+      suggestions.push({
+        id: 'sug-mod-res',
+        title: 'Resource Optimization',
+        subtitle: 'Deployment & Personnel Allocation',
+        icon: 'CarFront',
+        route: '/resources',
+        authRequired: true,
+      });
+    } else if (hasReports) {
+      suggestions.push({
+        id: 'sug-mod-rep',
+        title: 'Intelligence Reports',
+        subtitle: 'Structured Analytical Reports',
+        icon: 'FileText',
+        route: '/reports',
+        authRequired: true,
+      });
+    } else if (hasBudget) {
+      suggestions.push({
+        id: 'sug-mod-bud',
+        title: 'Budget Intelligence',
+        subtitle: 'Operational Resource Cost Estimator',
+        icon: 'BarChart3',
+        route: '/budget',
+        authRequired: true,
+      });
+    } else if (matchedYear) {
+      suggestions.push({
+        id: `sug-year-dash-${matchedYear}`,
+        title: `Crime Analytics — ${matchedYear}`,
+        subtitle: 'Crime Intelligence Overview',
+        icon: 'BarChart3',
+        route: `/dashboard?year=${matchedYear}`,
+        authRequired: true,
+      });
+      suggestions.push({
+        id: `sug-year-trends-${matchedYear}`,
+        title: `Crime Trends — ${matchedYear}`,
+        subtitle: 'Crime Trends',
+        icon: 'TrendingUp',
+        route: `/trends?year=${matchedYear}`,
+        authRequired: true,
+      });
+    }
+  }
+
+  // Maximum 5 suggestions strictly enforced
+  return suggestions.slice(0, 5);
 }
