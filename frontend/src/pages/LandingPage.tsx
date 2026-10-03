@@ -28,7 +28,7 @@ export const LandingPage: React.FC = () => {
         'Analyse crime incidents across categories, types, jurisdictions, demographics, weapons and time periods.',
       icon: BarChart3,
       image: '/images/crime-analytics.jpg',
-      link: '/analytics',
+      link: '/dashboard',
       actionText: 'View Crime Analytics',
     },
     {

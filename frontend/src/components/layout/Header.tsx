@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Home, LogIn, Clock, Shield } from 'lucide-react';
+import { RefreshCw, Home, LogIn, Clock, Shield, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import GlobalIntelligenceSearch from '../search/GlobalIntelligenceSearch';
@@ -18,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   onRefresh,
   isRefreshing,
+  onToggleSidebar,
 }) => {
   const { user, isAuthenticated } = useAuth();
 
@@ -47,12 +48,23 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-3 sm:px-5 lg:px-6 shadow-2xs gap-2 sm:gap-3">
-      {/* Left: Portal Identity Branding & Page Title */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-1 sm:pr-2">
+      {/* Left: Mobile Drawer Trigger + Shield Emblem & Page Title */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-1 sm:pr-2">
+        {/* Hamburger Menu Toggle Button (Visible below lg / 1024px) */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg border border-[#D9E1EA] bg-white text-[#5D6878] hover:text-[#0B1F3A] hover:bg-[#F4F7FA] transition-colors cursor-pointer shrink-0"
+          title="Open navigation menu"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+
         {/* Shield Emblem Link to Home */}
         <Link
           to="/"
-          className="flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0 hover:bg-[#12345B] transition-colors"
+          className="hidden xs:flex sm:flex h-8 w-8 items-center justify-center rounded bg-[#0B1F3A] text-white shrink-0 hover:bg-[#12345B] transition-colors"
           title="Return to Portal Overview"
         >
           <Shield className="h-4 w-4 text-[#1D7FE2]" />
