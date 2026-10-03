@@ -154,6 +154,16 @@ export const LandingPage: React.FC = () => {
                 A secure operational platform for analysing crime patterns, assessing jurisdictional risk, forecasting crime trends and supporting data-driven resource planning.
               </p>
 
+              {/* Primary Operations CTA */}
+              <div className="pt-2">
+                <Link
+                  to="/dashboard"
+                  className="inline-flex w-full sm:w-auto h-11 sm:h-12 items-center justify-center gap-2.5 rounded-lg bg-[#0B1F3A] px-5 sm:px-6 text-[13.5px] sm:text-[14px] font-semibold text-white shadow-xs hover:bg-[#12345B] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1769AA]/40 focus:ring-offset-2 transition-all group"
+                >
+                  <span>Explore Crime Intelligence</span>
+                  <ArrowRight className="h-4 w-4 text-[#1D7FE2] group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </div>
             </div>
 
             {/* Right 50–52%: Large Clean Realistic Crime-Intelligence Image */}
