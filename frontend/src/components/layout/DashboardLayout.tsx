@@ -34,11 +34,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const isDashboardFullscreen =
+    location.pathname === '/dashboard' &&
+    (location.search.includes('workspace=fullscreen') ||
+      location.search.includes('fullscreen=true'));
+
   // Dedicated operation workspace: sidebar hidden, full width workspace
   const isOperationWorkspace =
     hideSidebar !== undefined
       ? hideSidebar
-      : DEDICATED_OPERATION_ROUTES.includes(location.pathname);
+      : DEDICATED_OPERATION_ROUTES.includes(location.pathname) ||
+        isDashboardFullscreen;
 
   return (
     <div className="min-h-screen bg-[#F6F8FB] text-[#172033] flex flex-col">

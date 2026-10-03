@@ -146,10 +146,19 @@ export const DashboardPage: React.FC = () => {
     setRankingMetric(newMetric);
   };
 
+  const isFullscreen =
+    searchParams.get('workspace') === 'fullscreen' ||
+    searchParams.get('fullscreen') === 'true';
+
   return (
     <DashboardLayout
+      hideSidebar={isFullscreen}
       title="Crime Intelligence Overview"
-      subtitle="Current intelligence and incident activity"
+      subtitle={
+        isFullscreen
+          ? 'Dedicated full-screen workspace: incident trends, jurisdictional metrics and resource indicators'
+          : 'Current intelligence and incident activity'
+      }
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >

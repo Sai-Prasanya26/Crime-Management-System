@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   BarChart3,
@@ -24,6 +24,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
 
   const handleLogout = async () => {
     onClose?.();
@@ -61,7 +62,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   }
 
   const overviewItems: NavItem[] = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
+    {
+      name: 'Dashboard',
+      path: '/dashboard?workspace=fullscreen',
+      icon: LayoutDashboard,
+      exact: true,
+    },
   ];
 
   const intelligenceItems: NavItem[] = [
@@ -77,6 +83,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
     { name: 'Budget Intelligence', path: '/budget', icon: BadgeDollarSign },
     { name: 'Reports', path: '/reports', icon: FileText },
   ];
+
+  const isItemActive = (item: NavItem, navActive: boolean) => {
+    if (item.name === 'Dashboard') {
+      return location.pathname === '/dashboard';
+    }
+    return navActive;
+  };
 
   const renderNavGroup = (title: string, items: NavItem[], isAccentTitle = false) => (
     <div>
@@ -96,24 +109,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
               to={item.path}
               end={item.exact}
               onClick={() => onClose?.()}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 py-1.5 text-[13px] transition-colors rounded ${
+              className={({ isActive: navActive }) => {
+                const isActive = isItemActive(item, navActive);
+                return `flex items-center gap-2.5 py-1.5 text-[13px] transition-colors rounded ${
                   isActive
                     ? 'border-l-[3px] border-[#1D7FE2] bg-[#1769AA]/25 pl-2.5 pr-2.5 text-white font-semibold'
                     : 'px-3 text-slate-300 hover:bg-white/5 hover:text-white'
-                }`
-              }
+                }`;
+              }}
             >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    className={`h-4 w-4 shrink-0 ${
-                      isActive ? 'text-[#1D7FE2]' : 'text-slate-400'
-                    }`}
-                  />
-                  <span className="truncate">{item.name}</span>
-                </>
-              )}
+              {({ isActive: navActive }) => {
+                const isActive = isItemActive(item, navActive);
+                return (
+                  <>
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${
+                        isActive ? 'text-[#1D7FE2]' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="truncate">{item.name}</span>
+                  </>
+                );
+              }}
             </NavLink>
           );
         })}
