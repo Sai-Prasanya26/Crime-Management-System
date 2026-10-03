@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import Sidebar from './Sidebar';
+import React from 'react';
 import Header from './Header';
 
 interface DashboardLayoutProps {
@@ -17,21 +16,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   isRefreshing,
   children,
 }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   return (
     <div className="min-h-screen bg-[#F6F8FB] text-[#172033] flex flex-col">
-      {/* Sidebar navigation (persistent on desktop lg+, drawer on mobile/tablet) */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content Area */}
-      <div className="lg:pl-[240px] pl-0 flex flex-col min-h-screen min-w-0 w-full transition-all">
+      {/* Full-width dedicated module layout without large sidebar */}
+      <div className="flex flex-col min-h-screen min-w-0 w-full transition-all">
         <Header
           title={title}
           subtitle={subtitle}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
-          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
 
         <main className="flex-1 p-3.5 sm:p-5 lg:p-6 min-w-0 w-full">

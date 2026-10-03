@@ -14,6 +14,7 @@ import BudgetIntelligencePage from './pages/BudgetIntelligencePage';
 import ReportsPage from './pages/ReportsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import ProfilePage from './pages/ProfilePage';
+import CrimeAnalyticsPage from './pages/CrimeAnalyticsPage';
 
 export const App: React.FC = () => {
   return (
@@ -30,6 +31,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <CrimeAnalyticsPage />
               </ProtectedRoute>
             }
           />

@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   ];
 
   const intelligenceItems: NavItem[] = [
-    { name: 'Crime Analytics', path: '/dashboard#analytics', icon: BarChart3 },
+    { name: 'Crime Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'Geographic Intelligence', path: '/districts', icon: MapPin },
     { name: 'Crime Trends', path: '/trends', icon: TrendingUp },
     { name: 'Risk Assessment', path: '/risk', icon: ShieldAlert },

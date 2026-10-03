@@ -299,7 +299,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard?${params.toString()}`,
+        route: `/analytics?${params.toString()}`,
         destinationName: matchedState
           ? `Weapons Analysis — ${matchedState.state_name}`
           : 'Weapon Distribution Analysis',
@@ -329,7 +329,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard?${params.toString()}`,
+        route: `/analytics?${params.toString()}`,
         destinationName: matchedState
           ? `Crime Types — ${matchedState.state_name}`
           : 'Crime Types Analysis',
@@ -359,7 +359,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard?${params.toString()}`,
+        route: `/analytics?${params.toString()}`,
         destinationName: matchedState
           ? `Demographics — ${matchedState.state_name}`
           : 'Demographics Analysis',
@@ -389,7 +389,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard?${params.toString()}`,
+        route: `/analytics?${params.toString()}`,
         destinationName: matchedState
           ? `Crime Categories — ${matchedState.state_name}`
           : 'Crime Categories Breakdown',
@@ -419,7 +419,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard?${params.toString()}`,
+        route: `/analytics?${params.toString()}`,
         destinationName: matchedState
           ? `Hourly Patterns — ${matchedState.state_name}`
           : 'Hourly Crime Distribution',
@@ -457,7 +457,7 @@ export function interpretQuery(
     return {
       status: 'resolved',
       resolution: {
-        route: `/dashboard${queryStr}`,
+        route: `/analytics${queryStr}`,
         destinationName: matchedDistrict
           ? `Crime Analytics — ${matchedDistrict.district_name}`
           : matchedState
@@ -831,10 +831,10 @@ export function generateSearchSuggestions(
       });
       suggestions.push({
         id: `sug-intel-${matchedDistrict?.id || matchedState?.id}`,
-        title: `${locName} Crime Intelligence${matchedYear ? ` — ${matchedYear}` : ''}`,
+        title: `${locName} Crime Analytics${matchedYear ? ` — ${matchedYear}` : ''}`,
         subtitle: 'Crime Analytics',
         icon: 'BarChart3',
-        route: buildUrl('/dashboard'),
+        route: buildUrl('/analytics'),
         authRequired: true,
       });
       suggestions.push({
@@ -974,15 +974,15 @@ export function generateSearchSuggestions(
       suggestions.push({
         id: 'sug-mod-crime-analytics',
         title: 'Crime Analytics',
-        subtitle: 'Crime Intelligence Overview',
+        subtitle: 'Pattern & Category Intelligence',
         icon: 'BarChart3',
-        route: '/dashboard',
+        route: '/analytics',
         authRequired: true,
       });
       suggestions.push({
         id: 'sug-mod-crime-records',
-        title: 'Crime Records & Incidents',
-        subtitle: 'Operational Crime Intelligence',
+        title: 'Crime Overview & Command Center',
+        subtitle: 'Operational Intelligence Overview',
         icon: 'BarChart3',
         route: '/dashboard',
         authRequired: true,
