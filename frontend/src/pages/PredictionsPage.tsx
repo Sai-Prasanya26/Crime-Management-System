@@ -4,6 +4,7 @@ import {
   Layers,
   Info,
   ShieldCheck,
+  Activity,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -76,8 +77,9 @@ export const PredictionsPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={Activity}
       title="Predictive Intelligence"
-      subtitle="Statistical forecasting and longitudinal incident projection"
+      subtitle="Longitudinal incident forecasting and trend projection"
     >
       {isLoading && (
         <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">

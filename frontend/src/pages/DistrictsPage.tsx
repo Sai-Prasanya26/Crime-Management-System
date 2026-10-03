@@ -144,6 +144,7 @@ export const DistrictsPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={MapPin}
       title="Geographic Intelligence"
       subtitle="Crime distribution across jurisdictions"
       onRefresh={() => fetchTopDistricts(true)}

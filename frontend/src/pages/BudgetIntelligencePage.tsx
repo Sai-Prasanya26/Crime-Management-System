@@ -96,8 +96,9 @@ export const BudgetIntelligencePage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={BadgeDollarSign}
       title="Budget Intelligence"
-      subtitle="Financial modeling and estimated capital allocations for operational crime response"
+      subtitle="Operational financial models and capital allocations"
       onRefresh={() => fetchData(true)}
       isRefreshing={isRefreshing}
     >

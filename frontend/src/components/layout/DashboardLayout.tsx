@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
 interface DashboardLayoutProps {
   title: string;
   subtitle?: string;
+  icon?: LucideIcon;
   onRefresh?: () => void;
   isRefreshing?: boolean;
   hideSidebar?: boolean;
@@ -26,6 +28,7 @@ const DEDICATED_OPERATION_ROUTES = [
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   title,
   subtitle,
+  icon,
   onRefresh,
   isRefreshing,
   hideSidebar,
@@ -62,6 +65,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <Header
           title={title}
           subtitle={subtitle}
+          icon={icon}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
           hideSidebar={isOperationWorkspace}

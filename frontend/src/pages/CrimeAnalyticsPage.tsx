@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Globe2,
   Table as TableIcon,
+  BarChart3,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/common/StatCard';
@@ -108,8 +109,9 @@ export const CrimeAnalyticsPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={BarChart3}
       title="Crime Analytics"
-      subtitle="Analyze reported crime patterns and characteristics across jurisdictions and periods."
+      subtitle="Incident patterns, demographics and weapons breakdown"
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
     >

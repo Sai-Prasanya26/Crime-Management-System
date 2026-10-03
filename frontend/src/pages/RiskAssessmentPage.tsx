@@ -139,8 +139,9 @@ export const RiskAssessmentPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
-      title="Crime Risk Assessment"
-      subtitle="Operational threat indices and high-priority jurisdictional profiles"
+      icon={ShieldAlert}
+      title="Risk Assessment"
+      subtitle="Jurisdictional threat indices and risk profiles"
       onRefresh={() => fetchRiskData(true)}
       isRefreshing={isRefreshing}
     >

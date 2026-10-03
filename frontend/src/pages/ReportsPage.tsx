@@ -88,8 +88,9 @@ export const ReportsPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={FileText}
       title="Intelligence Reports"
-      subtitle="Standardized operational briefing packages and analytical summaries"
+      subtitle="Standardized briefings and analytical case dossiers"
     >
       {downloadSuccess && (
         <div className="flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-[13px] font-medium text-emerald-900 shadow-2xs">

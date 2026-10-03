@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Globe2,
   ShieldCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/common/StatCard';
@@ -153,10 +154,11 @@ export const DashboardPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar={isFullscreen}
+      icon={LayoutDashboard}
       title="Crime Intelligence Overview"
       subtitle={
         isFullscreen
-          ? 'Dedicated full-screen workspace: incident trends, jurisdictional metrics and resource indicators'
+          ? 'Jurisdiction incidents, metrics and trends overview'
           : 'Current intelligence and incident activity'
       }
       onRefresh={() => fetchDashboardData(true)}

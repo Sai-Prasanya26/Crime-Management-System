@@ -129,8 +129,9 @@ export const ResourceOptimizationPage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      icon={Sliders}
       title="Resource Optimization"
-      subtitle="Operational deployment models and workforce balancing across high-workload jurisdictions"
+      subtitle="Workforce deployment and patrol balancing"
       onRefresh={() => fetchData(true)}
       isRefreshing={isRefreshing}
     >
