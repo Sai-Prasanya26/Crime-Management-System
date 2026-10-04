@@ -1,41 +1,37 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  FileText,
-  AlertTriangle,
-  CheckCircle2,
-  ShieldCheck,
-  Globe2,
-  Table as TableIcon,
-  BarChart3,
-} from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import StatCard from '../components/common/StatCard';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
 import EmptyState from '../components/common/EmptyState';
 import DashboardFilters from '../components/filters/DashboardFilters';
-import CrimeCategoryChart from '../components/charts/CrimeCategoryChart';
-import CrimeTypeChart from '../components/charts/CrimeTypeChart';
-import HourlyDistributionChart from '../components/charts/HourlyDistributionChart';
-import VictimDemographicsChart from '../components/charts/VictimDemographicsChart';
-import WeaponDistributionChart from '../components/charts/WeaponDistributionChart';
-import { analyticsApi } from '../api';
+import { CrimeClassificationSection } from '../components/analytics/CrimeClassificationSection';
+import { TemporalAnalysisSection } from '../components/analytics/TemporalAnalysisSection';
+import { DemographicsAnalysisSection } from '../components/analytics/DemographicsAnalysisSection';
+import { WeaponAnalysisSection } from '../components/analytics/WeaponAnalysisSection';
+import { CaseOutcomeSection } from '../components/analytics/CaseOutcomeSection';
+import { JurisdictionComparisonSection } from '../components/analytics/JurisdictionComparisonSection';
+import { CrimeDetailTable } from '../components/analytics/CrimeDetailTable';
+import { analyticsApi, geographyApi } from '../api';
 import type {
   FilterParams,
   CrimeOverviewResponse,
   CategoryBreakdownResponse,
   TypeBreakdownResponse,
+  TrendResponse,
   HourlyDistributionResponse,
   VictimDemographicsResponse,
   WeaponDistributionResponse,
+  TopDistrictsResponse,
+  StateItem,
 } from '../types';
 
 export const CrimeAnalyticsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({});
 
-  // Sync filters from URL search parameters (state_id, district_id, year)
+  // Sync initial filters from URL search parameters (state_id, district_id, year)
   useEffect(() => {
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
@@ -51,13 +47,32 @@ export const CrimeAnalyticsPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // States inventory for label resolution
+  const [states, setStates] = useState<StateItem[]>([]);
+
+  useEffect(() => {
+    geographyApi.getStates()
+      .then((res) => setStates(res.items || []))
+      .catch(() => {});
+  }, []);
+
+  const selectedStateName = useMemo(() => {
+    if (!filters.state_id) return undefined;
+    const match = states.find((s) => s.id === filters.state_id);
+    return match?.state_name;
+  }, [filters.state_id, states]);
+
   // Analytical data states
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
   const [types, setTypes] = useState<TypeBreakdownResponse | null>(null);
+  const [monthlyTrends, setMonthlyTrends] = useState<TrendResponse | null>(null);
+  const [yearlyTrends, setYearlyTrends] = useState<TrendResponse | null>(null);
   const [hourly, setHourly] = useState<HourlyDistributionResponse | null>(null);
   const [demographics, setDemographics] = useState<VictimDemographicsResponse | null>(null);
   const [weapons, setWeapons] = useState<WeaponDistributionResponse | null>(null);
+  const [topDistrictsVolume, setTopDistrictsVolume] = useState<TopDistrictsResponse | null>(null);
+  const [topDistrictsRate, setTopDistrictsRate] = useState<TopDistrictsResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -76,24 +91,36 @@ export const CrimeAnalyticsPage: React.FC = () => {
         overviewRes,
         catRes,
         typesRes,
+        monthlyRes,
+        yearlyRes,
         hourlyRes,
         demogRes,
         weaponsRes,
+        volumeDistrictsRes,
+        rateDistrictsRes,
       ] = await Promise.all([
         analyticsApi.getOverview(filters),
         analyticsApi.getByCategory(filters),
         analyticsApi.getByType(undefined, filters),
+        analyticsApi.getTrends('month', filters),
+        analyticsApi.getTrends('year', filters),
         analyticsApi.getHourly(filters),
         analyticsApi.getDemographics(filters),
         analyticsApi.getWeapons(filters),
+        analyticsApi.getTopDistricts({ metric: 'volume', state_id: filters.state_id, limit: 10 }),
+        analyticsApi.getTopDistricts({ metric: 'rate', state_id: filters.state_id, limit: 10 }),
       ]);
 
       setOverview(overviewRes);
       setCategories(catRes);
       setTypes(typesRes);
+      setMonthlyTrends(monthlyRes);
+      setYearlyTrends(yearlyRes);
       setHourly(hourlyRes);
       setDemographics(demogRes);
       setWeapons(weaponsRes);
+      setTopDistrictsVolume(volumeDistrictsRes);
+      setTopDistrictsRate(rateDistrictsRes);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch analytical metrics from backend API.');
     } finally {
@@ -111,7 +138,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
       hideSidebar
       icon={BarChart3}
       title="Crime Analytics"
-      subtitle="Incident patterns, demographics and weapons breakdown"
+      subtitle="Detailed analysis of crime characteristics, patterns and case activity across jurisdictions and reporting periods."
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
     >
@@ -124,8 +151,8 @@ export const CrimeAnalyticsPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
-          <LoadingState message="Aggregating statutory offense analytics and incident breakdown..." />
+        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-2xs">
+          <LoadingState message="Aggregating statutory offense analytics, demographics and case metrics..." />
         </div>
       )}
 
@@ -147,162 +174,50 @@ export const CrimeAnalyticsPage: React.FC = () => {
         />
       )}
 
-      {/* Dedicated Crime Analytics Workspace */}
+      {/* Dedicated Crime Analytics Workspace Sections */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
-        <div className="space-y-4">
-          {/* Analytical KPI Summary Row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <StatCard
-              title="Total Incidents"
-              value={overview.total_incidents.toLocaleString()}
-              subtext="Verified reported crime events"
-              icon={FileText}
-              color="navy"
-            />
-            <StatCard
-              title="Active Inquiries"
-              value={overview.cases.open.toLocaleString()}
-              subtext={`${(100 - overview.cases.clearance_rate_pct).toFixed(1)}% in investigation phase`}
-              icon={AlertTriangle}
-              color="amber"
-            />
-            <StatCard
-              title="Closed Dispositions"
-              value={overview.cases.closed.toLocaleString()}
-              subtext={`${overview.cases.clearance_rate_pct.toFixed(1)}% formal resolution rate`}
-              icon={CheckCircle2}
-              color="emerald"
-            />
-            <StatCard
-              title="Clearance Rate"
-              value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
-              subtext="Case clearance disposition ratio"
-              icon={ShieldCheck}
-              color="blue"
-            />
-            <StatCard
-              title="Monitored Jurisdictions"
-              value={overview.total_districts.toLocaleString()}
-              subtext={`Across ${overview.total_states} States & UTs`}
-              icon={Globe2}
-              color="blue"
-            />
-          </div>
+        <div className="space-y-6">
+          {/* Section 1 & 2: Crime Classification & Offense Ranking */}
+          <CrimeClassificationSection
+            categories={categories}
+            types={types}
+          />
 
-          {/* Row 1: Crime Category Distribution (4 cols) & Crime Type Analysis (8 cols) */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-5 min-w-0">
-              {categories && (
-                <CrimeCategoryChart
-                  data={categories.items}
-                  totalIncidents={categories.total_incidents}
-                />
-              )}
-            </div>
-            <div className="lg:col-span-7 min-w-0">
-              {types && (
-                <CrimeTypeChart
-                  data={types.items}
-                  totalIncidents={types.total_incidents}
-                />
-              )}
-            </div>
-          </div>
+          {/* Section 3: Temporal Crime Analysis */}
+          <TemporalAnalysisSection
+            monthlyTrends={monthlyTrends}
+            yearlyTrends={yearlyTrends}
+            hourly={hourly}
+            isLoading={isRefreshing}
+          />
 
-          {/* Row 2: Victim Demographics (6 cols) & Weapon Involvement (6 cols) */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-6 min-w-0">
-              {demographics && <VictimDemographicsChart data={demographics} />}
-            </div>
-            <div className="lg:col-span-6 min-w-0">
-              {weapons && (
-                <WeaponDistributionChart
-                  data={weapons.items}
-                  totalIncidents={weapons.total_incidents}
-                />
-              )}
-            </div>
-          </div>
+          {/* Section 4: Victim Demographics */}
+          <DemographicsAnalysisSection
+            demographics={demographics}
+            totalIncidents={overview.total_incidents}
+          />
 
-          {/* Row 3: Hourly Diurnal Distribution (5 cols) & Analytical Clearance Breakdown Table (7 cols) */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-5 min-w-0">
-              {hourly && (
-                <HourlyDistributionChart
-                  data={hourly.items}
-                  peakHour={hourly.peak_hour}
-                />
-              )}
-            </div>
+          {/* Section 5: Weapon Involvement */}
+          <WeaponAnalysisSection
+            weapons={weapons}
+          />
 
-            {/* Case Clearance & Category Distribution Analytical Table */}
-            <div className="lg:col-span-7 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-                      <TableIcon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                        Offense Category &amp; Clearance Breakdown
-                      </h3>
-                      <p className="text-[11px] text-[#5D6878]">
-                        Statutory classifications and investigation dispositions
-                      </p>
-                    </div>
-                  </div>
-                  <span className="rounded bg-[#F4F7FA] px-2 py-0.5 text-[11px] font-semibold text-[#5D6878] border border-[#D9E1EA]">
-                    {categories?.items?.length || 0} Categories
-                  </span>
-                </div>
+          {/* Section 6: Case Outcome & Clearance Analysis */}
+          <CaseOutcomeSection
+            overview={overview}
+          />
 
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[500px] text-left text-[12px]">
-                    <thead>
-                      <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase text-[#5D6878] whitespace-nowrap">
-                        <th className="py-2 pl-3">Category</th>
-                        <th className="py-2 px-3 text-right">Reported Volume</th>
-                        <th className="py-2 px-3 text-right">Share (%)</th>
-                        <th className="py-2 px-3 text-right">Severity Factor</th>
-                        <th className="py-2 px-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {categories?.items?.map((cat) => (
-                        <tr key={cat.category_name} className="h-10 hover:bg-slate-50/70 whitespace-nowrap">
-                          <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">
-                            {cat.category_name}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-slate-700">
-                            {cat.incident_count.toLocaleString()}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono font-medium text-[#1769AA]">
-                            {cat.percentage.toFixed(1)}%
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-slate-600">
-                            {cat.severity_weight.toFixed(1)}x
-                          </td>
-                          <td className="py-2 px-3 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-[#1769AA] border border-blue-200">
-                              Active Tracked
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {/* Section 7: Jurisdiction Comparison */}
+          <JurisdictionComparisonSection
+            topDistrictsVolume={topDistrictsVolume}
+            topDistrictsRate={topDistrictsRate}
+            selectedStateName={selectedStateName}
+          />
 
-              <div className="mt-4 pt-3 border-t border-[#D9E1EA] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[#5D6878]">
-                <span>Case clearance metrics sourced from verified incident status logs</span>
-                <span className="font-semibold text-[#0B1F3A]">
-                  Aggregate Clearance: {overview.cases.clearance_rate_pct.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* Section 8: Crime Analysis Detail */}
+          <CrimeDetailTable
+            types={types}
+          />
         </div>
       )}
     </DashboardLayout>
