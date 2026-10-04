@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FileText,
   CheckCircle2,
@@ -6,7 +6,11 @@ import {
   Globe2,
   ShieldCheck,
   LayoutDashboard,
+  Calendar,
+  Compass,
+  ArrowRight,
 } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/common/StatCard';
 import LoadingState from '../components/common/LoadingState';
@@ -15,23 +19,13 @@ import EmptyState from '../components/common/EmptyState';
 import DashboardFilters from '../components/filters/DashboardFilters';
 import CrimeTrendChart from '../components/charts/CrimeTrendChart';
 import CrimeCategoryChart from '../components/charts/CrimeCategoryChart';
-import CrimeTypeChart from '../components/charts/CrimeTypeChart';
-import HourlyDistributionChart from '../components/charts/HourlyDistributionChart';
-import VictimDemographicsChart from '../components/charts/VictimDemographicsChart';
-import WeaponDistributionChart from '../components/charts/WeaponDistributionChart';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
-
 import { analyticsApi } from '../api';
-import { useSearchParams } from 'react-router-dom';
 import type {
   FilterParams,
   CrimeOverviewResponse,
   TrendResponse,
   CategoryBreakdownResponse,
-  TypeBreakdownResponse,
-  HourlyDistributionResponse,
-  VictimDemographicsResponse,
-  WeaponDistributionResponse,
   TopDistrictsResponse,
 } from '../types';
 
@@ -67,14 +61,10 @@ export const DashboardPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // API State
+  // Executive Overview Data States
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [trends, setTrends] = useState<TrendResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
-  const [types, setTypes] = useState<TypeBreakdownResponse | null>(null);
-  const [hourly, setHourly] = useState<HourlyDistributionResponse | null>(null);
-  const [demographics, setDemographics] = useState<VictimDemographicsResponse | null>(null);
-  const [weapons, setWeapons] = useState<WeaponDistributionResponse | null>(null);
   const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -90,24 +80,11 @@ export const DashboardPage: React.FC = () => {
     setError(null);
 
     try {
-      // Parallel fetch for all analytical endpoints
-      const [
-        overviewRes,
-        trendsRes,
-        catRes,
-        typesRes,
-        hourlyRes,
-        demogRes,
-        weaponsRes,
-        districtsRes,
-      ] = await Promise.all([
+      // Parallel fetch for core executive overview metrics
+      const [overviewRes, trendsRes, catRes, districtsRes] = await Promise.all([
         analyticsApi.getOverview(filters),
         analyticsApi.getTrends(trendInterval, filters),
         analyticsApi.getByCategory(filters),
-        analyticsApi.getByType(undefined, filters),
-        analyticsApi.getHourly(filters),
-        analyticsApi.getDemographics(filters),
-        analyticsApi.getWeapons(filters),
         analyticsApi.getTopDistricts({
           metric: rankingMetric,
           limit: 10,
@@ -118,10 +95,6 @@ export const DashboardPage: React.FC = () => {
       setOverview(overviewRes);
       setTrends(trendsRes);
       setCategories(catRes);
-      setTypes(typesRes);
-      setHourly(hourlyRes);
-      setDemographics(demogRes);
-      setWeapons(weaponsRes);
       setTopDistricts(districtsRes);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch analytics from backend API.');
@@ -151,6 +124,26 @@ export const DashboardPage: React.FC = () => {
     searchParams.get('workspace') === 'fullscreen' ||
     searchParams.get('fullscreen') === 'true';
 
+  // Derived Operational Snapshot Metrics
+  const operationalSnapshot = useMemo(() => {
+    if (!overview) return null;
+    const clearancePct = overview.cases.clearance_rate_pct;
+    const totalCases = overview.total_incidents;
+    const closedCases = overview.cases.closed;
+    const openCases = overview.cases.open;
+
+    return {
+      clearancePct,
+      totalCases,
+      closedCases,
+      openCases,
+      earliest: overview.earliest_incident_date || '2020-01-01',
+      latest: overview.latest_incident_date || '2025-12-31',
+      totalDistricts: overview.total_districts,
+      totalStates: overview.total_states,
+    };
+  }, [overview]);
+
   return (
     <DashboardLayout
       hideSidebar={isFullscreen}
@@ -159,7 +152,7 @@ export const DashboardPage: React.FC = () => {
       subtitle={
         isFullscreen
           ? 'Jurisdiction incidents, metrics and trends overview'
-          : 'Current intelligence and incident activity'
+          : 'Executive summary and macro operational intelligence'
       }
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
@@ -196,10 +189,10 @@ export const DashboardPage: React.FC = () => {
         />
       )}
 
-      {/* Main Dashboard Grid */}
+      {/* Main Executive Dashboard Grid */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <div className="space-y-4">
-          {/* Key Performance Indicators (5 compact KPI cards) */}
+          {/* 1. Key Performance Indicators (5 compact KPI cards) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard
               title="Total Incidents"
@@ -238,74 +231,124 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
 
-          {/* Analytics Area Section */}
-          <div id="analytics" className="space-y-4 pt-1">
-            {/* Row 1: LEFT 65% Crime Trend, RIGHT 35% Crime Category Distribution */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div id="trends-section" className="lg:col-span-8 scroll-mt-20">
-                {trends && (
-                  <CrimeTrendChart
-                    data={trends.items}
-                    interval={trendInterval}
-                    onIntervalChange={handleIntervalChange}
-                    isLoading={isRefreshing}
-                  />
-                )}
-              </div>
-              <div id="categories-section" className="lg:col-span-4 scroll-mt-20">
-                {categories && (
-                  <CrimeCategoryChart
-                    data={categories.items}
-                    totalIncidents={categories.total_incidents}
-                  />
-                )}
-              </div>
+          {/* 2 & 3. Row 1: Overall Crime Trend (8 cols) & Crime Category Snapshot (4 cols) */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div id="trends-section" className="lg:col-span-8 min-w-0">
+              {trends && (
+                <CrimeTrendChart
+                  data={trends.items}
+                  interval={trendInterval}
+                  onIntervalChange={handleIntervalChange}
+                  isLoading={isRefreshing}
+                />
+              )}
+            </div>
+            <div id="categories-section" className="lg:col-span-4 min-w-0">
+              {categories && (
+                <CrimeCategoryChart
+                  data={categories.items}
+                  totalIncidents={categories.total_incidents}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* 4 & 5. Row 2: Top Jurisdictions (7 cols) & Operational Snapshot (5 cols) */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div id="districts-section" className="lg:col-span-7 min-w-0">
+              {topDistricts && (
+                <TopDistrictsTable
+                  districts={topDistricts.items}
+                  metric={rankingMetric}
+                  onMetricChange={handleMetricChange}
+                  isLoading={isRefreshing}
+                />
+              )}
             </div>
 
-            {/* Row 2: Crime Type Analysis & Geographic Crime Distribution (Top Jurisdictions) */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div id="types-section" className="lg:col-span-6 scroll-mt-20">
-                {types && (
-                  <CrimeTypeChart
-                    data={types.items}
-                    totalIncidents={types.total_incidents}
-                  />
-                )}
-              </div>
-              <div id="districts-section" className="lg:col-span-6 scroll-mt-20">
-                {topDistricts && (
-                  <TopDistrictsTable
-                    districts={topDistricts.items}
-                    metric={rankingMetric}
-                    onMetricChange={handleMetricChange}
-                    isLoading={isRefreshing}
-                  />
-                )}
-              </div>
-            </div>
+            {/* Operational Snapshot Card */}
+            <div className="lg:col-span-5 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                      <Compass className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                        Operational Intelligence Snapshot
+                      </h3>
+                      <p className="text-[11px] text-[#5D6878]">
+                        Current institutional posture and verified reporting metrics
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                    Live Telemetry
+                  </span>
+                </div>
 
-            {/* Row 3: Hourly Crime Pattern, Victim Demographics, Weapon Analysis */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div id="hourly-section" className="lg:col-span-4 scroll-mt-20">
-                {hourly && (
-                  <HourlyDistributionChart
-                    data={hourly.items}
-                    peakHour={hourly.peak_hour}
-                  />
+                {operationalSnapshot && (
+                  <div className="space-y-3 text-xs">
+                    {/* Active Incident Window */}
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <Calendar className="h-4 w-4 text-[#1769AA]" />
+                        <span className="font-medium">Incident Reporting Range:</span>
+                      </div>
+                      <span className="font-semibold text-[#0B1F3A]">
+                        {operationalSnapshot.earliest} to {operationalSnapshot.latest}
+                      </span>
+                    </div>
+
+                    {/* Case Adjudication Balance */}
+                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-medium text-slate-700">Case Resolution Balance:</span>
+                        <span className="font-bold text-[#0B1F3A]">
+                          {operationalSnapshot.clearancePct.toFixed(1)}% Cleared
+                        </span>
+                      </div>
+                      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className="bg-emerald-600 transition-all duration-300"
+                          style={{ width: `${operationalSnapshot.clearancePct}%` }}
+                        />
+                        <div
+                          className="bg-amber-500 transition-all duration-300"
+                          style={{ width: `${100 - operationalSnapshot.clearancePct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>{operationalSnapshot.closedCases.toLocaleString()} Closed</span>
+                        <span>{operationalSnapshot.openCases.toLocaleString()} In Progress</span>
+                      </div>
+                    </div>
+
+                    {/* Jurisdictional Scope */}
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <Globe2 className="h-4 w-4 text-[#1769AA]" />
+                        <span className="font-medium">Coverage Density:</span>
+                      </div>
+                      <span className="font-semibold text-[#0B1F3A]">
+                        {operationalSnapshot.totalDistricts} Districts across {operationalSnapshot.totalStates} States/UTs
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div id="demographics-section" className="lg:col-span-4 scroll-mt-20">
-                {demographics && (
-                  <VictimDemographicsChart data={demographics} />
-                )}
-              </div>
-              <div id="weapons-section" className="lg:col-span-4 scroll-mt-20">
-                {weapons && (
-                  <WeaponDistributionChart
-                    data={weapons.items}
-                    totalIncidents={weapons.total_incidents}
-                  />
-                )}
+
+                {/* Quick Link to Dedicated Deep Workspace */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">Need incident-level breakdown?</span>
+                <Link
+                  to="/analytics"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors"
+                >
+                  <span>Open Crime Analytics</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </div>
           </div>

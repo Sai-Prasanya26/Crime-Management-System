@@ -44,7 +44,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
   const [sortField, setSortField] = useState<SortField>('incident_count');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const items = types?.items || [];
+  const items = useMemo(() => types?.items || [], [types]);
 
   // Extract unique categories & severities for filter dropdowns
   const availableCategories = useMemo(() => {

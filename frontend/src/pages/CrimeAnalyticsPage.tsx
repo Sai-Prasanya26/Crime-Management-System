@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -10,10 +10,8 @@ import { CrimeClassificationSection } from '../components/analytics/CrimeClassif
 import { TemporalAnalysisSection } from '../components/analytics/TemporalAnalysisSection';
 import { DemographicsAnalysisSection } from '../components/analytics/DemographicsAnalysisSection';
 import { WeaponAnalysisSection } from '../components/analytics/WeaponAnalysisSection';
-import { CaseOutcomeSection } from '../components/analytics/CaseOutcomeSection';
-import { JurisdictionComparisonSection } from '../components/analytics/JurisdictionComparisonSection';
 import { CrimeDetailTable } from '../components/analytics/CrimeDetailTable';
-import { analyticsApi, geographyApi } from '../api';
+import { analyticsApi } from '../api';
 import type {
   FilterParams,
   CrimeOverviewResponse,
@@ -23,8 +21,6 @@ import type {
   HourlyDistributionResponse,
   VictimDemographicsResponse,
   WeaponDistributionResponse,
-  TopDistrictsResponse,
-  StateItem,
 } from '../types';
 
 export const CrimeAnalyticsPage: React.FC = () => {
@@ -47,21 +43,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // States inventory for label resolution
-  const [states, setStates] = useState<StateItem[]>([]);
-
-  useEffect(() => {
-    geographyApi.getStates()
-      .then((res) => setStates(res.items || []))
-      .catch(() => {});
-  }, []);
-
-  const selectedStateName = useMemo(() => {
-    if (!filters.state_id) return undefined;
-    const match = states.find((s) => s.id === filters.state_id);
-    return match?.state_name;
-  }, [filters.state_id, states]);
-
   // Analytical data states
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
@@ -71,8 +52,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
   const [hourly, setHourly] = useState<HourlyDistributionResponse | null>(null);
   const [demographics, setDemographics] = useState<VictimDemographicsResponse | null>(null);
   const [weapons, setWeapons] = useState<WeaponDistributionResponse | null>(null);
-  const [topDistrictsVolume, setTopDistrictsVolume] = useState<TopDistrictsResponse | null>(null);
-  const [topDistrictsRate, setTopDistrictsRate] = useState<TopDistrictsResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -96,8 +75,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
         hourlyRes,
         demogRes,
         weaponsRes,
-        volumeDistrictsRes,
-        rateDistrictsRes,
       ] = await Promise.all([
         analyticsApi.getOverview(filters),
         analyticsApi.getByCategory(filters),
@@ -107,8 +84,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
         analyticsApi.getHourly(filters),
         analyticsApi.getDemographics(filters),
         analyticsApi.getWeapons(filters),
-        analyticsApi.getTopDistricts({ metric: 'volume', state_id: filters.state_id, limit: 10 }),
-        analyticsApi.getTopDistricts({ metric: 'rate', state_id: filters.state_id, limit: 10 }),
       ]);
 
       setOverview(overviewRes);
@@ -119,8 +94,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
       setHourly(hourlyRes);
       setDemographics(demogRes);
       setWeapons(weaponsRes);
-      setTopDistrictsVolume(volumeDistrictsRes);
-      setTopDistrictsRate(rateDistrictsRes);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch analytical metrics from backend API.');
     } finally {
@@ -152,7 +125,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
       {/* Loading State */}
       {isLoading && !overview && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-2xs">
-          <LoadingState message="Aggregating statutory offense analytics, demographics and case metrics..." />
+          <LoadingState message="Aggregating statutory offense analytics, demographics and weapon metrics..." />
         </div>
       )}
 
@@ -177,13 +150,13 @@ export const CrimeAnalyticsPage: React.FC = () => {
       {/* Dedicated Crime Analytics Workspace Sections */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <div className="space-y-6">
-          {/* Section 1 & 2: Crime Classification & Offense Ranking */}
+          {/* SECTION 1: Crime Classification (Categories & Ranked Crime Types) */}
           <CrimeClassificationSection
             categories={categories}
             types={types}
           />
 
-          {/* Section 3: Temporal Crime Analysis */}
+          {/* SECTION 2: Temporal Pattern (Monthly/Yearly Trends & 24-hr Diurnal Cycle) */}
           <TemporalAnalysisSection
             monthlyTrends={monthlyTrends}
             yearlyTrends={yearlyTrends}
@@ -191,30 +164,18 @@ export const CrimeAnalyticsPage: React.FC = () => {
             isLoading={isRefreshing}
           />
 
-          {/* Section 4: Victim Demographics */}
+          {/* SECTION 3: Victim Profile (Age Cohort Distribution & Gender Breakdown) */}
           <DemographicsAnalysisSection
             demographics={demographics}
             totalIncidents={overview.total_incidents}
           />
 
-          {/* Section 5: Weapon Involvement */}
+          {/* SECTION 4: Weapon Involvement (Ranked 6 Weapon Classifications with Lethality Tiers) */}
           <WeaponAnalysisSection
             weapons={weapons}
           />
 
-          {/* Section 6: Case Outcome & Clearance Analysis */}
-          <CaseOutcomeSection
-            overview={overview}
-          />
-
-          {/* Section 7: Jurisdiction Comparison */}
-          <JurisdictionComparisonSection
-            topDistrictsVolume={topDistrictsVolume}
-            topDistrictsRate={topDistrictsRate}
-            selectedStateName={selectedStateName}
-          />
-
-          {/* Section 8: Crime Analysis Detail */}
+          {/* OPTIONAL COMPACT DETAIL TABLE: Crime Analysis Detail */}
           <CrimeDetailTable
             types={types}
           />
