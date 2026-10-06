@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, SmallInteger, String, Text, Enum, DECIMAL, ForeignKey, TIMESTAMP, UniqueConstraint, Index, func
+from sqlalchemy import Column, Integer, BigInteger, SmallInteger, String, Text, Enum, DECIMAL, ForeignKey, TIMESTAMP, UniqueConstraint, Index, JSON, func
 from sqlalchemy.orm import relationship
 from backend.app.database.session import Base
 
@@ -18,17 +18,24 @@ class CrimeRiskScore(Base):
     severity_index = Column(DECIMAL(5, 2), nullable=False)
     trend_index = Column(DECIMAL(5, 2), nullable=False)
     volume_index = Column(DECIMAL(5, 2), nullable=False)
+    forecast_index = Column(DECIMAL(5, 2), nullable=True)
+    rate_index = Column(DECIMAL(5, 2), nullable=True)
+    model_id = Column(Integer, ForeignKey("ml_models.id", ondelete="SET NULL"), nullable=True)
+    model_version = Column(String(20), nullable=True)
+    factor_contributions = Column(JSON, nullable=True)
+    strongest_driver = Column(String(50), nullable=True)
     population_density_factor = Column(DECIMAL(5, 2), nullable=False)
-    calculation_version = Column(String(20), nullable=False, default="v1.0")
+    calculation_version = Column(String(20), nullable=False, default="risk-v1.0")
     generated_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("district_id", "period_year", "period_month", name="uq_district_risk_period"),
+        UniqueConstraint("district_id", "period_year", "period_month", "calculation_version", name="uq_district_risk_period_version"),
         Index("idx_risk_period", "period_year", "period_month", "overall_risk_score"),
     )
 
     # Relationships
     district = relationship("District", back_populates="risk_scores")
+    model = relationship("MLModel")
 
 
 class ResourceRecommendation(Base):

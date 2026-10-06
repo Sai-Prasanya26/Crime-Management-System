@@ -214,13 +214,21 @@ CREATE TABLE `crime_risk_scores` (
   `severity_index` decimal(5,2) NOT NULL,
   `trend_index` decimal(5,2) NOT NULL,
   `volume_index` decimal(5,2) NOT NULL,
+  `forecast_index` decimal(5,2) DEFAULT NULL,
+  `rate_index` decimal(5,2) DEFAULT NULL,
+  `model_id` int DEFAULT NULL,
+  `model_version` varchar(20) DEFAULT NULL,
+  `factor_contributions` json DEFAULT NULL,
+  `strongest_driver` varchar(50) DEFAULT NULL,
   `population_density_factor` decimal(5,2) NOT NULL,
   `calculation_version` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `generated_at` timestamp NOT NULL DEFAULT (now()),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_district_risk_period` (`district_id`,`period_year`,`period_month`),
+  UNIQUE KEY `uq_district_risk_period_version` (`district_id`,`period_year`,`period_month`,`calculation_version`),
   KEY `idx_risk_period` (`period_year`,`period_month`,`overall_risk_score`),
-  CONSTRAINT `crime_risk_scores_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE RESTRICT
+  KEY `fk_risk_model` (`model_id`),
+  CONSTRAINT `crime_risk_scores_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_risk_model` FOREIGN KEY (`model_id`) REFERENCES `ml_models` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `resource_recommendations`
