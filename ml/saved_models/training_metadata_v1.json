@@ -1,0 +1,248 @@
+{
+  "metadata_version": "1.0.0",
+  "timestamp_utc": "2026-10-06T14:49:52.595913+00:00",
+  "phase": "Phase 8C \u2014 Train Baselines & Primary ML Forecasting Models",
+  "dataset": {
+    "source_parquet": "ml/data/panel_features_2020_2025.parquet",
+    "total_rows": 38400,
+    "features_count": 25,
+    "feature_names": [
+      "district_id",
+      "state_id",
+      "year",
+      "month",
+      "quarter",
+      "year_index",
+      "sin_month",
+      "cos_month",
+      "lag_1",
+      "lag_2",
+      "lag_3",
+      "lag_12",
+      "rolling_mean_3",
+      "rolling_mean_6",
+      "rolling_mean_12",
+      "rolling_std_6",
+      "total_population",
+      "male_population",
+      "female_population",
+      "literate_population",
+      "total_workers",
+      "gender_ratio",
+      "literacy_rate",
+      "worker_ratio",
+      "historical_crime_rate_per_100k"
+    ],
+    "target_column": "target_incident_count",
+    "split_row_counts": {
+      "TRAIN_2021_2023": 23040,
+      "VALIDATION_2024": 7680,
+      "TEST_2025": 7680
+    }
+  },
+  "models": {
+    "HistGradientBoostingRegressor": {
+      "artifact_path": "ml/saved_models\\experimental_hgbr_v1.joblib",
+      "hyperparameters": {
+        "learning_rate": 0.05,
+        "max_iter": 300,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 20,
+        "l2_regularization": 1.0,
+        "random_state": 42
+      },
+      "categorical_features": [
+        "state_id"
+      ],
+      "fit_time_seconds": 0.4421,
+      "iterations_completed": 144
+    },
+    "RandomForestRegressor": {
+      "artifact_path": "ml/saved_models\\experimental_random_forest_v1.joblib",
+      "hyperparameters": {
+        "n_estimators": 100,
+        "max_depth": 12,
+        "min_samples_leaf": 2,
+        "random_state": 42,
+        "n_jobs": -1
+      },
+      "fit_time_seconds": 1.4577
+    }
+  },
+  "evaluation": {
+    "VALIDATION_2024": {
+      "Seasonal_Naive": {
+        "MAE": 2.2471,
+        "RMSE": 2.9804,
+        "WAPE%": 50.87,
+        "R2": 0.2669
+      },
+      "Moving_Average_3": {
+        "MAE": 1.8589,
+        "RMSE": 2.4463,
+        "WAPE%": 42.08,
+        "R2": 0.5061
+      },
+      "HistGradientBoosting": {
+        "MAE": 1.6505,
+        "RMSE": 2.174,
+        "WAPE%": 37.36,
+        "R2": 0.6099
+      },
+      "RandomForest": {
+        "MAE": 1.654,
+        "RMSE": 2.1807,
+        "WAPE%": 37.44,
+        "R2": 0.6075
+      }
+    },
+    "TEST_2025": {
+      "Seasonal_Naive": {
+        "MAE": 2.2616,
+        "RMSE": 3.017,
+        "WAPE%": 49.13,
+        "R2": 0.2899
+      },
+      "Moving_Average_3": {
+        "MAE": 1.8997,
+        "RMSE": 2.5084,
+        "WAPE%": 41.27,
+        "R2": 0.5092
+      },
+      "HistGradientBoosting": {
+        "MAE": 1.6956,
+        "RMSE": 2.2465,
+        "WAPE%": 36.84,
+        "R2": 0.6063
+      },
+      "RandomForest": {
+        "MAE": 1.7018,
+        "RMSE": 2.2629,
+        "WAPE%": 36.97,
+        "R2": 0.6006
+      }
+    },
+    "walk_forward_cv": [
+      {
+        "fold": 1,
+        "description": "Fold 1 (Train 2021-2022 -> Val 2023)",
+        "train_years": [
+          2021,
+          2022
+        ],
+        "eval_year": 2023,
+        "train_observations": 15360,
+        "eval_observations": 7680,
+        "hgbr_fit_time_seconds": 0.2092,
+        "rf_fit_time_seconds": 0.973,
+        "metrics": {
+          "Seasonal_Naive": {
+            "MAE": 2.1919,
+            "RMSE": 2.9279,
+            "WAPE%": 51.46,
+            "R2": 0.2185
+          },
+          "Moving_Average_3": {
+            "MAE": 1.8199,
+            "RMSE": 2.4035,
+            "WAPE%": 42.73,
+            "R2": 0.4734
+          },
+          "HistGradientBoosting": {
+            "MAE": 1.6226,
+            "RMSE": 2.1381,
+            "WAPE%": 38.1,
+            "R2": 0.5833
+          },
+          "RandomForest": {
+            "MAE": 1.6269,
+            "RMSE": 2.1486,
+            "WAPE%": 38.2,
+            "R2": 0.5791
+          }
+        }
+      },
+      {
+        "fold": 2,
+        "description": "Fold 2 (Train 2021-2023 -> Val 2024)",
+        "train_years": [
+          2021,
+          2022,
+          2023
+        ],
+        "eval_year": 2024,
+        "train_observations": 23040,
+        "eval_observations": 7680,
+        "hgbr_fit_time_seconds": 0.4231,
+        "rf_fit_time_seconds": 1.4599,
+        "metrics": {
+          "Seasonal_Naive": {
+            "MAE": 2.2471,
+            "RMSE": 2.9804,
+            "WAPE%": 50.87,
+            "R2": 0.2669
+          },
+          "Moving_Average_3": {
+            "MAE": 1.8589,
+            "RMSE": 2.4463,
+            "WAPE%": 42.08,
+            "R2": 0.5061
+          },
+          "HistGradientBoosting": {
+            "MAE": 1.6505,
+            "RMSE": 2.174,
+            "WAPE%": 37.36,
+            "R2": 0.6099
+          },
+          "RandomForest": {
+            "MAE": 1.654,
+            "RMSE": 2.1807,
+            "WAPE%": 37.44,
+            "R2": 0.6075
+          }
+        }
+      },
+      {
+        "fold": 3,
+        "description": "Fold 3 (Train 2021-2024 -> Test 2025)",
+        "train_years": [
+          2021,
+          2022,
+          2023,
+          2024
+        ],
+        "eval_year": 2025,
+        "train_observations": 30720,
+        "eval_observations": 7680,
+        "hgbr_fit_time_seconds": 0.3686,
+        "rf_fit_time_seconds": 1.9506,
+        "metrics": {
+          "Seasonal_Naive": {
+            "MAE": 2.2616,
+            "RMSE": 3.017,
+            "WAPE%": 49.13,
+            "R2": 0.2899
+          },
+          "Moving_Average_3": {
+            "MAE": 1.8997,
+            "RMSE": 2.5084,
+            "WAPE%": 41.27,
+            "R2": 0.5092
+          },
+          "HistGradientBoosting": {
+            "MAE": 1.6957,
+            "RMSE": 2.2404,
+            "WAPE%": 36.84,
+            "R2": 0.6085
+          },
+          "RandomForest": {
+            "MAE": 1.7045,
+            "RMSE": 2.257,
+            "WAPE%": 37.03,
+            "R2": 0.6026
+          }
+        }
+      }
+    ]
+  }
+}

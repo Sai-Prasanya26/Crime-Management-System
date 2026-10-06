@@ -48,6 +48,7 @@ ml/data/*
 !ml/data/.gitkeep
 ml/saved_models/*
 !ml/saved_models/.gitkeep
+!ml/saved_models/*.json
 
 # Raw Datasets (Large CSV files excluded from git version control)
 data_import/raw/*.csv
