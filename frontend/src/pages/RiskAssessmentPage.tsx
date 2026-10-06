@@ -1,403 +1,972 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   ShieldAlert,
   Activity,
-  Users,
   Scale,
-  RotateCcw,
+  ShieldCheck,
   AlertTriangle,
-  Compass,
+  MapPin,
+  X,
+  RotateCcw,
+  Info,
+  Calendar,
+  Layers,
+  ChevronRight,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
-import { analyticsApi, geographyApi } from '../api';
+import EmptyState from '../components/common/EmptyState';
+import { StatCard } from '../components/common/StatCard';
+import { riskApi, geographyApi } from '../api';
 import type {
-  CrimeOverviewResponse,
-  CategoryBreakdownResponse,
-  TopDistrictsResponse,
+  RiskOverviewResponse,
+  RiskModelInfoResponse,
+  RiskListResponse,
+  DistrictRiskDetailResponse,
+  RiskItem,
   StateItem,
-  FilterParams,
+  DistrictItem,
 } from '../types';
 
 export const RiskAssessmentPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<FilterParams>({});
-
-  // Sync filters from URL search params (year, state_id, district_id)
-  useEffect(() => {
-    const year = searchParams.get('year');
-    const stateId = searchParams.get('state_id');
-    const districtId = searchParams.get('district_id');
-    if (year || stateId || districtId) {
-      setFilters((prev) => ({
-        ...prev,
-        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
-        ...(stateId ? { state_id: Number(stateId) } : {}),
-        ...(districtId ? { district_id: Number(districtId) } : {}),
-      }));
-    }
-  }, [searchParams]);
-
-  const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
-  const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
-  const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);
+  // High-level overview & methodology state
+  const [overview, setOverview] = useState<RiskOverviewResponse | null>(null);
+  const [modelInfo, setModelInfo] = useState<RiskModelInfoResponse | null>(null);
   const [states, setStates] = useState<StateItem[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
 
+  // Filter state
+  const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
+  const [selectedRiskLevel, setSelectedRiskLevel] = useState<string | undefined>(undefined);
+
+  // Table pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 20;
+  const [riskList, setRiskList] = useState<RiskListResponse | null>(null);
+
+  // District detail / explainability modal state
+  const [selectedDistrictDetail, setSelectedDistrictDetail] = useState<DistrictRiskDetailResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+
+  // Loading & error flags
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoadingTable, setIsLoadingTable] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRiskData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
+  // Initial load of overview, model info, states, and initial table page
+  const loadInitialData = useCallback(async () => {
+    setIsLoading(true);
     setError(null);
-
     try {
-      const [overviewRes, catRes, districtsRes, statesRes] = await Promise.all([
-        analyticsApi.getOverview(filters),
-        analyticsApi.getByCategory(filters),
-        analyticsApi.getTopDistricts({ metric: 'rate', limit: 20, state_id: filters.state_id }),
-        geographyApi.getStates(),
+      const [overviewData, modelData, statesData, tableData] = await Promise.all([
+        riskApi.getOverview('2026-01-01', 'risk-v1.0'),
+        riskApi.getModelInfo(),
+        geographyApi.getStates('historical'),
+        riskApi.listRiskScores({
+          skip: 0,
+          limit: pageSize,
+          assessment_period: '2026-01-01',
+          calculation_version: 'risk-v1.0',
+        }),
       ]);
 
-      setOverview(overviewRes);
-      setCategories(catRes);
-      setTopDistricts(districtsRes);
-      setStates(statesRes.items);
+      setOverview(overviewData);
+      setModelInfo(modelData);
+      setStates(statesData.items || []);
+      setRiskList(tableData);
     } catch (err: any) {
-      setError(err?.message || 'Failed to fetch risk assessment metrics.');
+      setError(err?.message || 'Failed to initialize risk assessment workspace.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [filters]);
+  }, [pageSize]);
 
   useEffect(() => {
-    fetchRiskData();
-  }, [fetchRiskData]);
+    loadInitialData();
+  }, [loadInitialData]);
 
-  // Derive risk indicators from live database data
-  const totalIncidents = overview?.total_incidents || 0;
-  const clearanceRate = overview?.cases?.clearance_rate_pct || 0;
+  // Load districts when state filter changes
+  useEffect(() => {
+    if (selectedStateId) {
+      geographyApi
+        .getDistricts(selectedStateId, 'historical')
+        .then((res) => {
+          setDistricts(res.items || []);
+        })
+        .catch(() => {
+          setDistricts([]);
+        });
+    } else {
+      setDistricts([]);
+      setSelectedDistrictId(undefined);
+    }
+  }, [selectedStateId]);
 
-  // Severity index weighted from real database categories
-  const severityIndex = useMemo(() => {
-    if (!categories || categories.total_incidents === 0) return '1.18';
-    return (
-      categories.items.reduce(
-        (sum, cat) => sum + cat.incident_count * cat.severity_weight,
-        0
-      ) / categories.total_incidents
-    ).toFixed(2);
-  }, [categories]);
+  // Fetch filtered table data
+  const fetchTableData = useCallback(async () => {
+    setIsLoadingTable(true);
+    try {
+      const skip = (currentPage - 1) * pageSize;
+      const data = await riskApi.listRiskScores({
+        state_id: selectedStateId,
+        district_id: selectedDistrictId,
+        risk_level: selectedRiskLevel || undefined,
+        skip,
+        limit: pageSize,
+        assessment_period: '2026-01-01',
+        calculation_version: 'risk-v1.0',
+      });
+      setRiskList(data);
+    } catch (err: any) {
+      console.error('Failed to load filtered risk records:', err);
+    } finally {
+      setIsLoadingTable(false);
+    }
+  }, [selectedStateId, selectedDistrictId, selectedRiskLevel, currentPage, pageSize]);
 
-  // Overall risk tier derived from real clearance and severity
-  const overallRiskTier = clearanceRate < 45 ? 'HIGH' : clearanceRate < 60 ? 'MODERATE' : 'LOW';
+  // Trigger table fetch on filter or page change
+  useEffect(() => {
+    // Avoid double fetch on first mount
+    if (!isLoading) {
+      fetchTableData();
+    }
+  }, [fetchTableData, isLoading]);
 
-  const getDistrictRiskTier = (rate: number | null | undefined): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' => {
-    if (!rate) return 'LOW';
-    if (rate >= 400) return 'CRITICAL';
-    if (rate >= 250) return 'HIGH';
-    if (rate >= 150) return 'MODERATE';
-    return 'LOW';
+  // Reset filters handler
+  const handleResetFilters = () => {
+    setSelectedStateId(undefined);
+    setSelectedDistrictId(undefined);
+    setSelectedRiskLevel(undefined);
+    setCurrentPage(1);
   };
 
-  const getRiskBadge = (tier: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW') => {
-    switch (tier) {
+  // Inspect district detail handler
+  const handleInspectDistrict = async (districtId: number) => {
+    setIsLoadingDetail(true);
+    setIsDetailModalOpen(true);
+    try {
+      const detail = await riskApi.getDistrictRiskDetail(districtId, '2026-01-01', 'risk-v1.0');
+      setSelectedDistrictDetail(detail);
+    } catch (err: any) {
+      console.error(`Failed to load detail for district ${districtId}:`, err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  // Format primary risk driver label
+  const formatDriverName = (driver?: string | null): string => {
+    switch (driver) {
+      case 'forecast_volume':
+        return 'Forecast Volume';
+      case 'historical_volume':
+        return 'Historical Baseline';
+      case 'crime_rate_per_100k':
+        return 'Per-Capita Rate';
+      case 'trend_ratio':
+        return 'Trend Momentum';
+      default:
+        return driver || 'N/A';
+    }
+  };
+
+  // Risk band badge generator
+  const getRiskBadge = (level: string) => {
+    switch (level) {
       case 'CRITICAL':
         return (
-          <span className="rounded bg-rose-100 text-rose-800 px-2 py-0.5 text-[11px] font-bold border border-rose-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
             CRITICAL
           </span>
         );
       case 'HIGH':
         return (
-          <span className="rounded bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px] font-bold border border-rose-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
             HIGH
           </span>
         );
       case 'MODERATE':
         return (
-          <span className="rounded bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px] font-bold border border-amber-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
             MODERATE
           </span>
         );
       case 'LOW':
         return (
-          <span className="rounded bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] font-bold border border-emerald-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             LOW
           </span>
         );
+      default:
+        return null;
     }
   };
 
-  // Jurisdictional Risk Comparison Breakdowns
-  const riskDistribution = useMemo(() => {
-    if (!topDistricts) return { critical: 0, high: 0, moderate: 0, low: 0 };
-    let critical = 0, high = 0, moderate = 0, low = 0;
-    for (const d of topDistricts.items) {
-      const tier = getDistrictRiskTier(d.crime_rate_per_100k);
-      if (tier === 'CRITICAL') critical++;
-      else if (tier === 'HIGH') high++;
-      else if (tier === 'MODERATE') moderate++;
-      else low++;
-    }
-    return { critical, high, moderate, low };
-  }, [topDistricts]);
+  const totalPages = riskList ? Math.ceil(riskList.total / pageSize) : 1;
 
   return (
     <DashboardLayout
       hideSidebar
       icon={ShieldAlert}
       title="Risk Assessment"
-      subtitle="Jurisdictional threat prioritization and empirical vulnerability analysis"
-      onRefresh={() => fetchRiskData(true)}
+      subtitle="Jurisdictional hazard evaluation, empirical threat levels, and explainable risk drivers"
+      onRefresh={() => {
+        setIsRefreshing(true);
+        loadInitialData();
+      }}
       isRefreshing={isRefreshing}
     >
-      {/* State Filter Toolbar */}
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs">
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 shrink-0 text-center sm:text-left">
-              Jurisdiction Scope:
-            </span>
-            <select
-              value={filters.state_id || ''}
-              onChange={(e) => {
-                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                setFilters({ ...filters, state_id: val });
-              }}
-              className="h-9 w-full sm:w-auto rounded-lg border border-slate-200 bg-white py-1 px-3 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden cursor-pointer"
-            >
-              <option value="">All States &amp; UTs ({states.length || 36})</option>
-              {states.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.state_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {filters.state_id && (
-            <button
-              onClick={() => setFilters({})}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer shrink-0"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>Reset Filter</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {isLoading && !overview && (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-2xs">
-          <LoadingState message="Evaluating jurisdictional threat indices from incident database..." />
+      {isLoading && (
+        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
+          <LoadingState message="Loading production risk landscape and district threat evaluations..." />
         </div>
       )}
 
       {error && (
         <ErrorState
-          title="Risk Assessment Service Error"
+          title="Risk Assessment Engine Error"
           message={error}
-          onRetry={() => fetchRiskData()}
+          onRetry={loadInitialData}
         />
       )}
 
       {!isLoading && !error && overview && (
         <div className="space-y-4">
-          {/* SECTION 1: Overall Risk Summary Card */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs">
-            <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
+          {/* ASSESSMENT PERIOD & PROVENANCE BANNER */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-lg border border-[#DCE2EA] bg-white p-3.5 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-[#EAF3FA] text-[#1769AA] rounded shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
               <div>
-                <h3 className="text-base font-bold text-[#0A192F]">
-                  Overall Jurisdictional Threat Status
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Consolidated operational threat score derived from live caseload, clearance disposition and severity weights
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-[#1769AA] bg-[#EAF3FA] px-1.5 py-0.5 rounded border border-[#1769AA]/20">
+                    Assessment Period: January 2026
+                  </span>
+                  <span className="text-[11px] font-medium text-[#5D6878]">
+                    Production Run (Evaluated: {overview.assessment_period})
+                  </span>
+                </div>
+                <p className="text-[12px] text-[#5D6878] mt-0.5">
+                  Methodology: <strong className="text-[#0B1F3A]">{overview.methodology_version}</strong> • Evaluates 640 historical administrative districts combining 2025 incident baselines with January 2026 HGBR forecasts.
                 </p>
               </div>
-              <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                Institutional Index
-              </span>
             </div>
-
-            {/* SECTION 3: The 4 Empirical Risk Factors */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Factor 1: Assessed Risk Level */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Assessed Threat Level
-                </span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-[#0A192F]">
-                    {overallRiskTier}
-                  </span>
-                  {getRiskBadge(overallRiskTier as any)}
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  Clearance disposition: {clearanceRate.toFixed(1)}%
-                </span>
-              </div>
-
-              {/* Factor 2: Incident Volume */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Caseload Volume
-                </span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-[#0A192F]">
-                    {totalIncidents.toLocaleString()}
-                  </span>
-                  <Activity className="h-4 w-4 text-blue-600" />
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  Total recorded crime proceedings
-                </span>
-              </div>
-
-              {/* Factor 3: Severity Index */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Offense Severity Factor
-                </span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-amber-700">
-                    {severityIndex}x
-                  </span>
-                  <Scale className="h-4 w-4 text-amber-600" />
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  Weighted category risk coefficient
-                </span>
-              </div>
-
-              {/* Factor 4: Population Factor */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Population Normalization
-                </span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-emerald-700">
-                    Per 100k
-                  </span>
-                  <Users className="h-4 w-4 text-emerald-600" />
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  Census 2011 population baseline
-                </span>
-              </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] bg-slate-100 text-[#0B1F3A] px-2.5 py-1 rounded border border-slate-200 font-medium">
+                Model: {overview.active_forecast_model} ({overview.active_forecast_version})
+              </span>
             </div>
           </div>
 
-          {/* SECTION 4: Risk Comparison Bar (Critical vs High vs Moderate vs Low) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <Compass className="h-4 w-4 text-blue-600" />
-                Jurisdictional Vulnerability Distribution
-              </span>
-              <span className="text-xs text-slate-500">
-                Top {topDistricts?.items?.length || 0} Sample Districts Evaluated
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mt-3">
-              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200">
-                <span className="font-bold text-rose-800 block">Critical Risk</span>
-                <span className="text-lg font-bold text-rose-700">{riskDistribution.critical}</span>
-                <span className="text-[11px] text-rose-600 block">Rate &ge; 400 / 100k</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-rose-50/60 border border-rose-200/80">
-                <span className="font-bold text-rose-700 block">High Risk</span>
-                <span className="text-lg font-bold text-rose-600">{riskDistribution.high}</span>
-                <span className="text-[11px] text-rose-500 block">Rate 250–400 / 100k</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-                <span className="font-bold text-amber-800 block">Moderate Risk</span>
-                <span className="text-lg font-bold text-amber-700">{riskDistribution.moderate}</span>
-                <span className="text-[11px] text-amber-600 block">Rate 150–250 / 100k</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
-                <span className="font-bold text-emerald-800 block">Low Risk</span>
-                <span className="text-lg font-bold text-emerald-700">{riskDistribution.low}</span>
-                <span className="text-[11px] text-emerald-600 block">Rate &lt; 150 / 100k</span>
-              </div>
-            </div>
+          {/* SECTION A: TOP RISK KPI CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <StatCard
+              title="Assessed Districts"
+              value={overview.total_assessed_districts}
+              subtext="Historical panel coverage"
+              icon={MapPin}
+              color="blue"
+            />
+            <StatCard
+              title="Critical Districts"
+              value={overview.risk_level_distribution.CRITICAL}
+              subtext={`${overview.risk_level_percentages.CRITICAL}% (Score ≥ 65)`}
+              icon={AlertTriangle}
+              color="rose"
+            />
+            <StatCard
+              title="High Risk"
+              value={overview.risk_level_distribution.HIGH}
+              subtext={`${overview.risk_level_percentages.HIGH}% (50 ≤ Score < 65)`}
+              icon={ShieldAlert}
+              color="amber"
+            />
+            <StatCard
+              title="Moderate Risk"
+              value={overview.risk_level_distribution.MODERATE}
+              subtext={`${overview.risk_level_percentages.MODERATE}% (35 ≤ Score < 50)`}
+              icon={Activity}
+              color="navy"
+            />
+            <StatCard
+              title="Low Risk"
+              value={overview.risk_level_distribution.LOW}
+              subtext={`${overview.risk_level_percentages.LOW}% (Score < 35)`}
+              icon={ShieldCheck}
+              color="emerald"
+            />
+            <StatCard
+              title="Average Score"
+              value={`${overview.mean_risk_score.toFixed(1)}`}
+              subtext={`Median: ${overview.median_risk_score.toFixed(1)} / 100`}
+              icon={Scale}
+              color="blue"
+            />
           </div>
 
-          {/* SECTION 2: Highest-Risk Jurisdictions Table */}
-          {topDistricts && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+          {/* SECTION B & C: RISK DISTRIBUTION & METHODOLOGY */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* CARD 1: RISK DISTRIBUTION */}
+            <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center justify-between mb-3 border-b border-[#DCE2EA] pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="rounded-lg bg-amber-50 p-1.5 text-amber-700">
-                    <AlertTriangle className="h-4 w-4" />
+                  <div className="p-1 rounded bg-[#EAF3FA] text-[#1769AA]">
+                    <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#0A192F]">
-                      Highest-Risk Jurisdictions Ranking
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Administrative districts ranked by per-capita incidence density and operational priority
-                    </p>
+                    <h3 className="text-sm font-semibold text-[#0B1F3A]">Jurisdictional Threat Distribution</h3>
+                    <p className="text-[11px] text-[#5D6878]">Classification breakdown across 640 assessed districts</p>
                   </div>
                 </div>
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                  {topDistricts.items.length} Evaluated
+              </div>
+
+              <div className="space-y-3 pt-1">
+                {/* Critical */}
+                <div>
+                  <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="font-semibold text-rose-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-600 inline-block" />
+                      CRITICAL (Score 65 – 100)
+                    </span>
+                    <span className="font-medium text-[#0B1F3A]">
+                      {overview.risk_level_distribution.CRITICAL} districts ({overview.risk_level_percentages.CRITICAL}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-rose-600 h-2.5 rounded-full transition-all"
+                      style={{ width: `${overview.risk_level_percentages.CRITICAL}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* High */}
+                <div>
+                  <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="font-semibold text-amber-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                      HIGH (Score 50 – 64.99)
+                    </span>
+                    <span className="font-medium text-[#0B1F3A]">
+                      {overview.risk_level_distribution.HIGH} districts ({overview.risk_level_percentages.HIGH}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-amber-500 h-2.5 rounded-full transition-all"
+                      style={{ width: `${overview.risk_level_percentages.HIGH}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Moderate */}
+                <div>
+                  <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="font-semibold text-blue-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
+                      MODERATE (Score 35 – 49.99)
+                    </span>
+                    <span className="font-medium text-[#0B1F3A]">
+                      {overview.risk_level_distribution.MODERATE} districts ({overview.risk_level_percentages.MODERATE}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all"
+                      style={{ width: `${overview.risk_level_percentages.MODERATE}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Low */}
+                <div>
+                  <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="font-semibold text-emerald-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                      LOW (Score &lt; 35)
+                    </span>
+                    <span className="font-medium text-[#0B1F3A]">
+                      {overview.risk_level_distribution.LOW} districts ({overview.risk_level_percentages.LOW}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-2.5 rounded-full transition-all"
+                      style={{ width: `${overview.risk_level_percentages.LOW}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#DCE2EA] flex items-center justify-between text-[11px] text-[#5D6878]">
+                <span>Score Range: {overview.lowest_risk_score} (Min) to {overview.highest_risk_score} (Max)</span>
+                <span>Normal Rank Population: 640 districts</span>
+              </div>
+            </div>
+
+            {/* CARD 2: METHODOLOGY & FACTOR WEIGHTS */}
+            <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center justify-between mb-3 border-b border-[#DCE2EA] pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded bg-[#EAF3FA] text-[#1769AA]">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0B1F3A]">Scoring Methodology ({overview.methodology_version})</h3>
+                    <p className="text-[11px] text-[#5D6878]">Explainable 4-factor percentile rank formulation</p>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-slate-100 text-[#0B1F3A] px-2 py-0.5 rounded font-mono font-medium border border-slate-200">
+                  Deterministic
                 </span>
               </div>
 
+              <div className="bg-slate-50 p-2.5 rounded border border-slate-200 mb-3 text-center">
+                <code className="text-xs font-mono font-semibold text-[#0B1F3A]">
+                  {modelInfo?.formula || 'Risk Score = 0.30·Forecast + 0.20·Volume + 0.30·Rate + 0.20·Trend'}
+                </code>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded bg-white border border-[#DCE2EA]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-[#0B1F3A]">Forecast Volume</span>
+                    <span className="font-bold text-[#1769AA]">30%</span>
+                  </div>
+                  <p className="text-[11px] text-[#5D6878] mt-0.5">
+                    1-month forward workload projection from HGBR model
+                  </p>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-[#DCE2EA]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-[#0B1F3A]">Crime Rate</span>
+                    <span className="font-bold text-[#1769AA]">30%</span>
+                  </div>
+                  <p className="text-[11px] text-[#5D6878] mt-0.5">
+                    Annualized incidents per 100k Census 2011 population baseline
+                  </p>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-[#DCE2EA]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-[#0B1F3A]">Historical Baseline</span>
+                    <span className="font-bold text-[#1769AA]">20%</span>
+                  </div>
+                  <p className="text-[11px] text-[#5D6878] mt-0.5">
+                    Sustained 12-month volume from 2025 actual incidents
+                  </p>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-[#DCE2EA]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-[#0B1F3A]">Trend Momentum</span>
+                    <span className="font-bold text-[#1769AA]">20%</span>
+                  </div>
+                  <p className="text-[11px] text-[#5D6878] mt-0.5">
+                    Short-term surge: Recent 3M vs Prior 3M with +1 smoothing
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-2.5 border-t border-[#DCE2EA] flex flex-col gap-1 text-[11px] text-[#5D6878]">
+                <span>Normalization: {modelInfo?.normalization || 'Percentile Rank Normalization [0, 100]'}</span>
+                <span>Active Model: {modelInfo?.active_model_name || overview.active_forecast_model} ({modelInfo?.active_model_version || overview.active_forecast_version})</span>
+                <span className="italic mt-1">
+                  * Note: Incident severity is tracked as an auxiliary audit index (0% score weight). Risk Assessment is an explainable synthesis, not a black-box model.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION D: HIGHEST-RISK DISTRICTS */}
+          <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
+            <div className="flex items-center justify-between mb-3 border-b border-[#DCE2EA] pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded bg-rose-50 text-rose-700">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-[#0B1F3A]">Top 10 Critical Jurisdictions</h3>
+                  <p className="text-[11px] text-[#5D6878]">Districts requiring immediate operational attention and patrol prioritization</p>
+                </div>
+              </div>
+              <span className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded font-semibold">
+                High Workload Priority
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#DCE2EA] text-[#5D6878] bg-slate-50/70 font-semibold">
+                    <th className="py-2.5 px-3">Rank</th>
+                    <th className="py-2.5 px-3">District</th>
+                    <th className="py-2.5 px-3">State</th>
+                    <th className="py-2.5 px-3">Risk Score</th>
+                    <th className="py-2.5 px-3">Risk Level</th>
+                    <th className="py-2.5 px-3">Primary Risk Driver</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {overview.top_risk_districts.map((item: RiskItem, idx: number) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => handleInspectDistrict(item.district_id)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="py-2.5 px-3 font-mono font-bold text-[#5D6878]">
+                        #{idx + 1}
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-[#0B1F3A] group-hover:text-[#1769AA]">
+                        {item.district_name}
+                      </td>
+                      <td className="py-2.5 px-3 text-[#5D6878]">
+                        {item.state_name}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="font-mono font-bold text-[#0B1F3A] text-sm">
+                          {item.overall_risk_score.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-[#5D6878] ml-1">/ 100</span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {getRiskBadge(item.risk_level)}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#0B1F3A] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {formatDriverName(item.strongest_driver)}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInspectDistrict(item.district_id);
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1769AA] hover:text-[#0B1F3A] bg-[#EAF3FA] hover:bg-[#D9E1EA] px-2 py-1 rounded transition-colors"
+                        >
+                          Inspect <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION E: FULL DISTRICT RISK REGISTRY WITH SERVER-SIDE FILTERING */}
+          <div className="rounded-lg border border-[#DCE2EA] bg-white p-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-[#DCE2EA] pb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-[#0B1F3A]">Jurisdictional Risk Registry</h3>
+                <p className="text-[11px] text-[#5D6878]">
+                  Browse, filter, and inspect detailed threat scores across all {riskList?.total || 640} districts
+                </p>
+              </div>
+
+              {/* FILTER CONTROLS */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* State dropdown */}
+                <select
+                  value={selectedStateId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    setSelectedStateId(val);
+                    setSelectedDistrictId(undefined);
+                    setCurrentPage(1);
+                  }}
+                  className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-xs text-[#0B1F3A] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                >
+                  <option value="">All States ({states.length})</option>
+                  {states.map((s: StateItem) => (
+                    <option key={s.id} value={s.id}>
+                      {s.state_name}
+                    </option>
+                  ))}
+                </select>
+
+                {/* District dropdown */}
+                <select
+                  value={selectedDistrictId || ''}
+                  disabled={!selectedStateId || districts.length === 0}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    setSelectedDistrictId(val);
+                    setCurrentPage(1);
+                  }}
+                  className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-xs text-[#0B1F3A] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="">
+                    {selectedStateId ? `All Districts (${districts.length})` : 'Select State First'}
+                  </option>
+                  {districts.map((d: DistrictItem) => (
+                    <option key={d.id} value={d.id}>
+                      {d.district_name}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Risk Level dropdown */}
+                <select
+                  value={selectedRiskLevel || ''}
+                  onChange={(e) => {
+                    setSelectedRiskLevel(e.target.value || undefined);
+                    setCurrentPage(1);
+                  }}
+                  className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-xs text-[#0B1F3A] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                >
+                  <option value="">All Risk Levels</option>
+                  <option value="CRITICAL">CRITICAL (≥ 65)</option>
+                  <option value="HIGH">HIGH (50 – 64.99)</option>
+                  <option value="MODERATE">MODERATE (35 – 49.99)</option>
+                  <option value="LOW">LOW (&lt; 35)</option>
+                </select>
+
+                {/* Reset filters */}
+                {(selectedStateId || selectedDistrictId || selectedRiskLevel) && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center gap-1 rounded bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-xs text-[#5D6878] transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* TABLE BODY */}
+            {isLoadingTable ? (
+              <div className="py-8">
+                <LoadingState message="Loading filtered risk assessments..." />
+              </div>
+            ) : !riskList || riskList.items.length === 0 ? (
+              <div className="py-8">
+                <EmptyState
+                  title="No Districts Match the Criteria"
+                  message="Try clearing or adjusting the selected state, district, or risk level filters."
+                  onClearFilters={handleResetFilters}
+                />
+              </div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-left text-xs">
+                <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600 whitespace-nowrap">
-                      <th className="py-2.5 pl-3">Rank</th>
+                    <tr className="border-b border-[#DCE2EA] text-[#5D6878] bg-slate-50/70 font-semibold">
                       <th className="py-2.5 px-3">District</th>
-                      <th className="py-2.5 px-3">State / UT</th>
-                      <th className="py-2.5 px-3 text-right">Population</th>
-                      <th className="py-2.5 px-3 text-right">Recorded Crimes</th>
-                      <th className="py-2.5 px-3 text-right">Rate / 100k</th>
-                      <th className="py-2.5 px-3 text-center">Threat Tier</th>
+                      <th className="py-2.5 px-3">State</th>
+                      <th className="py-2.5 px-3">Risk Score</th>
+                      <th className="py-2.5 px-3">Level</th>
+                      <th className="py-2.5 px-3">Primary Driver</th>
+                      <th className="py-2.5 px-3">Factor Ranks (F / V / R / T)</th>
+                      <th className="py-2.5 px-3 text-right">Inspect</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {topDistricts.items.map((d, index) => {
-                      const tier = getDistrictRiskTier(d.crime_rate_per_100k);
-                      return (
-                        <tr key={d.district_id} className="transition-colors hover:bg-slate-50/70 h-10 whitespace-nowrap">
-                          <td className="py-2 pl-3 font-mono font-bold text-slate-500">
-                            #{index + 1}
-                          </td>
-                          <td className="py-2 px-3 font-semibold text-[#0A192F]">
-                            {d.district_name}
-                          </td>
-                          <td className="py-2 px-3 text-slate-600">{d.state_name}</td>
-                          <td className="py-2 px-3 text-right font-mono text-slate-700">
-                            {d.total_population ? d.total_population.toLocaleString() : '—'}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-slate-700">
-                            {d.incident_count.toLocaleString()}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono font-bold text-blue-700">
-                            {d.crime_rate_per_100k ? d.crime_rate_per_100k.toFixed(1) : '—'}
-                          </td>
-                          <td className="py-2 px-3 text-center">
-                            {getRiskBadge(tier)}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                  <tbody className="divide-y divide-slate-100">
+                    {riskList.items.map((row: RiskItem) => (
+                      <tr
+                        key={row.id}
+                        onClick={() => handleInspectDistrict(row.district_id)}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      >
+                        <td className="py-2.5 px-3 font-semibold text-[#0B1F3A] group-hover:text-[#1769AA]">
+                          {row.district_name}
+                        </td>
+                        <td className="py-2.5 px-3 text-[#5D6878]">
+                          {row.state_name}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-[#0B1F3A]">
+                              {row.overall_risk_score.toFixed(2)}
+                            </span>
+                            <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className={`h-1.5 rounded-full ${
+                                  row.risk_level === 'CRITICAL'
+                                    ? 'bg-rose-600'
+                                    : row.risk_level === 'HIGH'
+                                    ? 'bg-amber-500'
+                                    : row.risk_level === 'MODERATE'
+                                    ? 'bg-blue-600'
+                                    : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${Math.min(100, row.overall_risk_score)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {getRiskBadge(row.risk_level)}
+                        </td>
+                        <td className="py-2.5 px-3 text-[#5D6878]">
+                          {formatDriverName(row.strongest_driver)}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-mono text-[11px] text-[#5D6878]">
+                            {row.forecast_index !== null && row.forecast_index !== undefined ? row.forecast_index.toFixed(0) : '-'} / {row.volume_index.toFixed(0)} / {row.rate_index !== null && row.rate_index !== undefined ? row.rate_index.toFixed(0) : '-'} / {row.trend_index.toFixed(0)}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInspectDistrict(row.district_id);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1769AA] hover:text-[#0B1F3A] bg-[#EAF3FA] hover:bg-[#D9E1EA] px-2 py-1 rounded transition-colors"
+                          >
+                            Details <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {/* PAGINATION CONTROLS */}
+            {riskList && riskList.total > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-[#DCE2EA] text-xs text-[#5D6878]">
+                <div>
+                  Showing{' '}
+                  <strong className="text-[#0B1F3A]">
+                    {(currentPage - 1) * pageSize + 1}
+                  </strong>{' '}
+                  to{' '}
+                  <strong className="text-[#0B1F3A]">
+                    {Math.min(currentPage * pageSize, riskList.total)}
+                  </strong>{' '}
+                  of <strong className="text-[#0B1F3A]">{riskList.total}</strong> assessed districts
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded border border-[#DCE2EA] bg-white text-[#0B1F3A] hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-medium text-[#0B1F3A]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1 rounded border border-[#DCE2EA] bg-white text-[#0B1F3A] hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION F: DISTRICT DETAIL & EXPLAINABILITY MODAL */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-[#DCE2EA] bg-white p-5 shadow-xl">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#DCE2EA] pb-3 mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#0B1F3A]">
+                    {selectedDistrictDetail ? selectedDistrictDetail.district_name : 'District Risk Analysis'}
+                  </h3>
+                  {selectedDistrictDetail && getRiskBadge(selectedDistrictDetail.risk_level)}
+                </div>
+                {selectedDistrictDetail && (
+                  <p className="text-xs text-[#5D6878] mt-0.5">
+                    {selectedDistrictDetail.state_name} • Population Baseline: {selectedDistrictDetail.census_2011_population.toLocaleString()} (Census 2011)
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDetailModalOpen(false);
+                  setSelectedDistrictDetail(null);
+                }}
+                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
+
+            {isLoadingDetail || !selectedDistrictDetail ? (
+              <div className="py-8">
+                <LoadingState message="Retrieving explainable factor decomposition..." />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Score & Driver Highlights */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                      Composite Risk Score
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-2xl font-bold font-mono text-[#0B1F3A]">
+                        {selectedDistrictDetail.overall_risk_score.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-[#5D6878]">/ 100</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                      Primary Risk Driver
+                    </span>
+                    <p className="text-sm font-bold text-[#1769AA] mt-1">
+                      {formatDriverName(selectedDistrictDetail.strongest_driver)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
+                      Auxiliary Severity
+                    </span>
+                    <p className="text-sm font-semibold text-[#0B1F3A] mt-1">
+                      {selectedDistrictDetail.severity_index.toFixed(2)}{' '}
+                      <span className="text-[10px] text-[#5D6878] font-normal">(Audit index)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* FACTOR BREAKDOWN CARDS */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#5D6878] mb-2">
+                    Explainable Factor Contributions (risk-v1.0)
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Forecast Factor */}
+                    <div className="rounded border border-[#DCE2EA] bg-white p-3 text-xs">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-[#0B1F3A]">Forecast Volume</span>
+                        <span className="font-bold text-[#1769AA]">30% Weight</span>
+                      </div>
+                      <div className="flex justify-between text-[#5D6878] text-[11px]">
+                        <span>Projected: <strong>{selectedDistrictDetail.factor_contributions.forecast_volume.raw.toFixed(1)}</strong></span>
+                        <span>Percentile: <strong>{selectedDistrictDetail.factor_contributions.forecast_volume.percentile.toFixed(1)}%</strong></span>
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between font-semibold">
+                        <span className="text-[#5D6878]">Weighted Contribution:</span>
+                        <span className="text-[#0B1F3A] font-mono">
+                          +{selectedDistrictDetail.factor_contributions.forecast_volume.weighted.toFixed(2)} pts
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Historical Volume Factor */}
+                    <div className="rounded border border-[#DCE2EA] bg-white p-3 text-xs">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-[#0B1F3A]">Historical Volume</span>
+                        <span className="font-bold text-[#1769AA]">20% Weight</span>
+                      </div>
+                      <div className="flex justify-between text-[#5D6878] text-[11px]">
+                        <span>2025 Total: <strong>{selectedDistrictDetail.factor_contributions.historical_volume.raw}</strong></span>
+                        <span>Percentile: <strong>{selectedDistrictDetail.factor_contributions.historical_volume.percentile.toFixed(1)}%</strong></span>
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between font-semibold">
+                        <span className="text-[#5D6878]">Weighted Contribution:</span>
+                        <span className="text-[#0B1F3A] font-mono">
+                          +{selectedDistrictDetail.factor_contributions.historical_volume.weighted.toFixed(2)} pts
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Crime Rate Factor */}
+                    <div className="rounded border border-[#DCE2EA] bg-white p-3 text-xs">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-[#0B1F3A]">Crime Rate per 100k</span>
+                        <span className="font-bold text-[#1769AA]">30% Weight</span>
+                      </div>
+                      <div className="flex justify-between text-[#5D6878] text-[11px]">
+                        <span>Rate: <strong>{selectedDistrictDetail.factor_contributions.crime_rate_per_100k.raw.toFixed(2)}</strong></span>
+                        <span>Percentile: <strong>{selectedDistrictDetail.factor_contributions.crime_rate_per_100k.percentile.toFixed(1)}%</strong></span>
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between font-semibold">
+                        <span className="text-[#5D6878]">Weighted Contribution:</span>
+                        <span className="text-[#0B1F3A] font-mono">
+                          +{selectedDistrictDetail.factor_contributions.crime_rate_per_100k.weighted.toFixed(2)} pts
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Trend Factor */}
+                    <div className="rounded border border-[#DCE2EA] bg-white p-3 text-xs">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-[#0B1F3A]">Trend Ratio</span>
+                        <span className="font-bold text-[#1769AA]">20% Weight</span>
+                      </div>
+                      <div className="flex justify-between text-[#5D6878] text-[11px]">
+                        <span>Ratio: <strong>{selectedDistrictDetail.factor_contributions.trend_ratio.raw.toFixed(2)}x</strong></span>
+                        <span>Percentile: <strong>{selectedDistrictDetail.factor_contributions.trend_ratio.percentile.toFixed(1)}%</strong></span>
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between font-semibold">
+                        <span className="text-[#5D6878]">Weighted Contribution:</span>
+                        <span className="text-[#0B1F3A] font-mono">
+                          +{selectedDistrictDetail.factor_contributions.trend_ratio.weighted.toFixed(2)} pts
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score Synthesis Box */}
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs">
+                  <span className="font-semibold text-[#0B1F3A] block mb-1">Score Synthesis Equation:</span>
+                  <div className="font-mono text-[11px] text-[#5D6878] flex flex-wrap items-center gap-1">
+                    <span>{selectedDistrictDetail.factor_contributions.forecast_volume.weighted.toFixed(2)} (F)</span>
+                    <span>+</span>
+                    <span>{selectedDistrictDetail.factor_contributions.historical_volume.weighted.toFixed(2)} (V)</span>
+                    <span>+</span>
+                    <span>{selectedDistrictDetail.factor_contributions.crime_rate_per_100k.weighted.toFixed(2)} (R)</span>
+                    <span>+</span>
+                    <span>{selectedDistrictDetail.factor_contributions.trend_ratio.weighted.toFixed(2)} (T)</span>
+                    <span>=</span>
+                    <strong className="text-[#0B1F3A] font-bold text-xs">
+                      {selectedDistrictDetail.overall_risk_score.toFixed(2)}
+                    </strong>
+                  </div>
+                  <p className="text-[10px] text-[#5D6878] mt-1.5">
+                    * The sum of all four weighted contributions exactly equals the final composite risk score.
+                  </p>
+                </div>
+
+                {/* Footer Modal Action */}
+                <div className="flex justify-end pt-2 border-t border-[#DCE2EA]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      setSelectedDistrictDetail(null);
+                    }}
+                    className="px-4 py-1.5 rounded bg-slate-100 text-[#0B1F3A] hover:bg-slate-200 text-xs font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </DashboardLayout>
