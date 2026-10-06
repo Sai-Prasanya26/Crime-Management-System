@@ -1,0 +1,103 @@
+{
+  "metadata_version": "1.0.0",
+  "created_at_utc": "2026-10-06T15:03:08.604987+00:00",
+  "model_name": "HGBR production forecasting model v1",
+  "model_version": "v1.0.0",
+  "model_type": "FORECASTING",
+  "algorithm": "HistGradientBoostingRegressor",
+  "source_phase": "Phase 8D \u2014 Production Model Selection & Forecasting Pipeline",
+  "artifact_filename": "production_hgbr_v1.joblib",
+  "artifact_path": "ml/saved_models\\production_hgbr_v1.joblib",
+  "hyperparameters": {
+    "learning_rate": 0.05,
+    "max_iter": 300,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "l2_regularization": 1.0,
+    "random_state": 42
+  },
+  "random_state": 42,
+  "categorical_features": [
+    "state_id"
+  ],
+  "feature_columns": [
+    "district_id",
+    "state_id",
+    "year",
+    "month",
+    "quarter",
+    "year_index",
+    "sin_month",
+    "cos_month",
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_12",
+    "rolling_mean_3",
+    "rolling_mean_6",
+    "rolling_mean_12",
+    "rolling_std_6",
+    "total_population",
+    "male_population",
+    "female_population",
+    "literate_population",
+    "total_workers",
+    "gender_ratio",
+    "literacy_rate",
+    "worker_ratio",
+    "historical_crime_rate_per_100k"
+  ],
+  "features_count": 25,
+  "target_column": "target_incident_count",
+  "production_refit": {
+    "training_period": "2021-01-01 to 2025-12-01",
+    "training_observations": 38400,
+    "historical_districts_count": 640,
+    "fit_time_seconds": 0.3494,
+    "iterations_completed": 77,
+    "source_snapshot": "panel_features_2020_2025.parquet"
+  },
+  "model_selection_evidence": {
+    "source_phase": "Phase 8C \u2014 Train Baselines & Primary ML Forecasting Models",
+    "evaluation_split": "TEST_2025",
+    "evaluation_observations": 7680,
+    "evaluation_training_period": "2021\u20132023",
+    "evaluation_test_period": "2025",
+    "primary_model_metrics": {
+      "model_name": "HistGradientBoostingRegressor",
+      "MAE": 1.6956,
+      "RMSE": 2.2465,
+      "WAPE_percent": 36.84,
+      "R2": 0.6063
+    },
+    "comparison_models_metrics": {
+      "RandomForestRegressor": {
+        "MAE": 1.7018,
+        "RMSE": 2.2629,
+        "WAPE_percent": 36.97,
+        "R2": 0.6006
+      },
+      "Moving_Average_3": {
+        "MAE": 1.8997,
+        "RMSE": 2.5084,
+        "WAPE_percent": 41.27,
+        "R2": 0.5092
+      },
+      "Seasonal_Naive": {
+        "MAE": 2.2616,
+        "RMSE": 3.017,
+        "WAPE_percent": 49.13,
+        "R2": 0.2899
+      }
+    },
+    "relative_improvement_vs_seasonal_naive": {
+      "MAE_reduction_percent": 25.03,
+      "WAPE_reduction_points": 12.29
+    }
+  },
+  "policy": {
+    "selection_rationale": "HistGradientBoostingRegressor empirically outperformed Seasonal Naive, Moving Average MA-3, and RandomForestRegressor across all walk-forward folds and on the untouched 2025 out-of-sample test set (MAE: 1.6956 vs 1.7018 RF, 1.8997 MA-3, 2.2616 SN). HGBR also demonstrated superior training efficiency (0.44s vs 1.46s RF).",
+    "non_negative_clamp": true,
+    "granularity": "District x Month (total monthly volume)"
+  }
+}

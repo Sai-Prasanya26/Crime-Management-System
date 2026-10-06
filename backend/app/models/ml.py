@@ -42,6 +42,7 @@ class CrimePrediction(Base):
 
     __table_args__ = (
         Index("idx_pred_dist_date", "district_id", "prediction_date"),
+        UniqueConstraint("district_id", "prediction_date", "model_id", name="uq_pred_district_date_model"),
     )
 
     # Relationships

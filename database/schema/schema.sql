@@ -196,6 +196,7 @@ CREATE TABLE `crime_predictions` (
   KEY `model_id` (`model_id`),
   KEY `ix_crime_predictions_prediction_date` (`prediction_date`),
   KEY `idx_pred_dist_date` (`district_id`,`prediction_date`),
+  UNIQUE KEY `uq_pred_district_date_model` (`district_id`,`prediction_date`,`model_id`),
   CONSTRAINT `crime_predictions_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `crime_predictions_ibfk_2` FOREIGN KEY (`crime_type_id`) REFERENCES `crime_types` (`id`) ON DELETE SET NULL,
   CONSTRAINT `crime_predictions_ibfk_3` FOREIGN KEY (`model_id`) REFERENCES `ml_models` (`id`) ON DELETE RESTRICT
