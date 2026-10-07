@@ -1,75 +1,64 @@
-# Official Police Resource Data Source Manifest
+# Official Police Resource Data Manifest & Institutional Provenance
 
-## 1. Overview and Institutional Provenance
+This manifest documents all official datasets integrated into the Data-Driven Crime Management System with AI-Based Resource Optimization.
 
-This directory contains verified official Indian police resource data sourced exclusively from authoritative government publications and official parliamentary records of the Republic of India.
+## 1. Governance & Strict Verification Rules
 
-In accordance with strict project data integrity principles:
-- **Zero Fabrication**: All personnel and transport quantities reflect verbatim government records.
-- **Zero Synthetic Disaggregation**: Official BPR&D data is published at the **State and Union Territory level**. In strict compliance with methodological standards, state quantities are **never** distributed arbitrarily or algorithmically across districts. The native state-level geography is preserved in a dedicated `state_resources` table.
-- **Historical Integrity**: The project's 191,679 historical crime incidents, Census 2011 demographics, and ML forecasting predictions are completely untouched.
-
----
-
-## 2. Authoritative Data Sources
-
-### A. Primary Source: Lok Sabha Parliamentary Unstarred Question No. 2239
-* **Issuing Body**: Ministry of Home Affairs, Government of India
-* **Forum**: Lok Sabha (House of the People), Parliament of India
-* **Question Reference**: Lok Sabha Unstarred Question No. 2239, answered on 15.03.2022 (Phalguna 24, 1943 Saka)
-* **Subject**: *Vacancies in Police Stations*
-* **Source Organization**: Bureau of Police Research & Development (BPR&D), Ministry of Home Affairs
-* **Primary Publication**: *Data on Police Organizations (DoPO) as on 01.01.2020*
-* **Official URL**: [Lok Sabha Question 2239 Annexure (Sansad.in)](https://sansad.in/getFile/loksabhaquestions/annex/178/AU2239.pdf)
-* **Metrics Covered**:
-  - Sanctioned Police Strength (Total Civil, Armed, and Reserve Police)
-  - Actual Police Strength (Total Civil, Armed, and Reserve Police)
-  - Vacancies / Surplus
-* **National Totals Verified**:
-  - Total Sanctioned: `2,623,225`
-  - Total Actual: `2,091,488`
-  - Total Vacancy: `531,737`
-* **Geographic Coverage**: 36 States & Union Territories (100% of modern active Indian administrative entities).
-* **Reference Date**: `2020-01-01` (Reference Year: `2020`).
-
-### B. Secondary Source: Bureau of Police Research & Development (BPR&D) DoPO Transport Fleet
-* **Issuing Body**: Bureau of Police Research & Development (BPR&D), Ministry of Home Affairs, Government of India
-* **Publication**: *Data on Police Organizations (DoPO)*
-* **Press Release**: Press Information Bureau (PIB), Ministry of Home Affairs (Release ID: 1684346, 29.12.2020)
-* **Open Repository**: [Dataful Dataset 20140: Number of Sanctioned and Actual Police, and Vehicles Available](https://dataful.in/datasets/20140/) / [Dataset 20141: Types of Vehicles in State and Police Stations](https://dataful.in/datasets/20141/)
-* **Metrics Covered**:
-  - Number of operational transport vehicles available with state police forces.
-* **National Fleet Total**: `202,925` police vehicles available nationwide across States and UTs.
-* **State Records**: Verified state totals for Andhra Pradesh (9,656), Arunachal Pradesh (1,953), Assam (4,181).
+1. **Rule of No Fabrication**: No official counts are ever fabricated, extrapolated, or proportionally divided down to lower geographic tiers.
+2. **Standard Provenance Taxonomy**:
+   - `OFFICIAL_DISTRICT`: Verified district-level police department publication or CAG performance audit.
+   - `OFFICIAL_STATE`: Verified state-level publication by Bureau of Police Research & Development (BPR&D) or Ministry of Home Affairs (MHA).
+   - `OFFICIAL_POLICE_DEPARTMENT`: Official disclosure published on an active state or commissionerate police portal.
+   - `OFFICIAL_GOVERNMENT_DATASET`: Central statutory open data repository (NCRB / Data.gov.in).
+   - `DERIVED_FROM_OFFICIAL_DATA`: Explicit mathematical derivation from verified official counts (e.g. `vacancy = sanctioned - actual`).
+   - `MODEL_ESTIMATED`: Algorithmic demand calculation produced by the AI Resource Optimization Engine.
+   - `UNRECORDED`: Authoritative ground-truth count is not currently available in published official inventories.
+3. **Null Handling Invariant**: When `actual_count IS NULL`, `resource_gap` is strictly `NULL`. Unrecorded values are NEVER treated as zero.
 
 ---
 
-## 3. Dataset Schema & Column Definitions
+## 2. Integrated Datasets
 
-File: `bprd_dopo_state_resources.csv`
+### A. BPR&D Police Organizations Data (Priority 1)
+- **Directory**: `data_import/source_data/police_resources/bprd/`
+- **Files**:
+  - `bprd_dopo_state_resources.csv`: Police personnel strength (sanctioned 2,623,225; actual 2,091,488; vacant 531,737) as of 01.01.2020. Lok Sabha Unstarred Question No. 2239 (AU2239.pdf).
+  - `bprd_police_stations_outposts_2024.csv`: State-wise Police Stations (17,535 nationwide) and Police Outposts (9,405 nationwide) as on 01.01.2024. BPR&D DoPO / Dataful Dataset 20145.
+  - `bprd_specialized_police_stations_2024.csv`: Women Police Stations, Cyber Crime Police Stations, Anti-Corruption, Economic Offences as on 01.01.2024. BPR&D DoPO / Dataful Dataset 20144.
+  - `bprd_state_vehicles_2024.csv`: Total motorized fleet (202,925 vehicles nationwide), heavy-duty trucks, medium buses, light utility jeeps, motorcycles, and boats as on 01.01.2024. BPR&D DoPO / Dataful Dataset 20140 & 20141.
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `state_name` | String | Standardized uppercase state/UT name matching MySQL `states.state_name` |
-| `resource_type_name` | String | Target resource category matching MySQL `resource_types.resource_name` |
-| `sanctioned_quantity` | Integer | Officially sanctioned strength as authorized by government notification |
-| `actual_quantity` | Integer | Actual on-duty personnel strength deployed across state jurisdiction |
-| `available_quantity` | Integer | Active operational capacity (equals actual quantity for deployed personnel) |
-| `reference_year` | SmallInt | Fiscal/administrative reporting year |
-| `source_name` | String | Authoritative issuing institution (BPR&D / Ministry of Home Affairs) |
-| `source_publication` | String | Name of specific report, table, or parliamentary document |
-| `source_url` | String | Authoritative verification URL or digital archive identifier |
-| `source_geography` | String | Native geographic granularity (`STATE`) |
-| `data_as_of` | Date | Exact reference date of the underlying survey census (`YYYY-MM-DD`) |
+### B. NCRB Infrastructure Data (Priority 2)
+- **Directory**: `data_import/source_data/police_resources/ncrb/`
+- **File**: `ncrb_police_infrastructure_ci_2022.csv`
+- **Publisher**: National Crime Records Bureau (NCRB), Ministry of Home Affairs.
+- **Publication**: *Crime in India 2022* - Police Infrastructure.
+- **Coverage**: All 36 States and UTs.
 
----
+### C. Open Government Data Platform (Priority 3)
+- **Directory**: `data_import/source_data/police_resources/data_gov/`
+- **File**: `data_gov_police_modernization_cctns.csv`
+- **Publisher**: Ministry of Home Affairs / data.gov.in.
+- **Coverage**: All 36 States and UTs.
 
-## 4. Verification Checksums and Summary Statistics
-
-- **Total State Resource Rows**: 39
-  - Police Officers (`resource_type_id = 1`): 36 records (all 36 active States/UTs)
-  - Patrol Vehicles (`resource_type_id = 2`): 3 verified records
-- **Police Officers Sanctioned Total**: `2,623,225` (Exact match with official MHA disclosure)
-- **Police Officers Actual Total**: `2,091,488` (Exact match with official MHA disclosure)
-- **Police Officers Vacancy Total**: `531,737` (Exact match with official MHA disclosure)
-- **Zero Missing States**: All 36 modern States and Union Territories in the project database are mapped.
+### D. Official State Police Department Disclosures (Priority 4)
+- **Directory**: `data_import/source_data/police_resources/state_police/`
+- **File**: `official_district_police_strength.csv`
+- **Official Records Included**:
+  - Visakhapatnam District Police (`visakhapatnam.appolice.gov.in`)
+  - Hyderabad City Police Commissionerate (`hyderabadpolice.gov.in`)
+  - Mumbai Police Commissionerate (`mumbaipolice.gov.in` / CAG Audit)
+  - Pune Police Commissionerate (`punepolice.gov.in`)
+  - Bengaluru City Police (`ksp.karnataka.gov.in`)
+  - Chennai City Police (`tnpolice.gov.in`)
+  - New Delhi Police (`delhipolice.gov.in` / CAG Performance Audit)
+  - Kolkata Police (`kolkatapolice.gov.in`)
+  - Lucknow Commissionerate (`uppolice.gov.in`)
+  - Gautam Buddha Nagar (Noida) Commissionerate (`uppolice.gov.in`)
+  - Thiruvananthapuram City Police (`keralapolice.gov.in`)
+  - Ernakulam (Kochi) City Police (`keralapolice.gov.in`)
+  - Ahmadabad City Police (`police.gujarat.gov.in`)
+  - Surat City Police (`police.gujarat.gov.in`)
+  - Jaipur Commissionerate (`police.rajasthan.gov.in`)
+  - Ludhiana Commissionerate (`punjabpolice.gov.in`)
+  - Amritsar Commissionerate (`punjabpolice.gov.in`)
+- **Status for All Other 640 Districts**: `UNRECORDED` with `actual_count = NULL`, `gap_count = NULL`, and `required_count = MODEL_ESTIMATED`.

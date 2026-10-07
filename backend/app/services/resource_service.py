@@ -15,8 +15,8 @@ from datetime import datetime
 import json
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-
 from backend.app.repositories.resource_repository import ResourceRepository
+
 from backend.app.schemas.resource import (
     ResourceItemResponse,
     ResourceOverviewResponse,
@@ -27,6 +27,10 @@ from backend.app.schemas.resource import (
     StateResourceItemResponse,
     ResourceCoverageResponse,
     CategoryCoverageDetail,
+    DistrictResourceItemResponse,
+    ResourceCategoryDetailResponse,
+    DistrictResourceGapResponse,
+    AIResourceRecommendationResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 
@@ -734,7 +738,129 @@ class ResourceService:
             total_active_states=cov_data["total_active_states"],
             total_state_resource_records=cov_data["total_state_resource_records"],
             geography_level=cov_data["geography_level"],
+            total_districts=cov_data.get("total_districts", 640),
+            districts_with_official_data=cov_data.get("districts_with_official_data", 18),
+            districts_with_unrecorded_data=cov_data.get("districts_with_unrecorded_data", 622),
+            category_summary=cov_data.get("category_summary"),
             categories=[CategoryCoverageDetail(**c) for c in cov_data["categories"]],
             methodology_notes=cov_data["methodology_notes"],
         )
+
+    @staticmethod
+    def list_district_resources(
+        db: Session,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+        category: Optional[str] = None,
+        resource_type_id: Optional[int] = None,
+        data_status: Optional[str] = None,
+        reference_year: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> StandardListResponse[DistrictResourceItemResponse]:
+        """Lists district-level resource inventories with verified badges and filters."""
+        items, total = ResourceRepository.list_district_resources(
+            db,
+            state_id=state_id,
+            district_id=district_id,
+            category=category,
+            resource_type_id=resource_type_id,
+            data_status=data_status,
+            reference_year=reference_year,
+            skip=skip,
+            limit=limit,
+        )
+        return StandardListResponse(
+            items=[DistrictResourceItemResponse(**item) for item in items],
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
+    @staticmethod
+    def get_district_multi_detail(db: Session, district_id: int) -> List[DistrictResourceItemResponse]:
+        """Retrieves complete multi-category resource breakdown for a specific district."""
+        items = ResourceRepository.get_district_resource_detail_multi(db, district_id=district_id)
+        if not items:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No resource inventory found for district ID {district_id}",
+            )
+        return [DistrictResourceItemResponse(**item) for item in items]
+
+    @staticmethod
+    def list_categories(db: Session) -> List[ResourceCategoryDetailResponse]:
+        """Retrieves all operational resource categories and constituent types."""
+        categories = ResourceRepository.get_categories(db)
+        return [ResourceCategoryDetailResponse(**c) for c in categories]
+
+    @staticmethod
+    def list_resource_gaps(
+        db: Session,
+        state_id: Optional[int] = None,
+        category: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> StandardListResponse[DistrictResourceGapResponse]:
+        """Retrieves comparative actual vs required resource gaps."""
+        items, total = ResourceRepository.get_resource_gaps(
+            db,
+            state_id=state_id,
+            category=category,
+            skip=skip,
+            limit=limit,
+        )
+        return StandardListResponse(
+            items=[DistrictResourceGapResponse(**item) for item in items],
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
+    @staticmethod
+    def list_ai_recommendations(
+        db: Session,
+        state_id: Optional[int] = None,
+        priority_tier: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> StandardListResponse[AIResourceRecommendationResponse]:
+        """Retrieves district AI resource recommendations with priority tiers and explanations."""
+        items, total = ResourceRepository.get_ai_recommendations(
+            db,
+            state_id=state_id,
+            priority_tier=priority_tier,
+            risk_level=risk_level,
+            skip=skip,
+            limit=limit,
+        )
+        return StandardListResponse(
+            items=[AIResourceRecommendationResponse(**item) for item in items],
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
+    @staticmethod
+    def list_category_resources(
+        db: Session,
+        category: str,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+        data_status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> StandardListResponse[DistrictResourceItemResponse]:
+        """Helper to list resources specifically under a given category."""
+        return ResourceService.list_district_resources(
+            db,
+            state_id=state_id,
+            district_id=district_id,
+            category=category,
+            data_status=data_status,
+            skip=skip,
+            limit=limit,
+        )
+
 

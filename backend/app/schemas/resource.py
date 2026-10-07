@@ -1,8 +1,9 @@
 """
-Phase 10B: Pydantic Schemas for Resource Optimization Endpoints.
+Pydantic Schemas for Comprehensive Resource Optimization Endpoints.
 
 Defines API response models for resource requirements, availability status,
-shortfalls, surplus, priority scores, and constrained allocation simulations under resource-v1.0.
+shortfalls, surplus, priority scores, categorized intelligence, district inventory,
+and constrained allocation simulations.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -98,26 +99,22 @@ class ResourceOverviewResponse(BaseModel):
     availability_data_status: str
     districts_with_recorded_availability: int
     districts_with_unrecorded_availability: int
-    total_required_by_type: Dict[str, int]
-    total_gross_demand: int
+    total_required_by_type: Optional[Dict[str, int]] = None
+    total_gross_demand: Optional[int] = None
     total_verified_shortfall: Optional[int] = None
     total_verified_surplus: Optional[int] = None
-    priority_distribution: Dict[str, int]
-    allocation_capacity_status: str
+    priority_distribution: Optional[Dict[str, int]] = None
+    allocation_capacity_status: Optional[str] = None
     estimated_total_monthly_budget: Optional[float] = None
+    gross_required_officers: Optional[int] = None
+    gross_required_vehicles: Optional[int] = None
+    gross_required_investigation_teams: Optional[int] = None
+    gross_required_surveillance_units: Optional[int] = None
+    priority_counts: Optional[Dict[str, int]] = None
+    total_estimated_budget: Optional[float] = None
     currency: str = "INR"
-    top_priority_districts: List[ResourceItemResponse]
-
-
-class ResourceModelInfoResponse(BaseModel):
-    methodology_version: str
-    assessment_period: str
-    formula_summary: Dict[str, str]
-    resource_types: List[Dict[str, Any]]
-    priority_tiers: Dict[str, str]
-    availability_data_status: str
-    allocation_capacity_status: str
-    notes: List[str]
+    top_priority_districts: Optional[List[ResourceItemResponse]] = None
+    notes: Optional[List[str]] = None
 
 
 class ResourceAllocationSimulationRequest(BaseModel):
@@ -157,17 +154,23 @@ class StateResourceItemResponse(BaseModel):
     state_name: str
     resource_type_id: int
     resource_name: str
+    category: Optional[str] = "PERSONNEL"
     unit_of_measure: str
     sanctioned_quantity: Optional[int] = None
     actual_quantity: Optional[int] = None
     available_quantity: int
     vacancy_quantity: Optional[int] = None
+    actual_count: Optional[int] = None
+    sanctioned_count: Optional[int] = None
     reference_year: int
+    data_status: str = "OFFICIAL_STATE"
     source_name: str
     source_publication: str
+    source_document: Optional[str] = None
     source_url: Optional[str] = None
     source_geography: str = "STATE"
     data_as_of: str
+    confidence_score: Optional[float] = 1.00
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -175,6 +178,7 @@ class StateResourceItemResponse(BaseModel):
 class CategoryCoverageDetail(BaseModel):
     resource_type_id: int
     resource_name: str
+    category: Optional[str] = "PERSONNEL"
     unit_of_measure: str
     reference_year: int
     data_as_of: str
@@ -191,5 +195,105 @@ class ResourceCoverageResponse(BaseModel):
     total_active_states: int
     total_state_resource_records: int
     geography_level: str = "STATE"
+    total_districts: int = 640
+    districts_with_official_data: int = 18
+    districts_with_unrecorded_data: int = 622
+    category_summary: Optional[Dict[str, Any]] = None
     categories: List[CategoryCoverageDetail]
     methodology_notes: List[str]
+
+
+# -------------------------------------------------------------
+# New Comprehensive Schemas for Phase 10 Expansion
+# -------------------------------------------------------------
+
+class DistrictResourceItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    district_id: int
+    district_name: str
+    state_id: int
+    state_name: str
+    resource_type_id: int
+    resource_code: Optional[str] = None
+    resource_name: str
+    category: str
+    unit_of_measure: str
+    actual_count: Optional[int] = None
+    sanctioned_count: Optional[int] = None
+    required_count: Optional[int] = None
+    gap_count: Optional[int] = None
+    reference_year: int
+    data_status: str
+    badge: str
+    source_name: Optional[str] = None
+    source_document: Optional[str] = None
+    source_url: Optional[str] = None
+    source_page: Optional[str] = None
+    methodology: Optional[str] = None
+    confidence_score: Optional[float] = None
+    updated_at: Optional[str] = None
+
+
+class ResourceCategoryDetailResponse(BaseModel):
+    category: str
+    display_name: str
+    description: str
+    total_resource_types: int
+    is_personnel: bool
+    is_vehicle: bool
+    is_team: bool
+    is_equipment: bool
+    is_infrastructure: bool
+    resource_types: List[Dict[str, Any]]
+
+
+class DistrictResourceGapResponse(BaseModel):
+    district_id: int
+    district_name: str
+    state_name: str
+    resource_name: str
+    resource_code: str
+    category: str
+    actual_count: Optional[int] = None
+    required_count: int
+    gap_count: Optional[int] = None
+    data_status: str
+    badge: str
+    is_verified: bool
+    source_name: Optional[str] = None
+
+
+class ResourceModelInfoResponse(BaseModel):
+    methodology_version: str
+    governance_standard: str = "BPR&D Data on Police Organizations (DoPO) & NCRB Benchmarks"
+    assessment_period: Optional[str] = "2026-01-01"
+    formula_summary: Dict[str, str]
+    resource_types: List[Dict[str, Any]]
+    priority_tiers: Optional[Dict[str, str]] = None
+    availability_data_status: str
+    allocation_capacity_status: Optional[str] = None
+    notes: List[str]
+
+
+class AIResourceRecommendationResponse(BaseModel):
+    district_id: int
+    district_name: str
+    state_name: str
+    population: int
+    overall_risk_score: float
+    risk_level: str
+    required_police_personnel: int
+    required_patrol_vehicles: int
+    required_investigation_teams: int
+    required_surveillance_teams: int
+    required_cctv_coverage: int
+    required_emergency_response_units: int
+    resource_priority_score: float
+    priority_tier: str
+    priority_explanation: str
+    actual_personnel_recorded: Optional[int] = None
+    personnel_gap: Optional[int] = None
+    personnel_status: str
+    personnel_badge: str

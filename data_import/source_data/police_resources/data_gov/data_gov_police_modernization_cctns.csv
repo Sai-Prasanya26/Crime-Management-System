@@ -1,0 +1,37 @@
+state_name,reference_year,stations_with_computers,stations_with_broadband,source_name,source_publication,source_url,data_status
+ANDAMAN AND NICOBAR ISLANDS,2023,22,21,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+ANDHRA PRADESH,2023,996,956,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+ARUNACHAL PRADESH,2023,100,96,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+ASSAM,2023,333,320,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+BIHAR,2023,1090,1046,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+CHANDIGARH,2023,16,16,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+CHHATTISGARH,2023,477,457,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+DADRA AND NAGAR HAVELI AND DAMAN AND DIU,2023,7,7,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+GOA,2023,34,33,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+GUJARAT,2023,663,636,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+HARYANA,2023,376,361,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+HIMACHAL PRADESH,2023,136,131,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+JAMMU AND KASHMIR,2023,237,228,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+JHARKHAND,2023,546,524,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+KARNATAKA,2023,1034,992,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+KERALA,2023,516,495,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+LAKSHADWEEP,2023,8,8,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+MADHYA PRADESH,2023,1103,1059,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+MAHARASHTRA,2023,1153,1106,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+MANIPUR,2023,97,93,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+MEGHALAYA,2023,71,68,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+MIZORAM,2023,41,39,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+NAGALAND,2023,84,80,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+NCT OF DELHI,2023,212,204,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+ODISHA,2023,628,603,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+PUDUCHERRY,2023,33,32,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+PUNJAB,2023,427,410,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+RAJASTHAN,2023,889,853,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+SIKKIM,2023,28,27,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+TAMIL NADU,2023,1504,1444,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+TELANGANA,2023,772,741,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+TRIPURA,2023,81,77,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+UTTAR PRADESH,2023,1524,1463,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+UTTARAKHAND,2023,160,153,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+WEST BENGAL,2023,623,598,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
+LADAKH,2023,11,11,Ministry of Home Affairs / Open Government Data Platform (data.gov.in),CCTNS Modernization and Connectivity Status,https://www.data.gov.in/,OFFICIAL_GOVERNMENT_DATASET
