@@ -147,3 +147,49 @@ class ResourceAllocationSimulationResponse(BaseModel):
     partially_satisfied_districts: int
     unmet_districts: int
     allocations: List[AllocationItem]
+
+
+class StateResourceItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    state_id: int
+    state_name: str
+    resource_type_id: int
+    resource_name: str
+    unit_of_measure: str
+    sanctioned_quantity: Optional[int] = None
+    actual_quantity: Optional[int] = None
+    available_quantity: int
+    vacancy_quantity: Optional[int] = None
+    reference_year: int
+    source_name: str
+    source_publication: str
+    source_url: Optional[str] = None
+    source_geography: str = "STATE"
+    data_as_of: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class CategoryCoverageDetail(BaseModel):
+    resource_type_id: int
+    resource_name: str
+    unit_of_measure: str
+    reference_year: int
+    data_as_of: str
+    states_covered: int
+    coverage_percentage: float
+    total_sanctioned: Optional[int] = None
+    total_actual: Optional[int] = None
+    total_available: int
+    total_vacancies: Optional[int] = None
+    missing_state_names: List[str]
+
+
+class ResourceCoverageResponse(BaseModel):
+    total_active_states: int
+    total_state_resource_records: int
+    geography_level: str = "STATE"
+    categories: List[CategoryCoverageDetail]
+    methodology_notes: List[str]

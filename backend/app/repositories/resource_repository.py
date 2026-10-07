@@ -531,3 +531,181 @@ class ResourceRepository:
             "calculation_version": calculation_version,
             "generated_at": gen_at,
         }
+
+    @staticmethod
+    def get_state_resources(
+        db: Session,
+        state_id: Optional[int] = None,
+        resource_type_id: Optional[int] = None,
+        reference_year: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Retrieves official state-level police resources with optional state,
+        resource type, and reference year filters.
+        """
+        where_clauses = []
+        params: Dict[str, Any] = {"skip": skip, "limit": limit}
+
+        if state_id is not None:
+            where_clauses.append("sr.state_id = :state_id")
+            params["state_id"] = state_id
+        if resource_type_id is not None:
+            where_clauses.append("sr.resource_type_id = :resource_type_id")
+            params["resource_type_id"] = resource_type_id
+        if reference_year is not None:
+            where_clauses.append("sr.reference_year = :reference_year")
+            params["reference_year"] = reference_year
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        count_sql = text(f"""
+            SELECT COUNT(*)
+            FROM state_resources sr
+            {where_sql}
+        """)
+        total_count = db.execute(count_sql, params).scalar() or 0
+
+        query_sql = text(f"""
+            SELECT 
+                sr.id,
+                sr.state_id,
+                s.state_name,
+                sr.resource_type_id,
+                rt.resource_name,
+                rt.unit_of_measure,
+                sr.sanctioned_quantity,
+                sr.actual_quantity,
+                sr.available_quantity,
+                sr.reference_year,
+                sr.source_name,
+                sr.source_publication,
+                sr.source_url,
+                sr.source_geography,
+                sr.data_as_of,
+                sr.created_at,
+                sr.updated_at
+            FROM state_resources sr
+            JOIN states s ON sr.state_id = s.id
+            JOIN resource_types rt ON sr.resource_type_id = rt.id
+            {where_sql}
+            ORDER BY s.state_name ASC, rt.id ASC
+            LIMIT :limit OFFSET :skip
+        """)
+        rows = db.execute(query_sql, params).fetchall()
+
+        items = []
+        for r in rows:
+            sanc = int(r[6]) if r[6] is not None else None
+            act = int(r[7]) if r[7] is not None else None
+            vac = (sanc - act) if (sanc is not None and act is not None) else None
+            items.append({
+                "id": int(r[0]),
+                "state_id": int(r[1]),
+                "state_name": str(r[2]),
+                "resource_type_id": int(r[3]),
+                "resource_name": str(r[4]),
+                "unit_of_measure": str(r[5]),
+                "sanctioned_quantity": sanc,
+                "actual_quantity": act,
+                "available_quantity": int(r[8]),
+                "vacancy_quantity": vac,
+                "reference_year": int(r[9]),
+                "source_name": str(r[10]),
+                "source_publication": str(r[11]),
+                "source_url": str(r[12]) if r[12] else None,
+                "source_geography": str(r[13]),
+                "data_as_of": str(r[14]),
+                "created_at": str(r[15]) if r[15] else None,
+                "updated_at": str(r[16]) if r[16] else None,
+            })
+
+        return items, total_count
+
+    @staticmethod
+    def get_resource_coverage(db: Session) -> Dict[str, Any]:
+        """
+        Reports official resource coverage statistics, covered vs missing states,
+        and methodology notes regarding state-level aggregate preservation.
+        """
+        # Active states
+        active_states_rows = db.execute(text("SELECT id, state_name FROM states WHERE is_active = 1 ORDER BY state_name")).fetchall()
+        all_active_states = {int(r[0]): str(r[1]) for r in active_states_rows}
+        total_active_states = len(all_active_states)
+
+        # Total rows in state_resources
+        total_records = db.execute(text("SELECT COUNT(*) FROM state_resources")).scalar() or 0
+
+        # Query active resource types
+        rtypes_rows = db.execute(text("SELECT id, resource_name, unit_of_measure FROM resource_types WHERE is_active = 1 ORDER BY id")).fetchall()
+
+        categories_coverage = []
+        for rt_id, rt_name, unit in rtypes_rows:
+            stat_sql = text("""
+                SELECT 
+                    COUNT(DISTINCT sr.state_id) as covered_states,
+                    SUM(sr.sanctioned_quantity) as total_sanc,
+                    SUM(sr.actual_quantity) as total_act,
+                    SUM(sr.available_quantity) as total_avail,
+                    MAX(sr.reference_year) as ref_year,
+                    MAX(sr.data_as_of) as data_date
+                FROM state_resources sr
+                WHERE sr.resource_type_id = :rt_id
+            """)
+            stat_row = db.execute(stat_sql, {"rt_id": rt_id}).fetchone()
+
+            covered_count = int(stat_row[0]) if stat_row and stat_row[0] else 0
+            if covered_count > 0:
+                covered_ids_rows = db.execute(
+                    text("SELECT DISTINCT state_id FROM state_resources WHERE resource_type_id = :rt_id"),
+                    {"rt_id": rt_id}
+                ).fetchall()
+                covered_ids = {int(r[0]) for r in covered_ids_rows}
+                missing_names = [name for sid, name in all_active_states.items() if sid not in covered_ids]
+
+                sanc_sum = int(stat_row[1]) if stat_row[1] is not None else None
+                act_sum = int(stat_row[2]) if stat_row[2] is not None else None
+                avail_sum = int(stat_row[3]) if stat_row[3] is not None else 0
+                vac_sum = (sanc_sum - act_sum) if (sanc_sum is not None and act_sum is not None) else None
+                ref_year = int(stat_row[4]) if stat_row[4] else 2020
+                data_as_of = str(stat_row[5]) if stat_row[5] else "2020-01-01"
+            else:
+                missing_names = list(all_active_states.values())
+                sanc_sum = None
+                act_sum = None
+                avail_sum = 0
+                vac_sum = None
+                ref_year = 2020
+                data_as_of = "2020-01-01"
+
+            pct = round((covered_count / total_active_states) * 100.0, 2) if total_active_states > 0 else 0.0
+
+            categories_coverage.append({
+                "resource_type_id": int(rt_id),
+                "resource_name": str(rt_name),
+                "unit_of_measure": str(unit),
+                "reference_year": ref_year,
+                "data_as_of": data_as_of,
+                "states_covered": covered_count,
+                "coverage_percentage": pct,
+                "total_sanctioned": sanc_sum,
+                "total_actual": act_sum,
+                "total_available": avail_sum,
+                "total_vacancies": vac_sum,
+                "missing_state_names": missing_names,
+            })
+
+        return {
+            "total_active_states": total_active_states,
+            "total_state_resource_records": total_records,
+            "geography_level": "STATE",
+            "categories": categories_coverage,
+            "methodology_notes": [
+                "Official police resources are published by BPR&D / Ministry of Home Affairs at the State/UT level.",
+                "To preserve data integrity, state quantities are not synthetically distributed across districts.",
+                "Police Officers strength covers 100% of Indian States and Union Territories (36/36) as of 01.01.2020 (Lok Sabha Unstarred Question No. 2239).",
+                "District inventories remain unrecorded (district_resources = 0) until authoritative district-level deployment data is officially published.",
+            ],
+        }
+

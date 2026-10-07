@@ -24,6 +24,9 @@ from backend.app.schemas.resource import (
     ResourceModelInfoResponse,
     ResourceAllocationSimulationResponse,
     AllocationItem,
+    StateResourceItemResponse,
+    ResourceCoverageResponse,
+    CategoryCoverageDetail,
 )
 from backend.app.schemas.common import StandardListResponse
 
@@ -692,3 +695,46 @@ class ResourceService:
             unmet_districts=unmet,
             allocations=allocations,
         )
+
+    @staticmethod
+    def list_state_resources(
+        db: Session,
+        state_id: Optional[int] = None,
+        resource_type_id: Optional[int] = None,
+        reference_year: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> StandardListResponse[StateResourceItemResponse]:
+        """
+        Lists official state-level police resources with pagination and filters.
+        """
+        items, total = ResourceRepository.get_state_resources(
+            db,
+            state_id=state_id,
+            resource_type_id=resource_type_id,
+            reference_year=reference_year,
+            skip=skip,
+            limit=limit,
+        )
+        pydantic_items = [StateResourceItemResponse(**item) for item in items]
+        return StandardListResponse(
+            items=pydantic_items,
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
+    @staticmethod
+    def get_coverage(db: Session) -> ResourceCoverageResponse:
+        """
+        Retrieves official resource coverage statistics across active states and categories.
+        """
+        cov_data = ResourceRepository.get_resource_coverage(db)
+        return ResourceCoverageResponse(
+            total_active_states=cov_data["total_active_states"],
+            total_state_resource_records=cov_data["total_state_resource_records"],
+            geography_level=cov_data["geography_level"],
+            categories=[CategoryCoverageDetail(**c) for c in cov_data["categories"]],
+            methodology_notes=cov_data["methodology_notes"],
+        )
+

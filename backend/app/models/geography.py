@@ -16,6 +16,7 @@ class State(Base):
 
     # Relationships
     districts = relationship("District", back_populates="state", cascade="all, delete-orphan")
+    state_resources = relationship("StateResource", back_populates="state")
 
 
 class District(Base):

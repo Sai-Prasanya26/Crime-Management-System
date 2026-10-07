@@ -356,4 +356,6 @@ export interface TopDistrictsResponse {
 }
 
 export * from './risk';
+export * from './resource';
+
 

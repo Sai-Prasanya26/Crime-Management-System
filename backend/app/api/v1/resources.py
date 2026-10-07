@@ -21,6 +21,8 @@ from backend.app.schemas.resource import (
     ResourceModelInfoResponse,
     ResourceAllocationSimulationResponse,
     ResourceAllocationSimulationRequest,
+    StateResourceItemResponse,
+    ResourceCoverageResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 from backend.app.services.resource_service import ResourceService, CALCULATION_VERSION
@@ -91,6 +93,44 @@ def list_resources(
         skip=skip,
         limit=limit,
     )
+
+
+@router.get(
+    "/states",
+    response_model=StandardListResponse[StateResourceItemResponse],
+    summary="List Official State Police Resources",
+    description="Retrieve verified state-level official police resource data (personnel strength and fleet availability) from authoritative BPR&D / MHA government records.",
+)
+def list_state_resources(
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    resource_type_id: Optional[int] = Query(None, description="Filter by Resource Type ID (1: Officers, 2: Vehicles)"),
+    reference_year: Optional[int] = Query(None, description="Filter by reporting reference year (e.g. 2020, 2024)"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StandardListResponse[StateResourceItemResponse]:
+    return ResourceService.list_state_resources(
+        db,
+        state_id=state_id,
+        resource_type_id=resource_type_id,
+        reference_year=reference_year,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/coverage",
+    response_model=ResourceCoverageResponse,
+    summary="Get Official Resource Data Coverage & Methodology Notes",
+    description="Retrieve institutional data coverage metrics, tracked resource categories, covered vs missing states, and operational methodology notes regarding state-level aggregate preservation.",
+)
+def get_resource_coverage(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResourceCoverageResponse:
+    return ResourceService.get_coverage(db)
 
 
 @router.get(
