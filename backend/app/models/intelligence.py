@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, SmallInteger, String, Text, Enum, DECIMAL, ForeignKey, TIMESTAMP, UniqueConstraint, Index, JSON, func
+from sqlalchemy import Column, Integer, BigInteger, SmallInteger, String, Text, Enum, DECIMAL, ForeignKey, TIMESTAMP, UniqueConstraint, Index, JSON, Boolean, func
 from sqlalchemy.orm import relationship
 from backend.app.database.session import Base
 
@@ -46,15 +46,22 @@ class ResourceRecommendation(Base):
     resource_type_id = Column(Integer, ForeignKey("resource_types.id", ondelete="RESTRICT"), nullable=False)
     period_year = Column(SmallInteger, nullable=False)
     period_month = Column(SmallInteger, nullable=False)
-    available_quantity = Column(Integer, nullable=False)
+    required_quantity = Column(Integer, nullable=False, default=0)
+    available_quantity = Column(Integer, nullable=True)
     recommended_quantity = Column(Integer, nullable=False)
     shortfall_quantity = Column(Integer, nullable=False)
+    surplus_quantity = Column(Integer, nullable=False, default=0)
+    has_availability_data = Column(Boolean, nullable=False, default=False)
+    availability_status = Column(String(20), nullable=False, default="UNRECORDED")
+    priority_tier = Column(String(20), nullable=False, default="LOW")
+    priority_score = Column(DECIMAL(5, 2), nullable=False, default=0.00)
     optimization_rationale = Column(Text, nullable=True)
     model_id = Column(Integer, ForeignKey("ml_models.id", ondelete="SET NULL"), nullable=True)
+    calculation_version = Column(String(20), nullable=False, default="resource-v1.0")
     generated_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("district_id", "resource_type_id", "period_year", "period_month", name="uq_district_resource_recom_period"),
+        UniqueConstraint("district_id", "resource_type_id", "period_year", "period_month", "calculation_version", name="uq_district_resource_recom_period_version"),
         Index("idx_recom_period", "district_id", "period_year", "period_month"),
     )
 
