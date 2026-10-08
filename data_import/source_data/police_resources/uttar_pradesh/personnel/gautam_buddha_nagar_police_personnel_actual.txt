@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Gautam Buddha Nagar (ID: 564)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 3940
+Sanctioned Count: 4820
+Reference Year: 2023
+Source Name: Uttar Pradesh Police
+Source Document: Noida Police Commissionerate Strength Register
+Source URL: https://uppolice.gov.in/
+Source Page: GB Nagar Commissionerate
+Methodology: Official Commissionerate Strength Register
+Confidence: 1.0

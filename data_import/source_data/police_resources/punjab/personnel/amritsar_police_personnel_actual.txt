@@ -1,0 +1,13 @@
+State: PUNJAB
+District: Amritsar (ID: 445)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 3620
+Sanctioned Count: 4210
+Reference Year: 2023
+Source Name: Punjab Police Department
+Source Document: Amritsar City Police Strength Register
+Source URL: https://punjabpolice.gov.in/
+Source Page: Commissionerate Strength
+Methodology: State Police Commissionerate Report
+Confidence: 1.0

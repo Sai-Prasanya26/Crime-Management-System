@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Ranchi (ID: 233)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 6
+Sanctioned Count: 6
+Reference Year: 2024
+Source Name: Jharkhand Police Department
+Source Document: Ranchi District Outposts Directory (4 City + 2 Rural OPs)
+Source URL: https://jhpolice.gov.in/
+Source Page: Ranchi District Profile
+Methodology: Official State Police District Profile
+Confidence: 1.0

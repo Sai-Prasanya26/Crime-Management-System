@@ -1,0 +1,13 @@
+State: HIMACHAL PRADESH
+District: Shimla (ID: 187)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 23
+Sanctioned Count: 23
+Reference Year: 2024
+Source Name: Himachal Pradesh Police Department
+Source Document: Shimla District Permanent Police Posts Directory
+Source URL: https://hppolice.gov.in/
+Source Page: Shimla District Unit
+Methodology: Official State Police Registry
+Confidence: 1.0

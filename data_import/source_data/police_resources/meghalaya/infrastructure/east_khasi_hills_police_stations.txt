@@ -1,0 +1,13 @@
+State: MEGHALAYA
+District: East Khasi Hills (ID: 377)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 16
+Sanctioned Count: 16
+Reference Year: 2024
+Source Name: Meghalaya Police Department / District East Khasi Hills
+Source Document: East Khasi Hills Police Station Directory (14 Regular + 1 Women + 1 Crime Branch)
+Source URL: https://eastkhasihills.gov.in/
+Source Page: Police Administration
+Methodology: Official District Administration Directory
+Confidence: 1.0

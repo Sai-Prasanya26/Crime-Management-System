@@ -1,0 +1,13 @@
+State: WEST BENGAL
+District: North Twenty Four Parganas (ID: 635)
+Resource: Cyber Crime Investigation Units (CYBER_CRIME_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Barrackpore Police Commissionerate
+Source Document: Barrackpore Cyber Crime Police Station Establishment
+Source URL: https://wb.gov.in/
+Source Page: Specialized Units
+Methodology: Official Departmental Establishment
+Confidence: 1.0

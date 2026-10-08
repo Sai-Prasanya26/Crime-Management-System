@@ -1,0 +1,13 @@
+State: TAMIL NADU
+District: Tiruchirappalli (ID: 527)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 18
+Sanctioned Count: 18
+Reference Year: 2024
+Source Name: Tiruchirappalli City Police / Tamil Nadu Police
+Source Document: Trichy City Police Jurisdictional Directory
+Source URL: https://tnpolice.gov.in/
+Source Page: Trichy City Commissionerate
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

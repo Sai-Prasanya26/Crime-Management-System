@@ -1,0 +1,13 @@
+State: GOA
+District: South Goa (ID: 131)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 18
+Sanctioned Count: 18
+Reference Year: 2024
+Source Name: Goa Police Department / Government of Goa
+Source Document: South Goa District Police Station Directory (17 Territorial + 1 Women PS)
+Source URL: https://goapolice.gov.in/
+Source Page: South District Directory
+Methodology: Official State Police Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: GUJARAT
+District: Vadodara (ID: 156)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 21
+Sanctioned Count: 21
+Reference Year: 2024
+Source Name: Vadodara City Police Commissionerate
+Source Document: Vadodara City Police Jurisdictional Directory (4 Zones, 8 Divisions)
+Source URL: https://cpvadodara.gujarat.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Pune (ID: 356)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 9680
+Sanctioned Count: 11250
+Reference Year: 2023
+Source Name: Pune Police Commissionerate
+Source Document: Pune City Police Annual Review & Strength Report
+Source URL: https://punepolice.gov.in/
+Source Page: Administration & Staff Strength
+Methodology: Official Commissionerate Annual Review
+Confidence: 1.0

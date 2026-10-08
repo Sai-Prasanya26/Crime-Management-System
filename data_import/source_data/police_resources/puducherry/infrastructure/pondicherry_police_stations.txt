@@ -1,0 +1,13 @@
+State: PUDUCHERRY
+District: Pondicherry (ID: 443)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 22
+Sanctioned Count: 22
+Reference Year: 2024
+Source Name: Puducherry Police Department
+Source Document: Puducherry Police Manual 2024 (Puducherry District 22 Stations)
+Source URL: https://police.py.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Police Manual Publication
+Confidence: 1.0

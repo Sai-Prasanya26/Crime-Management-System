@@ -1,0 +1,13 @@
+State: TAMIL NADU
+District: Chennai (ID: 503)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 20850
+Sanctioned Count: 24100
+Reference Year: 2023
+Source Name: Tamil Nadu Police Department
+Source Document: Greater Chennai Police Commissionerate Review
+Source URL: https://tnpolice.gov.in/
+Source Page: Organization & Strength
+Methodology: State Police Annual Review
+Confidence: 1.0

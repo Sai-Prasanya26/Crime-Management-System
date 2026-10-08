@@ -1,0 +1,13 @@
+State: RAJASTHAN
+District: Jaipur (ID: 481)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 9720
+Sanctioned Count: 11400
+Reference Year: 2023
+Source Name: Rajasthan Police Department
+Source Document: Jaipur Police Commissionerate Force Status
+Source URL: https://police.rajasthan.gov.in/
+Source Page: Commissionerate Strength
+Methodology: Official Commissionerate Administrative Report
+Confidence: 1.0

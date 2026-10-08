@@ -1,0 +1,13 @@
+State: WEST BENGAL
+District: Kolkata (ID: 631)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 91
+Sanctioned Count: 91
+Reference Year: 2024
+Source Name: Kolkata Police Department / Government of West Bengal
+Source Document: Kolkata Police 10-Division Station Directory
+Source URL: https://kolkatapolice.gov.in/
+Source Page: Know Your Police Station
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

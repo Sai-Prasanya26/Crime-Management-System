@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Varanasi (ID: 608)
+Resource: Cyber Crime Investigation Units (CYBER_CRIME_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Uttar Pradesh Police
+Source Document: Varanasi Cyber Crime Police Station Directory
+Source URL: https://uppolice.gov.in/
+Source Page: Cyber Crime Police Stations
+Methodology: Official State Police Registry
+Confidence: 1.0

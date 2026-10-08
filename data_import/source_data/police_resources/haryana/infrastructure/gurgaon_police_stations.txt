@@ -1,0 +1,13 @@
+State: HARYANA
+District: Gurgaon (ID: 162)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 43
+Sanctioned Count: 43
+Reference Year: 2024
+Source Name: Gurugram Police Commissionerate / Haryana Police
+Source Document: Gurugram Police Stations Directory & Jurisdictional List
+Source URL: https://gurugram.gov.in/
+Source Page: Police Administration
+Methodology: Official District Administration Directory
+Confidence: 1.0

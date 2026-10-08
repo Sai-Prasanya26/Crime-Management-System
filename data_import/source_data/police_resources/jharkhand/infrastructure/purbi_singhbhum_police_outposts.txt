@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Purbi Singhbhum (ID: 231)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 2
+Sanctioned Count: 2
+Reference Year: 2024
+Source Name: Jharkhand Police Department
+Source Document: East Singhbhum Police Outposts Directory
+Source URL: https://jhpolice.gov.in/
+Source Page: East Singhbhum Directory
+Methodology: Official State Police District Profile
+Confidence: 1.0

@@ -8,6 +8,9 @@ import type {
   DistrictResourceItem,
   DistrictResourceGapListResponse,
   AIResourceRecommendationListResponse,
+  ResourceSummaryResponse,
+  ResourceCrimeComparisonResponse,
+  ResourceTypeItem,
 } from '../types';
 
 export interface StateResourceFilterParams {
@@ -280,6 +283,45 @@ export const resourceApi = {
         calculation_version: calculationVersion,
       },
     });
+    return response.data;
+  },
+
+  /**
+   * Fetch official state police resource summary with provenance & coverage indicators.
+   */
+  getResourceSummary: async (params?: {
+    state_id?: number;
+    reference_year?: number;
+  }): Promise<ResourceSummaryResponse> => {
+    const response = await apiClient.get<ResourceSummaryResponse>('/resources/summary', {
+      params: {
+        state_id: params?.state_id,
+        reference_year: params?.reference_year,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch analytical state-level comparison between historical crime burden (2020-2025)
+   * and official police resources (2020/2024).
+   */
+  getResourceComparison: async (params?: {
+    state_id?: number;
+  }): Promise<ResourceCrimeComparisonResponse> => {
+    const response = await apiClient.get<ResourceCrimeComparisonResponse>('/resources/comparison', {
+      params: {
+        state_id: params?.state_id,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch all active operational police resource types with codes and units.
+   */
+  getResourceTypes: async (): Promise<ResourceTypeItem[]> => {
+    const response = await apiClient.get<ResourceTypeItem[]>('/resources/types');
     return response.data;
   },
 };

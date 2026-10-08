@@ -1,0 +1,13 @@
+State: KERALA
+District: Kannur (ID: 270)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 24
+Sanctioned Count: 24
+Reference Year: 2024
+Source Name: Kannur City Police / Kerala Police Department
+Source Document: Kannur City Police Station Jurisdictional Directory (3 Subdivisions)
+Source URL: https://keralapolice.gov.in/
+Source Page: Kannur City Profile
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

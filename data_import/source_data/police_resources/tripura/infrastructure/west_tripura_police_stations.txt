@@ -1,0 +1,13 @@
+State: TRIPURA
+District: West Tripura (ID: 537)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 17
+Sanctioned Count: 17
+Reference Year: 2024
+Source Name: Tripura Police / District Administration West Tripura
+Source Document: West Tripura District Police Stations Directory (15 Territorial + 2 Women PS)
+Source URL: https://westtripura.nic.in/
+Source Page: District Administration Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

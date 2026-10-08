@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Varanasi (ID: 608)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 30
+Sanctioned Count: 30
+Reference Year: 2024
+Source Name: Varanasi Police Commissionerate / District Varanasi
+Source Document: Varanasi Police Stations Directory (Kashi, Varuna & Gomati Zones)
+Source URL: https://varanasi.nic.in/police/
+Source Page: Police Phone Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

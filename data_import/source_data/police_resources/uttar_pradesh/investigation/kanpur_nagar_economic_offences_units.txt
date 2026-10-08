@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Kanpur Nagar (ID: 577)
+Resource: Economic Offences Wings (EOW) (ECONOMIC_OFFENCES_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Uttar Pradesh Police
+Source Document: Kanpur Sector Economic Offences Wing Unit
+Source URL: https://uppolice.gov.in/
+Source Page: EOW Sector Directory
+Methodology: Official State Police Registry
+Confidence: 1.0

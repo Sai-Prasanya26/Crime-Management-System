@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Purbi Singhbhum (ID: 231)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 36
+Sanctioned Count: 36
+Reference Year: 2024
+Source Name: Jharkhand Police Department
+Source Document: East Singhbhum District Police Station Contacts
+Source URL: https://jhpolice.gov.in/
+Source Page: East Singhbhum Directory
+Methodology: Official State Police District Profile
+Confidence: 1.0

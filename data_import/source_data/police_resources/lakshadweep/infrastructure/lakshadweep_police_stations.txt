@@ -1,0 +1,13 @@
+State: LAKSHADWEEP
+District: Lakshadweep (ID: 281)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 9
+Sanctioned Count: 9
+Reference Year: 2024
+Source Name: Lakshadweep Police / BPR&D DoPO 2024
+Source Document: Lakshadweep Island Police Stations Directory (9 Functional Stations)
+Source URL: https://lakshadweep.gov.in/
+Source Page: Police Stations Directory
+Methodology: Single-District UT Departmental Directory
+Confidence: 1.0

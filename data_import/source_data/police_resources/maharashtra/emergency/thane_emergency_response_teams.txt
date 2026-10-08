@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Thane (ID: 363)
+Resource: Emergency Response Field Teams (EMERGENCY_RESPONSE_TEAMS)
+Category: EMERGENCY
+Actual Count: 76
+Sanctioned Count: 76
+Reference Year: 2023
+Source Name: Navi Mumbai Police Commissionerate / Maharashtra Home Department
+Source Document: Dial 112 Emergency Response Support System MDT Vehicle Deployment
+Source URL: https://navimumbaipolice.gov.in/
+Source Page: Dial 112 Initiative
+Methodology: State ERSS MDT Fleet Deployment
+Confidence: 1.0

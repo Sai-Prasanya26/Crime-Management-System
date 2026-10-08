@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Agra (ID: 538)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 44
+Sanctioned Count: 44
+Reference Year: 2024
+Source Name: Agra Police Commissionerate / District Agra
+Source Document: Agra Police Station Directory (City, East & West Zones)
+Source URL: https://agra.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

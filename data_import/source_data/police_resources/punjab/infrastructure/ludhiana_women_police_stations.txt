@@ -1,0 +1,13 @@
+State: PUNJAB
+District: Ludhiana (ID: 455)
+Resource: All-Women Police Stations (AWPS) (WOMEN_POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Ludhiana Police Commissionerate
+Source Document: Ludhiana Women Police Station Establishment
+Source URL: https://punjabpolice.gov.in/
+Source Page: Specialized Units
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

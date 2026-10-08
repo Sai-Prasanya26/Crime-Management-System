@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Mumbai (ID: 348)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 44150
+Sanctioned Count: 53200
+Reference Year: 2022
+Source Name: Maharashtra Police / Comptroller and Auditor General of India
+Source Document: CAG Performance Audit Report on Maharashtra Police Department
+Source URL: https://cag.gov.in/
+Source Page: Chapter 3 - Manpower Management
+Methodology: CAG Statutory Performance Audit Report
+Confidence: 1.0

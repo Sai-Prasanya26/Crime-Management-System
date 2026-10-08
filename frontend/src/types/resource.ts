@@ -180,3 +180,72 @@ export interface ResourceOverview {
   currency: string;
   notes?: string[];
 }
+
+export interface ResourceTypeItem {
+  id: number;
+  code?: string | null;
+  resource_name: string;
+  category: string;
+  unit_of_measure: string;
+  description?: string | null;
+  is_personnel: boolean;
+  is_vehicle: boolean;
+  is_team: boolean;
+  is_equipment: boolean;
+  is_infrastructure: boolean;
+  is_active: boolean;
+}
+
+export interface StateResourceSummaryItem {
+  resource_type: string;
+  category: string;
+  available_quantity: number;
+  actual_quantity: number | null;
+  sanctioned_quantity: number | null;
+  unit: string;
+}
+
+export interface StateResourceGroupedSummary {
+  state_id: number;
+  state: string;
+  reference_year: number;
+  source: string;
+  source_publication: string;
+  source_url: string | null;
+  geography_level: string;
+  coverage_status: string;
+  resources: StateResourceSummaryItem[];
+}
+
+export interface ResourceSummaryResponse {
+  total_states: number;
+  data_freshness_notes: Record<string, string>;
+  items: StateResourceGroupedSummary[];
+}
+
+export interface StateCrimeResourceComparisonItem {
+  state_id: number;
+  state_name: string;
+  census_2011_population: number;
+  total_crime_incidents: number;
+  crime_rate_per_100k: number;
+  police_personnel: number | null;
+  police_per_100k: number | null;
+  police_vehicles: number | null;
+  vehicles_per_100k: number | null;
+  police_stations: number | null;
+  stations_per_100k: number | null;
+  personnel_ref_year: number;
+  vehicles_ref_year: number;
+  stations_ref_year: number;
+  historical_crime_years: string;
+  analytical_notice: string;
+}
+
+export interface ResourceCrimeComparisonResponse {
+  comparison_period: string;
+  crime_data_span: string;
+  resource_reference_years: Record<string, number>;
+  disclaimer: string;
+  items: StateCrimeResourceComparisonItem[];
+}

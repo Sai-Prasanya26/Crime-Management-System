@@ -1,0 +1,13 @@
+State: ANDHRA PRADESH
+District: Krishna (ID: 12)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 23
+Sanctioned Count: 23
+Reference Year: 2024
+Source Name: Andhra Pradesh State Police / Krishna District Administration
+Source Document: NTR Police Commissionerate & Krishna District Police Setup
+Source URL: https://krishna.ap.gov.in/
+Source Page: District Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

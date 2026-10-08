@@ -1,0 +1,13 @@
+State: KERALA
+District: Kozhikode (ID: 274)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Kozhikode City Police / Kerala Police Department
+Source Document: Kozhikode City Police Station Jurisdictional Directory
+Source URL: https://kozhikodecity.keralapolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

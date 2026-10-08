@@ -1,0 +1,13 @@
+State: HIMACHAL PRADESH
+District: Shimla (ID: 187)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Himachal Pradesh Police Department / District Shimla
+Source Document: Shimla District Police Station Directory (19 Regular + 1 Women PS)
+Source URL: https://hppolice.gov.in/
+Source Page: Shimla District Unit
+Methodology: Official State Police Registry
+Confidence: 1.0

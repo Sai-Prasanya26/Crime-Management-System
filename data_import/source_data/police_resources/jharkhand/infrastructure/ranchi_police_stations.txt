@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Ranchi (ID: 233)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 36
+Sanctioned Count: 36
+Reference Year: 2024
+Source Name: Jharkhand Police Department / District Ranchi
+Source Document: Ranchi District Police Profile (14 City + 22 Rural PS)
+Source URL: https://jhpolice.gov.in/
+Source Page: Ranchi District Profile
+Methodology: Official State Police District Profile
+Confidence: 1.0

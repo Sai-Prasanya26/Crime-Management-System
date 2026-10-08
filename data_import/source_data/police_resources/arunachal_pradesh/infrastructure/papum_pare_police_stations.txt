@@ -1,0 +1,13 @@
+State: ARUNACHAL PRADESH
+District: Papum Pare (ID: 36)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 9
+Sanctioned Count: 9
+Reference Year: 2024
+Source Name: Arunachal Pradesh Police / District Papum Pare
+Source Document: Papum Pare District Police Stations Directory
+Source URL: https://papumpare.nic.in/
+Source Page: Police Stations
+Methodology: Official District Administration Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: JAMMU AND KASHMIR
+District: Jammu (ID: 197)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 25
+Sanctioned Count: 25
+Reference Year: 2024
+Source Name: Jammu and Kashmir Police / District Jammu
+Source Document: District Jammu Police Stations Official Directory (8 Subdivisions)
+Source URL: https://jammu.nic.in/public-utilities/police-stations/
+Source Page: Public Utilities - Police Stations
+Methodology: Official District Administration Directory
+Confidence: 1.0

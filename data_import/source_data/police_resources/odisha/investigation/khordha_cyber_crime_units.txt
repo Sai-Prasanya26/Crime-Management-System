@@ -1,0 +1,13 @@
+State: ODISHA
+District: Khordha (ID: 429)
+Resource: Cyber Crime Investigation Units (CYBER_CRIME_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Bhubaneswar-Cuttack Police Commissionerate
+Source Document: Bhubaneswar Cyber Crime & Economic Offence Police Station
+Source URL: https://odishapolice.gov.in/
+Source Page: Specialized Units
+Methodology: Official Departmental Establishment
+Confidence: 1.0

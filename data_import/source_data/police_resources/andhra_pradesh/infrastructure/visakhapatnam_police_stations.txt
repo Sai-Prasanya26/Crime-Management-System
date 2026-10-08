@@ -1,0 +1,13 @@
+State: ANDHRA PRADESH
+District: Visakhapatnam (ID: 22)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 48
+Sanctioned Count: 48
+Reference Year: 2023
+Source Name: Andhra Pradesh State Police Department
+Source Document: Visakhapatnam Police Station Directory
+Source URL: https://visakhapatnam.appolice.gov.in/
+Source Page: Police Stations List
+Methodology: Official Departmental Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Kanpur Nagar (ID: 577)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 49
+Sanctioned Count: 49
+Reference Year: 2024
+Source Name: Kanpur Nagar Police Commissionerate / District Kanpur Nagar
+Source Document: Kanpur Nagar Police Stations Official Directory
+Source URL: https://kanpurnagar.nic.in/police/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

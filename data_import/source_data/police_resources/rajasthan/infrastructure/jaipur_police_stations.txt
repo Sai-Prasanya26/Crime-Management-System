@@ -1,0 +1,13 @@
+State: RAJASTHAN
+District: Jaipur (ID: 481)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 61
+Sanctioned Count: 61
+Reference Year: 2024
+Source Name: Jaipur Police Commissionerate / Rajasthan Police
+Source Document: Jaipur Police Stations Directory (East, West, North, South & Metro)
+Source URL: https://police.rajasthan.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

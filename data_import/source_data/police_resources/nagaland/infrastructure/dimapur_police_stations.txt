@@ -1,0 +1,13 @@
+State: NAGALAND
+District: Dimapur (ID: 391)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 10
+Sanctioned Count: 10
+Reference Year: 2023
+Source Name: Nagaland Police / Commissioner of Police Dimapur
+Source Document: Dimapur Police Commissionerate Station Directory
+Source URL: https://nagaland.gov.in/
+Source Page: Home Department Police Setup
+Methodology: Official Departmental Directory
+Confidence: 1.0

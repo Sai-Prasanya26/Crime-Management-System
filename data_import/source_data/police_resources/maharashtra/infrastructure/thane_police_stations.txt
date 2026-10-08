@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Thane (ID: 363)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 35
+Sanctioned Count: 35
+Reference Year: 2024
+Source Name: Thane Police Commissionerate
+Source Document: Thane Police Station Jurisdictional Directory
+Source URL: https://thanepolice.gov.in/
+Source Page: Police Stations List
+Methodology: Official Commissionerate Directory
+Confidence: 1.0

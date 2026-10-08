@@ -1,0 +1,13 @@
+State: GUJARAT
+District: Surat (ID: 152)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 6540
+Sanctioned Count: 7890
+Reference Year: 2023
+Source Name: Gujarat Police Department
+Source Document: Surat City Police Force Strength Report
+Source URL: https://police.gujarat.gov.in/
+Source Page: Surat Force Deployment
+Methodology: Official Commissionerate Review
+Confidence: 1.0

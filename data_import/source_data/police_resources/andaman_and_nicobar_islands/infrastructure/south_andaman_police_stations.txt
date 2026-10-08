@@ -1,0 +1,13 @@
+State: ANDAMAN AND NICOBAR ISLANDS
+District: South Andaman (ID: 3)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 9
+Sanctioned Count: 9
+Reference Year: 2024
+Source Name: Andaman and Nicobar Police / District South Andaman
+Source Document: South Andaman Police Stations Directory
+Source URL: https://and.nic.in/
+Source Page: Public Utilities
+Methodology: Official Administration Directory
+Confidence: 1.0

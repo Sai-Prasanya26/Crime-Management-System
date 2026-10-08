@@ -1,0 +1,13 @@
+State: ASSAM
+District: Kamrup Metropolitan (ID: 58)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Assam Police Department / Guwahati Police Commissionerate
+Source Document: Guwahati Police Commissionerate Station Directory (Central, East & West)
+Source URL: https://police.assam.gov.in/
+Source Page: Guwahati Commissionerate
+Methodology: Official State Police Registry
+Confidence: 1.0

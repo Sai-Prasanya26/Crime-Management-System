@@ -1,0 +1,13 @@
+State: TRIPURA
+District: West Tripura (ID: 537)
+Resource: All-Women Police Stations (AWPS) (WOMEN_POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 2
+Sanctioned Count: 2
+Reference Year: 2024
+Source Name: Tripura Police
+Source Document: East Agartala & West Agartala Women Police Stations
+Source URL: https://westtripura.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

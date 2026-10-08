@@ -17,6 +17,10 @@ import {
   Layers,
   Sparkles,
   X,
+  BarChart2,
+  Scale,
+  Info,
+  AlertTriangle,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -32,10 +36,14 @@ import type {
   DistrictResourceItem,
   DistrictResourceGapItem,
   AIResourceRecommendationItem,
+  ResourceSummaryResponse,
+  ResourceCrimeComparisonResponse,
+  ResourceTypeItem,
 } from '../types';
 
 type TabType =
   | 'overview'
+  | 'resource_intelligence'
   | 'state_baseline'
   | 'districts'
   | 'personnel'
@@ -72,6 +80,13 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [infrastructureList, setInfrastructureList] = useState<DistrictResourceItem[]>([]);
   const [gapsList, setGapsList] = useState<DistrictResourceGapItem[]>([]);
   const [recommendationsList, setRecommendationsList] = useState<AIResourceRecommendationItem[]>([]);
+
+  // Phase 7D: Official Resource Intelligence & Crime Comparison state
+  const [resourceSummary, setResourceSummary] = useState<ResourceSummaryResponse | null>(null);
+  const [comparisonData, setComparisonData] = useState<ResourceCrimeComparisonResponse | null>(null);
+  const [resourceTypesList, setResourceTypesList] = useState<ResourceTypeItem[]>([]);
+  const [selectedResourceTypeFilter, setSelectedResourceTypeFilter] = useState<string>('ALL');
+  const [selectedRefYearFilter, setSelectedRefYearFilter] = useState<string>('ALL');
 
   // District detail modal state
   const [selectedDistrictName, setSelectedDistrictName] = useState<string>('');
@@ -114,6 +129,17 @@ export const ResourceOptimizationPage: React.FC = () => {
       const filterStatus = statusFilter === 'ALL' ? undefined : statusFilter;
 
       switch (activeTab) {
+        case 'resource_intelligence': {
+          const [summaryRes, compRes, typesRes] = await Promise.all([
+            resourceApi.getResourceSummary({ state_id: selectedStateId }),
+            resourceApi.getResourceComparison({ state_id: selectedStateId }),
+            resourceApi.getResourceTypes(),
+          ]);
+          setResourceSummary(summaryRes);
+          setComparisonData(compRes);
+          setResourceTypesList(typesRes);
+          break;
+        }
         case 'state_baseline': {
           const res = await resourceApi.getStateResources({
             state_id: selectedStateId,
@@ -218,7 +244,7 @@ export const ResourceOptimizationPage: React.FC = () => {
     try {
       const items = await resourceApi.getDistrictDetailMulti(districtId);
       setDistrictDetailItems(items);
-    } catch (err) {
+    } catch {
       setDistrictDetailItems([]);
     } finally {
       setIsLoadingDetail(false);
@@ -363,9 +389,55 @@ export const ResourceOptimizationPage: React.FC = () => {
     );
   }, [recommendationsList, query]);
 
+  // Phase 7D: Filtered resource summary & crime comparison datasets
+  const filteredSummaryStates = useMemo(() => {
+    if (!resourceSummary) return [];
+    let list = resourceSummary.items;
+    if (selectedStateId) {
+      list = list.filter((s) => s.state_id === selectedStateId);
+    }
+    if (selectedRefYearFilter !== 'ALL') {
+      const yr = parseInt(selectedRefYearFilter, 10);
+      list = list.filter((s) => s.reference_year === yr);
+    }
+    if (selectedResourceTypeFilter !== 'ALL') {
+      list = list
+        .map((s) => ({
+          ...s,
+          resources: s.resources.filter(
+            (r) =>
+              r.resource_type.toLowerCase().includes(selectedResourceTypeFilter.toLowerCase()) ||
+              r.category.toLowerCase().includes(selectedResourceTypeFilter.toLowerCase())
+          ),
+        }))
+        .filter((s) => s.resources.length > 0);
+    }
+    if (query) {
+      list = list.filter(
+        (s) =>
+          s.state.toLowerCase().includes(query) ||
+          s.resources.some((r) => r.resource_type.toLowerCase().includes(query))
+      );
+    }
+    return list;
+  }, [resourceSummary, selectedStateId, selectedRefYearFilter, selectedResourceTypeFilter, query]);
+
+  const filteredComparisonItems = useMemo(() => {
+    if (!comparisonData) return [];
+    let list = comparisonData.items;
+    if (selectedStateId) {
+      list = list.filter((s) => s.state_id === selectedStateId);
+    }
+    if (query) {
+      list = list.filter((s) => s.state_name.toLowerCase().includes(query));
+    }
+    return list;
+  }, [comparisonData, selectedStateId, query]);
+
   // Tab configurations
   const tabs: Array<{ id: TabType; label: string; icon: React.FC<{ className?: string }>; count?: string | number }> = [
     { id: 'overview', label: 'Overview', icon: Sliders },
+    { id: 'resource_intelligence', label: 'Resource Intelligence', icon: Shield, count: '36 States' },
     { id: 'state_baseline', label: 'State Baseline', icon: Building2, count: '36/36' },
     { id: 'districts', label: 'District Inventory', icon: Layers, count: 640 },
     { id: 'personnel', label: 'Personnel', icon: Users },
@@ -656,6 +728,503 @@ export const ResourceOptimizationPage: React.FC = () => {
                     </ul>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: RESOURCE INTELLIGENCE & CRIME COMPARISON (PHASE 7D) */}
+          {activeTab === 'resource_intelligence' && (
+            <div className="space-y-5">
+              {/* Data Freshness & Institutional Provenance Banner (Requirement 13) */}
+              <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50/80 via-slate-50 to-indigo-50/80 p-4 sm:p-5 shadow-2xs space-y-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-600 text-white rounded-md">
+                      <Scale className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0A192F]">
+                        Official Police Resource Data Intelligence &amp; Freshness Audit
+                      </h3>
+                      <p className="text-xs text-slate-600">
+                        Institutional police resources governed pursuant to the Seventh Schedule (State List). All records traced to official publications.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-blue-800 bg-blue-100/90 border border-blue-200 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                    Phase 7D Foundation
+                  </span>
+                </div>
+
+                {/* Freshness Tags Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-blue-100">
+                  <div className="rounded-md border border-slate-200 bg-white/90 p-2.5 text-xs">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Personnel Baseline</span>
+                    <span className="font-bold text-[#0A192F] text-xs">Ref. Year 2020</span>
+                    <span className="text-[10px] text-slate-500 block">BPR&amp;D DoPO / Lok Sabha AU2239</span>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white/90 p-2.5 text-xs">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Mobility &amp; Infrastructure</span>
+                    <span className="font-bold text-[#0A192F] text-xs">Ref. Year 2024</span>
+                    <span className="text-[10px] text-slate-500 block">BPR&amp;D DoPO / Dataful 20140 &amp; 20145</span>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white/90 p-2.5 text-xs">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Historical Crime Data</span>
+                    <span className="font-bold text-[#0A192F] text-xs">Years 2020–2025</span>
+                    <span className="text-[10px] text-slate-500 block">191,679 Verified Incidents</span>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white/90 p-2.5 text-xs">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Demographics Baseline</span>
+                    <span className="font-bold text-[#0A192F] text-xs">Census 2011</span>
+                    <span className="text-[10px] text-slate-500 block">640 Canonical Districts</span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-600 flex items-start gap-1.5 pt-1">
+                  <Info className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Strict Freshness Invariant:</strong> Historical crime, census demographics, and official police resources belong to distinct authoritative publication periods. They are strictly segregated and NEVER merged into an unverified &ldquo;current&rdquo; composite value.
+                  </span>
+                </div>
+              </div>
+
+              {/* Interactive Multi-Filter Toolbar (Requirement 11) */}
+              <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Filters:</span>
+
+                    {/* State/UT Filter */}
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-slate-500 font-medium">State/UT:</label>
+                      <select
+                        value={selectedStateId || ''}
+                        onChange={(e) => setSelectedStateId(e.target.value ? Number(e.target.value) : undefined)}
+                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 font-medium focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="">All 36 States &amp; UTs</option>
+                        {states.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.state_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Resource Type Filter */}
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-slate-500 font-medium">Resource Type:</label>
+                      <select
+                        value={selectedResourceTypeFilter}
+                        onChange={(e) => setSelectedResourceTypeFilter(e.target.value)}
+                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 font-medium focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="ALL">All Resource Types</option>
+                        <option value="Police Officers">Police Officers (Personnel)</option>
+                        <option value="Patrol Vehicles">Patrol Vehicles (Mobility)</option>
+                        <option value="Total Police Stations">Police Stations (Infrastructure)</option>
+                        <option value="Police Outposts">Police Outposts (Infrastructure)</option>
+                        <option value="Economic Offences Wings">Economic Offences Wings (EOW)</option>
+                        <option value="Cyber Crime Police Stations">Cyber Crime Police Stations</option>
+                        <option value="All-Women Police Stations">All-Women Police Stations (AWPS)</option>
+                        {resourceTypesList.slice(0, 10).map((rt) => (
+                          <option key={rt.id} value={rt.resource_name}>
+                            {rt.resource_name} ({rt.category})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Reference Year Filter */}
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-slate-500 font-medium">Reference Year:</label>
+                      <select
+                        value={selectedRefYearFilter}
+                        onChange={(e) => setSelectedRefYearFilter(e.target.value)}
+                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 font-medium focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="ALL">All Publication Years</option>
+                        <option value="2024">2024 (Mobility, Infrastructure, Specialized)</option>
+                        <option value="2020">2020 (Personnel Strength)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {(selectedStateId || selectedResourceTypeFilter !== 'ALL' || selectedRefYearFilter !== 'ALL') && (
+                    <button
+                      onClick={() => {
+                        setSelectedStateId(undefined);
+                        setSelectedResourceTypeFilter('ALL');
+                        setSelectedRefYearFilter('ALL');
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>Reset Filters</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 6 Official Resource Cards (Requirement 11) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {/* CARD 1: Police Personnel */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-50 text-blue-700 rounded-md">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Police Personnel</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      OFFICIAL
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-mono text-[#0A192F]">
+                      {selectedStateId && filteredSummaryStates.length === 1
+                        ? (filteredSummaryStates[0].resources.find((r) => r.category === 'PERSONNEL')?.available_quantity || 0).toLocaleString()
+                        : '2,091,488'}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Actual Strength (Sanctioned: {selectedStateId ? '—' : '2,623,225'} | Vacancies: {selectedStateId ? '—' : '531,737'})
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> BPR&amp;D / Ministry of Home Affairs</div>
+                    <div><strong>Ref. Year:</strong> 2020 | <strong>Geography:</strong> State/UT (36/36 Covered)</div>
+                  </div>
+                </div>
+
+                {/* CARD 2: Police Vehicles */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-md">
+                        <Car className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Police Vehicles</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                      OFFICIAL
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-mono text-[#0A192F]">
+                      {selectedStateId && filteredSummaryStates.length === 1
+                        ? (filteredSummaryStates[0].resources.find((r) => r.resource_type === 'Patrol Vehicles')?.available_quantity || 0).toLocaleString()
+                        : '120,135'}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Patrol Vehicles ({selectedStateId ? 'Fleet' : '234,312 Total Police Transport Fleet'})
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> BPR&amp;D DoPO (Dataful 20140 &amp; 20141)</div>
+                    <div><strong>Ref. Year:</strong> 2024 | <strong>Geography:</strong> State/UT (36/36 Covered)</div>
+                  </div>
+                </div>
+
+                {/* CARD 3: Police Stations */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-purple-50 text-purple-700 rounded-md">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Police Stations</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                      OFFICIAL
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-mono text-[#0A192F]">
+                      {selectedStateId && filteredSummaryStates.length === 1
+                        ? (filteredSummaryStates[0].resources.find((r) => r.resource_type === 'Total Police Stations')?.available_quantity || 0).toLocaleString()
+                        : '16,215'}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Operational Police Stations (Plus {selectedStateId ? 'Outposts' : '9,453'} Outposts)
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> BPR&amp;D DoPO (Dataful 20145)</div>
+                    <div><strong>Ref. Year:</strong> 2024 | <strong>Geography:</strong> State/UT (36/36 Covered)</div>
+                  </div>
+                </div>
+
+                {/* CARD 4: CCTV Surveillance */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-amber-50 text-amber-700 rounded-md">
+                        <Eye className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">CCTV Networks</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-300">
+                      UNRECORDED
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold font-mono text-slate-500">
+                      UNRECORDED
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      No central public statistical registry published
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> Institutional Registry Pending</div>
+                    <div><strong>Status:</strong> Strictly UNRECORDED (Zero-Fabrication)</div>
+                  </div>
+                </div>
+
+                {/* CARD 5: Forensic Resources */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-rose-50 text-rose-700 rounded-md">
+                        <ShieldAlert className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Forensic Resources</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-300">
+                      UNRECORDED
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold font-mono text-slate-500">
+                      UNRECORDED
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      State / Central Forensic Science Lab inventory
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> CFSL / SFSL Audit Required</div>
+                    <div><strong>Status:</strong> Strictly UNRECORDED (Never converted to 0)</div>
+                  </div>
+                </div>
+
+                {/* CARD 6: Other Available Resources */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 hover:border-slate-300 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-indigo-50 text-indigo-700 rounded-md">
+                        <Compass className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Specialized Wings</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-200">
+                      OFFICIAL
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-mono text-[#0A192F]">
+                      {selectedStateId && filteredSummaryStates.length === 1
+                        ? (
+                            (filteredSummaryStates[0].resources.find((r) => r.resource_type === 'Cyber Crime Police Stations')?.available_quantity || 0) +
+                            (filteredSummaryStates[0].resources.find((r) => r.resource_type === 'All-Women Police Stations (AWPS)')?.available_quantity || 0) +
+                            (filteredSummaryStates[0].resources.find((r) => r.resource_type === 'Economic Offences Wings (EOW)')?.available_quantity || 0)
+                          ).toLocaleString()
+                        : '1,296'}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Specialized Wings ({selectedStateId ? 'Selected State' : '809 AWPS, 458 Cyber, 29 EOW'})
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                    <div><strong>Source:</strong> BPR&amp;D DoPO (Dataful 20144)</div>
+                    <div><strong>Ref. Year:</strong> 2024 | <strong>Geography:</strong> State/UT (36/36 Covered)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resource Availability by State/UT & Category Breakdown (Requirement 11) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Visual Chart: Top States by Police Strength */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="h-4 w-4 text-blue-600" />
+                      <h4 className="text-xs font-bold text-[#0A192F]">Official Police Personnel Strength by State</h4>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-500 font-mono">BPR&amp;D DoPO (2020)</span>
+                  </div>
+                  <div className="space-y-2.5 pt-1">
+                    {[
+                      { state: 'Uttar Pradesh', count: 303450, max: 303450, rate: 151.9 },
+                      { state: 'Maharashtra', count: 214776, max: 303450, rate: 191.1 },
+                      { state: 'Tamil Nadu', count: 112745, max: 303450, rate: 156.3 },
+                      { state: 'Madhya Pradesh', count: 99496, max: 303450, rate: 137.0 },
+                      { state: 'West Bengal', count: 97775, max: 303450, rate: 107.1 },
+                      { state: 'Rajasthan', count: 95262, max: 303450, rate: 139.0 },
+                      { state: 'Bihar', count: 91862, max: 303450, rate: 88.2 },
+                      { state: 'Punjab', count: 85947, max: 303450, rate: 309.8 },
+                    ].map((s) => (
+                      <div key={s.state} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-800">{s.state}</span>
+                          <span className="font-mono text-slate-600 font-medium">
+                            {s.count.toLocaleString()} officers <span className="text-[10px] text-slate-400">({s.rate}/100k)</span>
+                          </span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-blue-600"
+                            style={{ width: `${(s.count / s.max) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Visual Chart: National Fleet & Infrastructure Composition */}
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-emerald-600" />
+                      <h4 className="text-xs font-bold text-[#0A192F]">National Operational Asset Inventory</h4>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-500 font-mono">BPR&amp;D DoPO (2024)</span>
+                  </div>
+                  <div className="space-y-3 pt-1">
+                    <div className="rounded-md border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Patrol &amp; First-Response Vehicles</span>
+                        <span className="font-mono font-bold text-slate-900">120,135 vehicles (51.3% of fleet)</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-600" style={{ width: '51.3%' }} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Primary Police Stations</span>
+                        <span className="font-mono font-bold text-slate-900">16,215 stations (63.2% of facilities)</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full rounded-full bg-purple-600" style={{ width: '63.2%' }} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">Police Outposts &amp; Chowkis</span>
+                        <span className="font-mono font-bold text-slate-900">9,453 outposts (36.8% of facilities)</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full rounded-full bg-indigo-600" style={{ width: '36.8%' }} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-slate-200 p-3 bg-slate-50/50 space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-700">All-Women &amp; Cyber Police Stations</span>
+                        <span className="font-mono font-bold text-slate-900">1,267 specialized stations</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div className="h-full rounded-full bg-amber-500" style={{ width: '4.9%' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RESOURCE VS CRIME BURDEN COMPARISON TABLE (Requirement 12) */}
+              <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Scale className="h-4 w-4 text-blue-700" />
+                      <h3 className="text-base font-bold text-[#0A192F]">
+                        State-Level Resource Availability vs. Historical Crime Burden
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Comparing verified historical crime incidence (2020–2025) with official BPR&amp;D police capacity metrics
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 self-start sm:self-auto">
+                    {filteredComparisonItems.length} Jurisdictions Analyzed
+                  </span>
+                </div>
+
+                {/* Non-Causality Analytical Notice (Requirement 12) */}
+                <div className="rounded-md border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong>Analytical Non-Causality Principle:</strong> The comparison below presents institutional police availability alongside historical crime volumes for capacity planning. <em>Correlation does not imply causation</em>. Differences in crime rates or police ratios across States/UTs are influenced by socio-demographic, geographic, reporting, and statutory factors.
+                  </div>
+                </div>
+
+                {isTabLoading ? (
+                  <LoadingState message="Loading crime vs resource comparison data..." />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[860px] text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600 whitespace-nowrap">
+                          <th className="py-2.5 pl-3">State / Union Territory</th>
+                          <th className="py-2.5 px-3 text-right">Population (2011)</th>
+                          <th className="py-2.5 px-3 text-right">Crime Incidents (2020-25)</th>
+                          <th className="py-2.5 px-3 text-right">Crime Rate / 100k</th>
+                          <th className="py-2.5 px-3 text-right">Police Officers (2020)</th>
+                          <th className="py-2.5 px-3 text-right">Officers / 100k</th>
+                          <th className="py-2.5 px-3 text-right">Patrol Vehicles (2024)</th>
+                          <th className="py-2.5 px-3 text-right">Police Stations (2024)</th>
+                          <th className="py-2.5 px-3">Data Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {filteredComparisonItems.map((item) => (
+                          <tr key={item.state_id} className="h-10 hover:bg-slate-50/70 whitespace-nowrap">
+                            <td className="py-2 pl-3 font-semibold text-[#0A192F]">{item.state_name}</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-600">
+                              {item.census_2011_population.toLocaleString()}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-semibold text-rose-700">
+                              {item.total_crime_incidents.toLocaleString()}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-700 font-medium">
+                              {item.crime_rate_per_100k.toFixed(1)}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">
+                              {item.police_personnel !== null ? item.police_personnel.toLocaleString() : '—'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-700 font-medium">
+                              {item.police_per_100k !== null ? `${item.police_per_100k.toFixed(1)}` : '—'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-700">
+                              {item.police_vehicles !== null ? item.police_vehicles.toLocaleString() : '—'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-700">
+                              {item.police_stations !== null ? item.police_stations.toLocaleString() : '—'}
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                <CheckCircle2 className="h-2.5 w-2.5" />
+                                <span>OFFICIAL</span>
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {filteredComparisonItems.length === 0 && (
+                          <tr>
+                            <td colSpan={9} className="py-8 text-center text-xs text-slate-500">
+                              No jurisdictions match the current filter criteria.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -1,0 +1,13 @@
+State: CHANDIGARH
+District: Chandigarh (ID: 108)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 10
+Sanctioned Count: 10
+Reference Year: 2024
+Source Name: Chandigarh Police / BPR&D DoPO 2024
+Source Document: Chandigarh Police Posts Directory
+Source URL: https://chandigarhpolice.gov.in/
+Source Page: Police Posts Directory
+Methodology: Single-District UT Departmental Directory
+Confidence: 1.0

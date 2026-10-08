@@ -1,0 +1,13 @@
+State: WEST BENGAL
+District: Darjiling (ID: 626)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 8
+Sanctioned Count: 8
+Reference Year: 2024
+Source Name: Siliguri Police Commissionerate / Government of West Bengal
+Source Document: Siliguri Metropolitan Police Station Directory (East & West Zones)
+Source URL: https://wb.gov.in/
+Source Page: Commissionerate Directory
+Methodology: Official State Government Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Nagpur (ID: 350)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 40
+Sanctioned Count: 40
+Reference Year: 2024
+Source Name: Nagpur Police Commissionerate / District Collectorate Nagpur
+Source Document: Nagpur Police Station Directory & Zonal Registry
+Source URL: https://nagpurpolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Departmental Directory
+Confidence: 1.0

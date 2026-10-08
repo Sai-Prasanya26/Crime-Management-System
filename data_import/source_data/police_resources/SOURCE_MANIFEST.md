@@ -6,10 +6,10 @@ This manifest documents all official datasets integrated into the Data-Driven Cr
 
 1. **Rule of No Fabrication**: No official counts are ever fabricated, extrapolated, or proportionally divided down to lower geographic tiers.
 2. **Standard Provenance Taxonomy**:
-   - `OFFICIAL_DISTRICT`: Verified district-level police department publication or CAG performance audit.
+   - `OFFICIAL_DISTRICT`: Verified district-level police department publication, NIC district portal, or CAG performance audit.
    - `OFFICIAL_STATE`: Verified state-level publication by Bureau of Police Research & Development (BPR&D) or Ministry of Home Affairs (MHA).
    - `OFFICIAL_POLICE_DEPARTMENT`: Official disclosure published on an active state or commissionerate police portal.
-   - `OFFICIAL_GOVERNMENT_DATASET`: Central statutory open data repository (NCRB / Data.gov.in).
+   - `OFFICIAL_GOVERNMENT_DATASET`: Central statutory open data repository (NCRB / Data.gov.in / Lok Sabha questions).
    - `DERIVED_FROM_OFFICIAL_DATA`: Explicit mathematical derivation from verified official counts (e.g. `vacancy = sanctioned - actual`).
    - `MODEL_ESTIMATED`: Algorithmic demand calculation produced by the AI Resource Optimization Engine.
    - `UNRECORDED`: Authoritative ground-truth count is not currently available in published official inventories.
@@ -40,25 +40,54 @@ This manifest documents all official datasets integrated into the Data-Driven Cr
 - **Publisher**: Ministry of Home Affairs / data.gov.in.
 - **Coverage**: All 36 States and UTs.
 
-### D. Official State Police Department Disclosures (Priority 4)
+### D. Official District & Commissionerate Police Disclosures (Priority 4)
 - **Directory**: `data_import/source_data/police_resources/state_police/`
 - **File**: `official_district_police_strength.csv`
-- **Official Records Included**:
-  - Visakhapatnam District Police (`visakhapatnam.appolice.gov.in`)
-  - Hyderabad City Police Commissionerate (`hyderabadpolice.gov.in`)
-  - Mumbai Police Commissionerate (`mumbaipolice.gov.in` / CAG Audit)
-  - Pune Police Commissionerate (`punepolice.gov.in`)
-  - Bengaluru City Police (`ksp.karnataka.gov.in`)
-  - Chennai City Police (`tnpolice.gov.in`)
-  - New Delhi Police (`delhipolice.gov.in` / CAG Performance Audit)
-  - Kolkata Police (`kolkatapolice.gov.in`)
-  - Lucknow Commissionerate (`uppolice.gov.in`)
-  - Gautam Buddha Nagar (Noida) Commissionerate (`uppolice.gov.in`)
-  - Thiruvananthapuram City Police (`keralapolice.gov.in`)
-  - Ernakulam (Kochi) City Police (`keralapolice.gov.in`)
-  - Ahmadabad City Police (`police.gujarat.gov.in`)
-  - Surat City Police (`police.gujarat.gov.in`)
-  - Jaipur Commissionerate (`police.rajasthan.gov.in`)
-  - Ludhiana Commissionerate (`punjabpolice.gov.in`)
-  - Amritsar Commissionerate (`punjabpolice.gov.in`)
-- **Status for All Other 640 Districts**: `UNRECORDED` with `actual_count = NULL`, `gap_count = NULL`, and `required_count = MODEL_ESTIMATED`.
+- **Official Records Included**: 114 verified district records covering 71 unique districts across 32 States & UTs.
+- **Categories Covered**:
+  - `PERSONNEL` (21 districts): Visakhapatnam, Hyderabad, Mumbai, Pune, Thane, Nagpur, Bangalore, Chennai, New Delhi, Kolkata, Lucknow, Gautam Buddha Nagar, Thiruvananthapuram, Ernakulam, Ahmadabad, Surat, Jaipur, Ludhiana, Amritsar, Chandigarh, Lakshadweep.
+  - `INFRASTRUCTURE - Police Stations` (62 districts): Visakhapatnam, Krishna, Hyderabad, Rangareddy, Mumbai, Thane, Nagpur, Bangalore, Chennai, Coimbatore, Madurai, Tiruchirappalli, Salem, Kolkata, Haora, Barddhaman, North Twenty Four Parganas, Hugli, Darjiling, Kanpur Nagar, Varanasi, Agra, Ghaziabad, Kozhikode, Kollam, Thrissur, Kannur, Vadodara, Rajkot, Jaipur, Jodhpur, Ludhiana, Jalandhar, Gurgaon, Faridabad, Bhopal, Indore, Raipur, Ranchi, Dhanbad, Purbi Singhbhum, Bokaro, Patna, Kamrup Metropolitan, Cuttack, Khordha, Shimla, Jammu, Srinagar, North Goa, South Goa, West Tripura, East Khasi Hills, Imphal West, Aizawl, Dimapur, Papum Pare, East District (Gangtok), Pondicherry, South Andaman, Chandigarh, Lakshadweep.
+  - `INFRASTRUCTURE - Police Outposts` (7 districts): Chandigarh, Shimla, Ranchi, Dhanbad, Purbi Singhbhum, Bokaro, Aizawl.
+  - `INFRASTRUCTURE - Women Police Stations` (10 districts): Faridabad, Shimla, Jammu, West Tripura, Dimapur, Imphal West, East Khasi Hills, North Twenty Four Parganas, Jalandhar, Ludhiana.
+  - `INVESTIGATION - Cyber Crime Units` (7 districts): Kanpur Nagar, Varanasi, Agra, Shimla, Srinagar, Haora, North Twenty Four Parganas, Khordha.
+  - `INVESTIGATION - Economic Offences Wings` (2 districts): Kanpur Nagar, Varanasi.
+  - `SPECIALIZED - Anti-Human Trafficking Units` (3 districts): North Goa, South Goa, Jammu.
+  - `EMERGENCY - Emergency Response Teams (Dial 112 MDT)` (1 district): Thane / Navi Mumbai.
+- **Status for All Other 569 Districts**: Strictly maintained as `UNRECORDED` with `actual_count = NULL`, `gap_count = NULL`, and `required_count = MODEL_ESTIMATED`.
+
+---
+
+## 3. Storage Hierarchy
+Source documents and excerpts are cataloged by State and Category under `data_import/source_data/police_resources/<state_name>/<category>/`:
+- `andhra_pradesh/`: personnel, infrastructure
+- `arunachal_pradesh/`: infrastructure
+- `assam/`: infrastructure
+- `bihar/`: infrastructure
+- `chandigarh/`: personnel, infrastructure
+- `chhattisgarh/`: infrastructure
+- `goa/`: infrastructure, specialized
+- `gujarat/`: personnel, infrastructure
+- `haryana/`: infrastructure
+- `himachal_pradesh/`: infrastructure, investigation
+- `jammu_and_kashmir/`: infrastructure, investigation, specialized
+- `jharkhand/`: infrastructure
+- `karnataka/`: personnel, infrastructure
+- `kerala/`: personnel, infrastructure
+- `lakshadweep/`: personnel, infrastructure
+- `madhya_pradesh/`: infrastructure
+- `maharashtra/`: personnel, infrastructure, emergency
+- `manipur/`: infrastructure
+- `meghalaya/`: infrastructure
+- `mizoram/`: infrastructure
+- `nagaland/`: infrastructure
+- `nct_of_delhi/`: personnel
+- `odisha/`: infrastructure, investigation
+- `puducherry/`: infrastructure
+- `punjab/`: personnel, infrastructure
+- `rajasthan/`: personnel, infrastructure
+- `sikkim/`: infrastructure
+- `tamil_nadu/`: personnel, infrastructure
+- `telangana/`: personnel, infrastructure
+- `tripura/`: infrastructure
+- `uttar_pradesh/`: personnel, infrastructure, investigation
+- `west_bengal/`: personnel, infrastructure, investigation

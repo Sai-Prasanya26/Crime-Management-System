@@ -1,0 +1,13 @@
+State: JAMMU AND KASHMIR
+District: Jammu (ID: 197)
+Resource: All-Women Police Stations (AWPS) (WOMEN_POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Jammu and Kashmir Police
+Source Document: P/S Women Gandhi Nagar Jammu Establishment
+Source URL: https://jammu.nic.in/public-utilities/police-stations/
+Source Page: Public Utilities
+Methodology: Official District Directory
+Confidence: 1.0

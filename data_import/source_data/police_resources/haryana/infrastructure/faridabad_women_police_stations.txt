@@ -1,0 +1,13 @@
+State: HARYANA
+District: Faridabad (ID: 160)
+Resource: All-Women Police Stations (AWPS) (WOMEN_POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 3
+Sanctioned Count: 3
+Reference Year: 2024
+Source Name: Faridabad Police Commissionerate
+Source Document: Zonal Women Police Stations Establishment (NIT, Central, Ballabgarh)
+Source URL: https://faridabad.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

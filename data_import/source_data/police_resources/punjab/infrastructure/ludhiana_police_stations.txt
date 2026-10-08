@@ -1,0 +1,13 @@
+State: PUNJAB
+District: Ludhiana (ID: 455)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 30
+Sanctioned Count: 30
+Reference Year: 2024
+Source Name: Ludhiana Police Commissionerate / Punjab Police
+Source Document: Ludhiana Police Commissionerate Station Directory (28 Regular + 2 Special)
+Source URL: https://punjabpolice.gov.in/
+Source Page: Commissionerate Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: NCT OF DELHI
+District: New Delhi (ID: 404)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 4210
+Sanctioned Count: 4920
+Reference Year: 2022
+Source Name: Delhi Police / Ministry of Home Affairs
+Source Document: Delhi Police Annual Administration Report & CAG Audit
+Source URL: https://delhipolice.gov.in/
+Source Page: District Deployment Table
+Methodology: Official Administrative Audit Report
+Confidence: 1.0

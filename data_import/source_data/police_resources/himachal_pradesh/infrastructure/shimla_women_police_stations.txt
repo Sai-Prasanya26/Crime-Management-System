@@ -1,0 +1,13 @@
+State: HIMACHAL PRADESH
+District: Shimla (ID: 187)
+Resource: All-Women Police Stations (AWPS) (WOMEN_POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Himachal Pradesh Police Department
+Source Document: Women Police Station Shimla Notification
+Source URL: https://hppolice.gov.in/
+Source Page: Specialized Units
+Methodology: Official State Police Registry
+Confidence: 1.0

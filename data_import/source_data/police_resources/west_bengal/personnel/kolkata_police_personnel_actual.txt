@@ -1,0 +1,13 @@
+State: WEST BENGAL
+District: Kolkata (ID: 631)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 24310
+Sanctioned Count: 28500
+Reference Year: 2022
+Source Name: Kolkata Police Department
+Source Document: Kolkata Police Gazetted Strength & Annual Review
+Source URL: https://kolkatapolice.gov.in/
+Source Page: Force Strength Overview
+Methodology: Official Departmental Review
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: HARYANA
+District: Faridabad (ID: 160)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Faridabad Police Commissionerate / District Faridabad
+Source Document: Faridabad Police Station Directory (17 Territorial + 3 Women)
+Source URL: https://faridabad.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

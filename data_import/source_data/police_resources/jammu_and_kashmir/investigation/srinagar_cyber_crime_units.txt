@@ -1,0 +1,13 @@
+State: JAMMU AND KASHMIR
+District: Srinagar (ID: 211)
+Resource: Cyber Crime Investigation Units (CYBER_CRIME_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Jammu and Kashmir Police
+Source Document: Cyber Police Station Srinagar Establishment
+Source URL: https://jkpolice.gov.in/
+Source Page: Specialized Units
+Methodology: Official State Police Registry
+Confidence: 1.0

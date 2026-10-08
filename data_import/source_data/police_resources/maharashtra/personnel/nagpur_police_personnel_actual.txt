@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Nagpur (ID: 350)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 7420
+Sanctioned Count: 8650
+Reference Year: 2023
+Source Name: Nagpur Police Commissionerate
+Source Document: Nagpur City Police Administration & Force Strength Report
+Source URL: https://nagpurpolice.gov.in/
+Source Page: Administrative Structure
+Methodology: Official Commissionerate Administrative Review
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: TAMIL NADU
+District: Chennai (ID: 503)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 104
+Sanctioned Count: 104
+Reference Year: 2023
+Source Name: Tamil Nadu Police Department / Chennai District
+Source Document: Greater Chennai Police Post-Trifurcation Station Registry
+Source URL: https://tnpolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Departmental Reorganization Gazette
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: ANDHRA PRADESH
+District: Visakhapatnam (ID: 22)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 2890
+Sanctioned Count: 3420
+Reference Year: 2023
+Source Name: Andhra Pradesh State Police Department
+Source Document: Visakhapatnam City Police Strength & Station Report
+Source URL: https://visakhapatnam.appolice.gov.in/
+Source Page: Administrative Setup
+Methodology: Official Police Department Personnel Audit
+Confidence: 1.0

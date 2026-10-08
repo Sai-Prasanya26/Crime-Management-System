@@ -1,0 +1,13 @@
+State: WEST BENGAL
+District: Barddhaman (ID: 623)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Asansol Durgapur Police Commissionerate / Paschim Bardhaman
+Source Document: ADPC Police Station Directory (East, West & Central Divisions)
+Source URL: https://paschimbardhaman.gov.in/
+Source Page: Police Administration
+Methodology: Official District Administration Directory
+Confidence: 1.0

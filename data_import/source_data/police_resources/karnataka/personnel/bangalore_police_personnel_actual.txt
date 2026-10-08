@@ -1,0 +1,13 @@
+State: KARNATAKA
+District: Bangalore (ID: 238)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 15220
+Sanctioned Count: 18400
+Reference Year: 2023
+Source Name: Karnataka State Police Department
+Source Document: Bengaluru City Police Annual Administration Report
+Source URL: https://ksp.karnataka.gov.in/
+Source Page: BCP Sanctioned vs Actual Strength
+Methodology: Official Departmental Administration Report
+Confidence: 1.0

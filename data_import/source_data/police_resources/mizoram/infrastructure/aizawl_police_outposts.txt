@@ -1,0 +1,13 @@
+State: MIZORAM
+District: Aizawl (ID: 383)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 2
+Sanctioned Count: 2
+Reference Year: 2024
+Source Name: Mizoram Police Department
+Source Document: Aizawl District Police Outposts (Zonuam & Seling)
+Source URL: https://police.mizoram.gov.in/
+Source Page: Contact Numbers of Police Stations and Outposts
+Methodology: Official State Police Directory
+Confidence: 1.0

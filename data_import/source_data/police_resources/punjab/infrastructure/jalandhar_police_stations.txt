@@ -1,0 +1,13 @@
+State: PUNJAB
+District: Jalandhar (ID: 453)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 16
+Sanctioned Count: 16
+Reference Year: 2024
+Source Name: Jalandhar Police Commissionerate / District Jalandhar
+Source Document: Jalandhar Police Stations Directory (14 Regular + 2 Special)
+Source URL: https://jalandhar.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

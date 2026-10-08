@@ -1,0 +1,13 @@
+State: ODISHA
+District: Cuttack (ID: 417)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 21
+Sanctioned Count: 21
+Reference Year: 2024
+Source Name: Bhubaneswar-Cuttack Police Commissionerate / Odisha Police
+Source Document: Cuttack Urban Police District Station Directory (19 Regular + 2 Traffic)
+Source URL: https://odishapolice.gov.in/
+Source Page: Cuttack UPD
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

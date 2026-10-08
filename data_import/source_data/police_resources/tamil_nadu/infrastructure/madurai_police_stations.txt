@@ -1,0 +1,13 @@
+State: TAMIL NADU
+District: Madurai (ID: 513)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 32
+Sanctioned Count: 32
+Reference Year: 2024
+Source Name: Madurai City Police / Tamil Nadu Police
+Source Document: Madurai City Police Commissionerate Station Directory
+Source URL: https://madurai.nic.in/
+Source Page: Police Administration
+Methodology: Official District Directory
+Confidence: 1.0

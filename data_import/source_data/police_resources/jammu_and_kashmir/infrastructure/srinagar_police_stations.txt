@@ -1,0 +1,13 @@
+State: JAMMU AND KASHMIR
+District: Srinagar (ID: 211)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 29
+Sanctioned Count: 29
+Reference Year: 2024
+Source Name: Jammu and Kashmir Police / District Srinagar
+Source Document: District Srinagar Police Stations & Safety Jurisdictional Registry
+Source URL: https://srinagar.nic.in/
+Source Page: Safety & Awareness Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

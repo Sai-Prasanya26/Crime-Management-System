@@ -431,6 +431,47 @@ def run_district_resource_optimization(db, rt_map):
             )
             inserted_or_updated += 1
 
+        # Ingest any official records for non-target resource types (e.g. outposts, cyber, EOW, AHTU)
+        for (d_id, code), official_record in official_dist_records.items():
+            rt_id = rt_map.get(code)
+            if not rt_id or code in [r[0] for r in target_resources]:
+                continue
+            act_c = int(official_record["actual_count"])
+            sanc_c = int(official_record["sanctioned_count"]) if official_record["sanctioned_count"] else act_c
+            db.execute(text("""
+                INSERT INTO district_resources
+                    (district_id, resource_type_id, actual_count, sanctioned_count,
+                     required_count, gap_count, available_quantity, reference_year,
+                     period_year, period_month, data_status, source_name, source_document,
+                     source_url, source_page, methodology, confidence_score)
+                VALUES
+                    (:d_id, :rt_id, :act_c, :sanc_c, :act_c, 0, :act_c, :ref_yr,
+                     2026, 1, :data_status, :src_name, :src_doc, :src_url, :src_page, :method, :conf)
+                ON DUPLICATE KEY UPDATE
+                    actual_count = VALUES(actual_count),
+                    sanctioned_count = VALUES(sanctioned_count),
+                    gap_count = VALUES(gap_count),
+                    available_quantity = VALUES(available_quantity),
+                    data_status = VALUES(data_status),
+                    source_name = VALUES(source_name),
+                    source_document = VALUES(source_document),
+                    source_url = VALUES(source_url),
+                    source_page = VALUES(source_page),
+                    methodology = VALUES(methodology),
+                    confidence_score = VALUES(confidence_score)
+            """), {
+                "d_id": d_id, "rt_id": rt_id, "act_c": act_c, "sanc_c": sanc_c,
+                "ref_yr": int(official_record["reference_year"]),
+                "data_status": official_record["data_status"],
+                "src_name": official_record["source_name"],
+                "src_doc": official_record["source_document"],
+                "src_url": official_record["source_url"],
+                "src_page": official_record["source_page"],
+                "method": official_record["methodology"],
+                "conf": float(official_record["confidence_score"])
+            })
+            inserted_or_updated += 1
+
     db.commit()
     print(f"District AI optimization completed. Total records inserted/updated: {inserted_or_updated}.")
 

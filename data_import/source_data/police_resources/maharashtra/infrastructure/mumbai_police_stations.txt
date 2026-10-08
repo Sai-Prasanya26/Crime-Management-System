@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Mumbai (ID: 348)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 94
+Sanctioned Count: 94
+Reference Year: 2022
+Source Name: Mumbai Police Commissionerate
+Source Document: Mumbai Police Station Jurisdiction Registry
+Source URL: https://mumbaipolice.gov.in/
+Source Page: Police Stations
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

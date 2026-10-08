@@ -1,0 +1,13 @@
+State: MADHYA PRADESH
+District: Indore (ID: 302)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 38
+Sanctioned Count: 38
+Reference Year: 2024
+Source Name: Indore Police Commissionerate / MP Police Department
+Source Document: Indore Police Commissionerate Jurisdictional Directory
+Source URL: https://indore.mppolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

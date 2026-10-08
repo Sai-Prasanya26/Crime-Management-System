@@ -1,0 +1,13 @@
+State: CHANDIGARH
+District: Chandigarh (ID: 108)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 7557
+Sanctioned Count: 8328
+Reference Year: 2022
+Source Name: Chandigarh Police / Ministry of Home Affairs (Lok Sabha AU2239)
+Source Document: Data on Police Organizations & Lok Sabha Police Strength Q2239
+Source URL: https://chandigarhpolice.gov.in/
+Source Page: Force Strength Overview
+Methodology: Single-District UT Statutory Government Audit
+Confidence: 1.0

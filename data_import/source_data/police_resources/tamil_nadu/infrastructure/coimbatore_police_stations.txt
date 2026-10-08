@@ -1,0 +1,13 @@
+State: TAMIL NADU
+District: Coimbatore (ID: 504)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 20
+Sanctioned Count: 20
+Reference Year: 2024
+Source Name: Coimbatore City Police / Tamil Nadu Police
+Source Document: Coimbatore City Police Law & Order Stations Directory
+Source URL: https://coimbatore.nic.in/
+Source Page: Police Directory
+Methodology: Official District Directory
+Confidence: 1.0

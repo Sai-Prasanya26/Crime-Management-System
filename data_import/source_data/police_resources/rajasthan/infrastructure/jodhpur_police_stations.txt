@@ -1,0 +1,13 @@
+State: RAJASTHAN
+District: Jodhpur (ID: 486)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 30
+Sanctioned Count: 30
+Reference Year: 2024
+Source Name: Jodhpur Police Commissionerate / Rajasthan Police
+Source Document: Jodhpur Police Stations Directory (East & West Districts)
+Source URL: https://jodhpurpolice.rajasthan.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

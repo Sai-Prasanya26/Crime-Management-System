@@ -1,0 +1,13 @@
+State: UTTAR PRADESH
+District: Lucknow (ID: 583)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 7850
+Sanctioned Count: 9640
+Reference Year: 2023
+Source Name: Uttar Pradesh Police
+Source Document: Lucknow Police Commissionerate Annual Manpower Audit
+Source URL: https://uppolice.gov.in/
+Source Page: Commissionerate Deployment
+Methodology: Official Commissionerate Manpower Audit
+Confidence: 1.0

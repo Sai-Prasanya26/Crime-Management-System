@@ -197,7 +197,7 @@ class TestComprehensiveResources(unittest.TestCase):
 
     def test_09_api_gaps_endpoint_null_preservation(self):
         """Verify GET /api/v1/resources/gaps preserves NULL gap_count for unrecorded items."""
-        resp = client.get("/api/v1/resources/gaps", headers=self.auth_headers, params={"limit": 50})
+        resp = client.get("/api/v1/resources/gaps", headers=self.auth_headers, params={"limit": 150})
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("items", data)

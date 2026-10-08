@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Dhanbad (ID: 216)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 29
+Sanctioned Count: 29
+Reference Year: 2024
+Source Name: Jharkhand Police Department / District Dhanbad
+Source Document: Dhanbad District Police Profile (17 Parent + 12 Subsidiary PS)
+Source URL: https://jhpolice.gov.in/
+Source Page: Dhanbad District Profile
+Methodology: Official State Police District Profile
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: TELANGANA
+District: Rangareddy (ID: 19)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 58
+Sanctioned Count: 58
+Reference Year: 2024
+Source Name: Cyberabad Police Commissionerate / NeGD
+Source Document: Cyberabad Police Commissionerate Jurisdiction Registry (42 L&O + 16 Traffic)
+Source URL: https://cyberabadpolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

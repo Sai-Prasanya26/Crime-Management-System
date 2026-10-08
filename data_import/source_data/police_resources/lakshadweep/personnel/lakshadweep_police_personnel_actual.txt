@@ -1,0 +1,13 @@
+State: LAKSHADWEEP
+District: Lakshadweep (ID: 281)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 351
+Sanctioned Count: 432
+Reference Year: 2022
+Source Name: Lakshadweep Police / Ministry of Home Affairs (Lok Sabha AU2239)
+Source Document: Data on Police Organizations & Lok Sabha Police Strength Q2239
+Source URL: https://lakshadweep.gov.in/
+Source Page: Police Department Administration
+Methodology: Single-District UT Statutory Government Audit
+Confidence: 1.0

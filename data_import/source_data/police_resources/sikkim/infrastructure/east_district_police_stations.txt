@@ -1,0 +1,13 @@
+State: SIKKIM
+District: East District (ID: 498)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 9
+Sanctioned Count: 9
+Reference Year: 2024
+Source Name: Sikkim Police Department / District Gangtok
+Source Document: East District (Gangtok) Police Station Directory
+Source URL: https://police.sikkim.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official State Police Directory
+Confidence: 1.0

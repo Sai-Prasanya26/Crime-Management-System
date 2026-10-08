@@ -1,0 +1,13 @@
+State: TELANGANA
+District: Hyderabad (ID: 9)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 68
+Sanctioned Count: 68
+Reference Year: 2023
+Source Name: Telangana State Police Department
+Source Document: Hyderabad City Police Stations Directory
+Source URL: https://hyderabadpolice.gov.in/
+Source Page: Police Stations Directory
+Methodology: Official Police Commissionerate Administrative Report
+Confidence: 1.0

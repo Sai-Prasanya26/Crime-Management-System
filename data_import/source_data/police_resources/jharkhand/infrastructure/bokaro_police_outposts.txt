@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Bokaro (ID: 213)
+Resource: Police Outposts (POLICE_OUTPOSTS)
+Category: INFRASTRUCTURE
+Actual Count: 8
+Sanctioned Count: 8
+Reference Year: 2024
+Source Name: Jharkhand Police Department
+Source Document: Bokaro Police Outposts Directory
+Source URL: https://jhpolice.gov.in/
+Source Page: Bokaro District Directory
+Methodology: Official State Police Directory
+Confidence: 1.0

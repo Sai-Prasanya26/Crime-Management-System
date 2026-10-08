@@ -1,0 +1,13 @@
+State: GOA
+District: North Goa (ID: 130)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 15
+Sanctioned Count: 15
+Reference Year: 2024
+Source Name: Goa Police Department / Government of Goa
+Source Document: North Goa District Police Station Directory (14 Territorial + 1 Women PS)
+Source URL: https://goapolice.gov.in/
+Source Page: North District Directory
+Methodology: Official State Police Directory
+Confidence: 1.0

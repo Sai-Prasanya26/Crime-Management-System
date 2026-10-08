@@ -11,7 +11,7 @@ Protected routes providing access to:
 Requires authenticated staff JWT.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, Path, Body, status
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,13 @@ from backend.app.schemas.resource import (
     AIResourceRecommendationResponse,
 )
 from backend.app.schemas.common import StandardListResponse
+from backend.app.schemas.optimization_foundation import (
+    ResourceTypeSummaryResponse,
+    ResourceSummaryResponse,
+    ResourceCrimeComparisonResponse,
+)
 from backend.app.services.resource_service import ResourceService, CALCULATION_VERSION
+from backend.app.services.optimization_foundation_service import OptimizationFoundationService
 
 router = APIRouter()
 
@@ -119,6 +125,63 @@ def get_resource_coverage(
     db: Session = Depends(get_db),
 ) -> ResourceCoverageResponse:
     return ResourceService.get_coverage(db)
+
+
+@router.get(
+    "/types",
+    response_model=List[ResourceTypeSummaryResponse],
+    summary="List Active Police Resource Types",
+    description="Retrieve all active operational resource types with master codes, categories, units, and descriptions.",
+)
+def list_resource_types(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[ResourceTypeSummaryResponse]:
+    return OptimizationFoundationService.list_resource_types(db)
+
+
+@router.get(
+    "/summary",
+    response_model=ResourceSummaryResponse,
+    summary="Get Official State Police Resource Summary",
+    description="Retrieve official police resource data grouped by State/UT with source provenance, reference years, and coverage indicators.",
+)
+def get_resource_summary(
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    reference_year: Optional[int] = Query(None, description="Filter by reference year"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResourceSummaryResponse:
+    return OptimizationFoundationService.get_resource_summary(
+        db, state_id=state_id, reference_year=reference_year
+    )
+
+
+@router.get(
+    "/comparison",
+    response_model=ResourceCrimeComparisonResponse,
+    summary="Get Crime Burden vs Resource Availability Comparison",
+    description="Retrieve analytical state-level comparison between historical crime burden (2020-2025) and official police resources (2020/2024). Includes per-capita metrics and non-causality notices.",
+)
+def get_crime_resource_comparison(
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResourceCrimeComparisonResponse:
+    return OptimizationFoundationService.get_crime_resource_comparison(
+        db, state_id=state_id
+    )
+
+
+@router.get(
+    "/separation-of-concerns",
+    summary="Get Operational Separation of Concerns Audit",
+    description="Retrieve documentation and structural separation across historical deployment, official availability, calculated demand, and optimization recommendations.",
+)
+def get_separation_of_concerns(
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    return OptimizationFoundationService.audit_separation_of_concerns()
 
 
 @router.get(

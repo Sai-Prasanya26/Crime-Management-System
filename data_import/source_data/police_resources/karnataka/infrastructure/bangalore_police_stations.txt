@@ -1,0 +1,13 @@
+State: KARNATAKA
+District: Bangalore (ID: 238)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 112
+Sanctioned Count: 112
+Reference Year: 2023
+Source Name: Karnataka State Police Department
+Source Document: Bengaluru City Police Stations List
+Source URL: https://ksp.karnataka.gov.in/
+Source Page: Directory of Stations
+Methodology: Official Departmental Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: JHARKHAND
+District: Bokaro (ID: 213)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 30
+Sanctioned Count: 30
+Reference Year: 2024
+Source Name: Jharkhand Police Department / District Bokaro
+Source Document: Bokaro District Police Station Directory
+Source URL: https://bokaro.nic.in/
+Source Page: Police Directory
+Methodology: Official District Administration Directory
+Confidence: 1.0

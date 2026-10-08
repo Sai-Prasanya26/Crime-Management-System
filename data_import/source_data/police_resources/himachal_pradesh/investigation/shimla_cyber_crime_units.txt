@@ -1,0 +1,13 @@
+State: HIMACHAL PRADESH
+District: Shimla (ID: 187)
+Resource: Cyber Crime Investigation Units (CYBER_CRIME_UNITS)
+Category: INVESTIGATION
+Actual Count: 1
+Sanctioned Count: 1
+Reference Year: 2024
+Source Name: Himachal Pradesh Police Department
+Source Document: Cyber Crime Police Station Southern Range (Shimla)
+Source URL: https://hppolice.gov.in/
+Source Page: Specialized Units
+Methodology: Official State Police Registry
+Confidence: 1.0

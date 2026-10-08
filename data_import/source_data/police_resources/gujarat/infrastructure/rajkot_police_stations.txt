@@ -1,0 +1,13 @@
+State: GUJARAT
+District: Rajkot (ID: 150)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 12
+Sanctioned Count: 12
+Reference Year: 2024
+Source Name: Rajkot City Police Commissionerate
+Source Document: Rajkot City Police Law & Order Stations Registry (2 Zones)
+Source URL: https://police.gujarat.gov.in/
+Source Page: Rajkot City Commissionerate
+Methodology: Official Commissionerate Directory
+Confidence: 1.0

@@ -1,0 +1,13 @@
+State: TELANGANA
+District: Hyderabad (ID: 9)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 7420
+Sanctioned Count: 8850
+Reference Year: 2023
+Source Name: Telangana State Police Department
+Source Document: Hyderabad City Police Commissionerate Annual Administration Report
+Source URL: https://hyderabadpolice.gov.in/
+Source Page: Manpower Statistics
+Methodology: Official Police Commissionerate Administrative Report
+Confidence: 1.0

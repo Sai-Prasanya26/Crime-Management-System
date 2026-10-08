@@ -1,0 +1,13 @@
+State: GUJARAT
+District: Ahmadabad (ID: 132)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 11850
+Sanctioned Count: 14200
+Reference Year: 2023
+Source Name: Gujarat Police Department
+Source Document: Ahmedabad City Police Annual Administrative Review
+Source URL: https://police.gujarat.gov.in/
+Source Page: City Police Force Strength
+Methodology: Official Commissionerate Review
+Confidence: 1.0

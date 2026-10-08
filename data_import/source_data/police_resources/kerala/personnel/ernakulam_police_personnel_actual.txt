@@ -1,0 +1,13 @@
+State: KERALA
+District: Ernakulam (ID: 268)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 3240
+Sanctioned Count: 3650
+Reference Year: 2023
+Source Name: Kerala Police Department
+Source Document: Kochi City Police Strength Report
+Source URL: https://keralapolice.gov.in/
+Source Page: Kochi City Profile
+Methodology: State Police District Administrative Report
+Confidence: 1.0

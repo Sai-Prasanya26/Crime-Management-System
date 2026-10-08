@@ -1,0 +1,13 @@
+State: ODISHA
+District: Khordha (ID: 429)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 24
+Sanctioned Count: 24
+Reference Year: 2024
+Source Name: Bhubaneswar-Cuttack Police Commissionerate / Odisha Police
+Source Document: Bhubaneswar Urban Police District Station Directory (22 Regular + 2 Traffic)
+Source URL: https://odishapolice.gov.in/
+Source Page: Bhubaneswar UPD
+Methodology: Official Commissionerate Registry
+Confidence: 1.0

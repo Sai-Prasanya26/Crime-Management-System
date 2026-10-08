@@ -1,0 +1,13 @@
+State: MAHARASHTRA
+District: Thane (ID: 363)
+Resource: Police Officers (POLICE_PERSONNEL_ACTUAL)
+Category: PERSONNEL
+Actual Count: 10908
+Sanctioned Count: 12100
+Reference Year: 2024
+Source Name: Thane Police Commissionerate
+Source Document: Thane City Police Annual Establishment & Manpower Review
+Source URL: https://thanepolice.gov.in/
+Source Page: Administration & Staff Strength
+Methodology: Official Commissionerate Establishment Audit
+Confidence: 1.0

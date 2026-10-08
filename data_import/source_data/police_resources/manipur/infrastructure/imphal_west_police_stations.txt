@@ -1,0 +1,13 @@
+State: MANIPUR
+District: Imphal West (ID: 371)
+Resource: Total Police Stations (POLICE_STATIONS)
+Category: INFRASTRUCTURE
+Actual Count: 11
+Sanctioned Count: 11
+Reference Year: 2024
+Source Name: Manipur Police Department / District Imphal West
+Source Document: Imphal West District Police Stations Directory & Gazette
+Source URL: https://imphalwest.nic.in/
+Source Page: Administrative Setup - Police
+Methodology: Official District Administration Directory
+Confidence: 1.0
