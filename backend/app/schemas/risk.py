@@ -1,8 +1,8 @@
 """
-Phase 9B: Pydantic Schemas for Risk Assessment Endpoints.
+Phase 9: Pydantic Schemas for Explainable Risk Assessment Endpoints.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
 
 
@@ -26,6 +26,7 @@ class RiskItemResponse(BaseModel):
     assessment_period: str
     overall_risk_score: float
     risk_level: str
+    score_type: str = "FORECAST"
     severity_index: float
     trend_index: float
     volume_index: float
@@ -34,8 +35,10 @@ class RiskItemResponse(BaseModel):
     population_density_factor: float
     calculation_version: str
     model_version: Optional[str] = None
+    forecast_origin_date: Optional[str] = None
     strongest_driver: Optional[str] = None
     factor_contributions: Optional[Dict[str, Any]] = None
+    explanation_summary: Optional[str] = None
     generated_at: Optional[str] = None
 
 
@@ -52,17 +55,21 @@ class DistrictRiskDetailResponse(BaseModel):
     assessment_period: str
     overall_risk_score: float
     risk_level: str
+    score_type: str = "FORECAST"
     severity_index: float
     historical_volume: int
     forecast_volume: float
     crime_rate_per_100k: float
     trend_ratio: float
+    severity_ratio: Optional[float] = None
     factor_percentiles: Dict[str, float]
     factor_contributions: Dict[str, Any]
     strongest_driver: str
+    explanation_summary: Optional[str] = None
     calculation_version: str
     model_version: Optional[str] = None
     model_name: Optional[str] = None
+    forecast_origin_date: Optional[str] = None
     generated_at: Optional[str] = None
 
 
@@ -76,9 +83,11 @@ class RiskOverviewResponse(BaseModel):
     risk_level_percentages: Dict[str, float]
     top_risk_districts: List[RiskItemResponse]
     assessment_period: str
+    score_type: str = "FORECAST"
     methodology_version: str
     active_forecast_model: str
     active_forecast_version: str
+    forecast_origin_date: Optional[str] = None
 
 
 class RiskModelInfoResponse(BaseModel):
@@ -89,3 +98,39 @@ class RiskModelInfoResponse(BaseModel):
     risk_bands: Dict[str, str]
     active_model_name: str
     active_model_version: str
+
+
+class RiskCalculateRequest(BaseModel):
+    assessment_date: str = Field(..., description="Target assessment date (YYYY-MM-DD), e.g. '2026-11-01' or '2025-12-01'")
+    score_type: Optional[str] = Field(None, description="Score type: 'HISTORICAL' or 'FORECAST'. Inferred if omitted.")
+    calculation_version: str = Field("risk-v2.0", description="Risk scoring methodology version ('risk-v2.0' or 'risk-v1.0')")
+
+
+class RiskCalculateResponse(BaseModel):
+    status: str
+    assessment_period: str
+    period_year: int
+    period_month: int
+    score_type: str
+    districts_assessed: int
+    calculation_version: str
+    model_version: Optional[str] = None
+    model_name: Optional[str] = None
+    forecast_origin_date: Optional[str] = None
+
+
+class RiskTrendPoint(BaseModel):
+    period: str
+    period_year: int
+    period_month: int
+    score_type: str
+    mean_risk_score: float
+    critical_districts_count: int
+    high_risk_districts_count: int
+    calculation_version: str
+
+
+class RiskTrendsResponse(BaseModel):
+    district_id: Optional[int] = None
+    district_name: Optional[str] = None
+    trends: List[RiskTrendPoint]
