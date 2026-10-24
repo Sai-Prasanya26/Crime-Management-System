@@ -166,12 +166,15 @@ def run_full_comparison(
     # Load trained models
     hgbr_path = os.path.join(models_dir, "experimental_hgbr_v1.joblib")
     rf_path = os.path.join(models_dir, "experimental_random_forest_v1.joblib")
+    poisson_path = os.path.join(models_dir, "experimental_poisson_v1.joblib")
 
     if not os.path.exists(hgbr_path) or not os.path.exists(rf_path):
         raise FileNotFoundError("Trained models not found. Run train_forecaster.py first.")
 
     hgbr_model = joblib.load(hgbr_path)
     rf_model = joblib.load(rf_path)
+    poisson_model = joblib.load(poisson_path) if os.path.exists(poisson_path) else None
+    poisson_numeric_cols = [c for c in FEATURE_COLUMNS if c not in ["district_id", "state_id"]]
 
     # Baselines
     sn = SeasonalNaiveForecaster()
@@ -180,16 +183,20 @@ def run_full_comparison(
     val_preds = {
         "Seasonal_Naive": sn.predict(val_df),
         "Moving_Average_3": ma3.predict(val_df),
-        "HistGradientBoosting": clamp_predictions(hgbr_model.predict(val_df[FEATURE_COLUMNS])),
-        "RandomForest": clamp_predictions(rf_model.predict(val_df[FEATURE_COLUMNS])),
     }
+    if poisson_model is not None:
+        val_preds["PoissonRegression"] = clamp_predictions(poisson_model.predict(val_df[poisson_numeric_cols]))
+    val_preds["RandomForest"] = clamp_predictions(rf_model.predict(val_df[FEATURE_COLUMNS]))
+    val_preds["HistGradientBoosting"] = clamp_predictions(hgbr_model.predict(val_df[FEATURE_COLUMNS]))
 
     test_preds = {
         "Seasonal_Naive": sn.predict(test_df),
         "Moving_Average_3": ma3.predict(test_df),
-        "HistGradientBoosting": clamp_predictions(hgbr_model.predict(test_df[FEATURE_COLUMNS])),
-        "RandomForest": clamp_predictions(rf_model.predict(test_df[FEATURE_COLUMNS])),
     }
+    if poisson_model is not None:
+        test_preds["PoissonRegression"] = clamp_predictions(poisson_model.predict(test_df[poisson_numeric_cols]))
+    test_preds["RandomForest"] = clamp_predictions(rf_model.predict(test_df[FEATURE_COLUMNS]))
+    test_preds["HistGradientBoosting"] = clamp_predictions(hgbr_model.predict(test_df[FEATURE_COLUMNS]))
 
     # Generate comparative tables
     df_val = generate_comparison_table(val_y, val_preds, "VALIDATION_2024")

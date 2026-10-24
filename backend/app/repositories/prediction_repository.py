@@ -211,3 +211,100 @@ class PredictionRepository:
             "state_name": district.state_name,
             "series": series,
         }
+
+    @staticmethod
+    def list_models(db: Session) -> List[MLModel]:
+        """Returns all registered models in the model registry."""
+        return db.query(MLModel).order_by(desc(MLModel.id)).all()
+
+    @staticmethod
+    def get_actual_vs_predicted(
+        db: Session,
+        district_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieves paired monthly actual vs predicted counts for out-of-sample evaluation (2025)
+        and forward operational periods (2026).
+        """
+        active_model = PredictionRepository.get_active_model(db)
+        model_id = active_model.id if active_model else 1
+
+        # 1. Fetch actual incident totals by month for 2024-2025
+        actual_query = """
+            SELECT 
+                DATE_FORMAT(incident_date, '%%Y-%%m-01') AS period,
+                COUNT(*) AS actual_count
+            FROM crime_incidents
+            WHERE incident_date >= '2024-01-01'
+        """
+        params: Dict[str, Any] = {"mid": model_id}
+        if district_id:
+            actual_query += " AND district_id = :did"
+            params["did"] = district_id
+        actual_query += " GROUP BY period ORDER BY period ASC"
+
+        actual_rows = db.execute(text(actual_query), params).fetchall()
+        actual_map = {str(r[0]): float(r[1]) for r in actual_rows}
+
+        # 2. Fetch predicted counts for active model
+        pred_query = """
+            SELECT 
+                DATE_FORMAT(prediction_date, '%%Y-%%m-01') AS period,
+                SUM(predicted_crime_count) AS pred_count
+            FROM crime_predictions
+            WHERE model_id = :mid
+        """
+        if district_id:
+            pred_query += " AND district_id = :did"
+        pred_query += " GROUP BY period ORDER BY period ASC"
+
+        pred_rows = db.execute(text(pred_query), params).fetchall()
+        pred_map = {str(r[0]): round(float(r[1]), 2) for r in pred_rows}
+
+        all_periods = sorted(list(set(list(actual_map.keys()) + list(pred_map.keys()))))
+        points = []
+        abs_errors = []
+        sq_errors = []
+        sum_actual = 0.0
+
+        for p in all_periods:
+            act = actual_map.get(p)
+            pred = pred_map.get(p)
+            err = None
+            if act is not None and pred is not None:
+                err = round(float(abs(act - pred)), 2)
+                abs_errors.append(err)
+                sq_errors.append((act - pred) ** 2)
+                sum_actual += act
+
+            points.append({
+                "period": p,
+                "actual_count": act,
+                "predicted_count": pred,
+                "error": err,
+            })
+
+        overall_mae = round(float(sum(abs_errors) / len(abs_errors)), 4) if abs_errors else None
+        overall_rmse = round(float((sum(sq_errors) / len(sq_errors)) ** 0.5), 4) if sq_errors else None
+        overall_wape = round(float(sum(abs_errors) / sum_actual * 100), 2) if sum_actual > 0 else None
+
+        district_info = None
+        if district_id:
+            d = (
+                db.query(District.district_name, State.state_name)
+                .join(State, District.state_id == State.id)
+                .filter(District.id == district_id)
+                .first()
+            )
+            if d:
+                district_info = {"district_name": d.district_name, "state_name": d.state_name}
+
+        return {
+            "district_id": district_id,
+            "district_name": district_info["district_name"] if district_info else "All 640 Districts (Aggregated)",
+            "state_name": district_info["state_name"] if district_info else "National Aggregate",
+            "comparison_points": points,
+            "overall_mae": overall_mae,
+            "overall_rmse": overall_rmse,
+            "overall_wape": overall_wape,
+        }

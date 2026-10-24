@@ -33,6 +33,9 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.linear_model import PoissonRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 
 # Ensure project root is on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -127,6 +130,22 @@ def train_rf_model(
     return model, fit_time
 
 
+POISSON_NUMERIC_COLS = [c for c in FEATURE_COLUMNS if c not in ["district_id", "state_id"]]
+
+
+def train_poisson_model(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+) -> Tuple[Any, float]:
+    """Trains standardized PoissonRegressor pipeline and returns (pipeline, fit_time_seconds)."""
+    pipe = make_pipeline(StandardScaler(), PoissonRegressor(alpha=1.0, max_iter=500))
+    start_time = time.time()
+    pipe.fit(X_train[POISSON_NUMERIC_COLS], y_train)
+    fit_time = round(time.time() - start_time, 4)
+    logger.info("Trained PoissonRegressor in %.2fs", fit_time)
+    return pipe, fit_time
+
+
 def run_walk_forward_cv(
     df: pd.DataFrame,
     feature_cols: List[str],
@@ -156,6 +175,10 @@ def run_walk_forward_cv(
         sn_pred = clamp_predictions(eval_data["lag_12"].values)
         ma3_pred = clamp_predictions(eval_data["rolling_mean_3"].values)
 
+        # Train Poisson
+        poisson_fold, poisson_time = train_poisson_model(X_tr, y_tr)
+        poisson_pred = clamp_predictions(poisson_fold.predict(X_ev[POISSON_NUMERIC_COLS]))
+
         # Train HGBR
         hgbr_fold, hgbr_time = train_hgbr_model(X_tr, y_tr, categorical_mask)
         hgbr_pred = clamp_predictions(hgbr_fold.predict(X_ev))
@@ -171,13 +194,15 @@ def run_walk_forward_cv(
             "eval_year": eval_year,
             "train_observations": len(tr_data),
             "eval_observations": len(eval_data),
+            "poisson_fit_time_seconds": poisson_time,
             "hgbr_fit_time_seconds": hgbr_time,
             "rf_fit_time_seconds": rf_time,
             "metrics": {
                 "Seasonal_Naive": evaluate_predictions(y_ev, sn_pred),
                 "Moving_Average_3": evaluate_predictions(y_ev, ma3_pred),
-                "HistGradientBoosting": evaluate_predictions(y_ev, hgbr_pred),
+                "PoissonRegression": evaluate_predictions(y_ev, poisson_pred),
                 "RandomForest": evaluate_predictions(y_ev, rf_pred),
+                "HistGradientBoosting": evaluate_predictions(y_ev, hgbr_pred),
             },
         }
         fold_results.append(fold_eval)
@@ -220,6 +245,10 @@ def train_and_evaluate_all(
     logger.info("Fitting Comparison RandomForestRegressor on TRAIN split (2021-2023)...")
     rf_model, rf_fit_time = train_rf_model(X_train, y_train)
 
+    # Train Poisson Regressor on 2021-2023
+    logger.info("Fitting PoissonRegressor on TRAIN split (2021-2023)...")
+    poisson_model, poisson_fit_time = train_poisson_model(X_train, y_train)
+
     # Evaluate Baselines
     sn_val_pred = clamp_predictions(val_df["lag_12"].values)
     ma3_val_pred = clamp_predictions(val_df["rolling_mean_3"].values)
@@ -227,6 +256,9 @@ def train_and_evaluate_all(
     ma3_test_pred = clamp_predictions(test_df["rolling_mean_3"].values)
 
     # Evaluate ML Models
+    poisson_val_pred = clamp_predictions(poisson_model.predict(X_val[POISSON_NUMERIC_COLS]))
+    poisson_test_pred = clamp_predictions(poisson_model.predict(X_test[POISSON_NUMERIC_COLS]))
+
     hgbr_val_pred = clamp_predictions(hgbr_model.predict(X_val))
     hgbr_test_pred = clamp_predictions(hgbr_model.predict(X_test))
 
@@ -237,15 +269,17 @@ def train_and_evaluate_all(
     val_metrics = {
         "Seasonal_Naive": evaluate_predictions(y_val, sn_val_pred),
         "Moving_Average_3": evaluate_predictions(y_val, ma3_val_pred),
-        "HistGradientBoosting": evaluate_predictions(y_val, hgbr_val_pred),
+        "PoissonRegression": evaluate_predictions(y_val, poisson_val_pred),
         "RandomForest": evaluate_predictions(y_val, rf_val_pred),
+        "HistGradientBoosting": evaluate_predictions(y_val, hgbr_val_pred),
     }
 
     test_metrics = {
         "Seasonal_Naive": evaluate_predictions(y_test, sn_test_pred),
         "Moving_Average_3": evaluate_predictions(y_test, ma3_test_pred),
-        "HistGradientBoosting": evaluate_predictions(y_test, hgbr_test_pred),
+        "PoissonRegression": evaluate_predictions(y_test, poisson_test_pred),
         "RandomForest": evaluate_predictions(y_test, rf_test_pred),
+        "HistGradientBoosting": evaluate_predictions(y_test, hgbr_test_pred),
     }
 
     # Execute Walk-Forward Cross Validation
@@ -255,11 +289,13 @@ def train_and_evaluate_all(
     os.makedirs(output_dir, exist_ok=True)
     hgbr_path = os.path.join(output_dir, "experimental_hgbr_v1.joblib")
     rf_path = os.path.join(output_dir, "experimental_random_forest_v1.joblib")
+    poisson_path = os.path.join(output_dir, "experimental_poisson_v1.joblib")
     metadata_path = os.path.join(output_dir, "training_metadata_v1.json")
 
     joblib.dump(hgbr_model, hgbr_path)
     joblib.dump(rf_model, rf_path)
-    logger.info("Saved model artifacts: %s and %s", hgbr_path, rf_path)
+    joblib.dump(poisson_model, poisson_path)
+    logger.info("Saved model artifacts: %s, %s, and %s", hgbr_path, rf_path, poisson_path)
 
     metadata = {
         "metadata_version": "1.0.0",
@@ -289,6 +325,11 @@ def train_and_evaluate_all(
                 "artifact_path": rf_path,
                 "hyperparameters": RF_PARAMS,
                 "fit_time_seconds": rf_fit_time,
+            },
+            "PoissonRegression": {
+                "artifact_path": poisson_path,
+                "hyperparameters": {"alpha": 1.0, "max_iter": 500, "scaled": True},
+                "fit_time_seconds": poisson_fit_time,
             },
         },
         "evaluation": {

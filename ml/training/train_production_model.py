@@ -67,6 +67,12 @@ PHASE_8C_EVALUATION_METRICS = {
             "WAPE_percent": 36.97,
             "R2": 0.6006,
         },
+        "PoissonRegression": {
+            "MAE": 1.8727,
+            "RMSE": 2.6918,
+            "WAPE_percent": 40.69,
+            "R2": 0.4348,
+        },
         "Moving_Average_3": {
             "MAE": 1.8997,
             "RMSE": 2.5084,

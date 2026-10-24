@@ -30,6 +30,7 @@ from backend.app.database.session import engine as default_engine
 from ml.feature_engineering.feature_pipeline import FEATURE_COLUMNS
 from ml.inference.model_loader import get_production_metadata, get_production_model
 from ml.inference.forecast_service import generate_forecasts
+from ml.evaluation.metrics import clamp_predictions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -106,65 +107,118 @@ def register_production_model(engine: Optional[Engine] = None) -> int:
         return model_id
 
 
+def generate_forward_multistep_forecasts(
+    panel_df: pd.DataFrame,
+    months_ahead: int = 3,
+) -> List[Dict[str, Any]]:
+    """
+    Generates multi-step recursive forward forecasts for 1 to `months_ahead` calendar months
+    (e.g., 2026-01-01, 2026-02-01, 2026-03-01) for all 640 districts.
+    """
+    model = get_production_model()
+    meta = get_production_metadata()
+    model_version = meta.get("model_version", "v1.0.0")
+    model_name = meta.get("model_name", "HGBR production forecasting model v1")
+
+    # Group historical series by district
+    district_states = {}
+    for d_id, grp in panel_df.groupby("district_id"):
+        grp = grp.sort_values("period_date")
+        last_row = grp.iloc[-1]
+        y2025 = grp[grp["year"] == 2025].sort_values("month")
+        inc_2025 = list(y2025["incident_count"].values)  # 12 historical months
+        district_states[int(d_id)] = {
+            "static": last_row,
+            "history": inc_2025,
+        }
+
+    all_forward_forecasts: List[Dict[str, Any]] = []
+    periods = ["2026-01-01", "2026-02-01", "2026-03-01"][:months_ahead]
+
+    for m_idx, period_str in enumerate(periods, start=1):
+        rows = []
+        d_ids_ordered = sorted(district_states.keys())
+        for d_id in d_ids_ordered:
+            st = district_states[d_id]["static"]
+            hist = district_states[d_id]["history"]
+
+            lag_1 = float(hist[-1])
+            lag_2 = float(hist[-2])
+            lag_3 = float(hist[-3])
+            lag_12 = float(hist[-12])
+
+            rm3 = round(float(np.mean(hist[-3:])), 4)
+            rm6 = round(float(np.mean(hist[-6:])), 4)
+            rm12 = round(float(np.mean(hist[-12:])), 4)
+            rstd6 = round(float(np.std(hist[-6:], ddof=1)), 4)
+
+            tot_pop = float(st["total_population"])
+            hcr = round(float((rm12 / tot_pop) * 100000), 4)
+
+            rows.append({
+                "district_id": int(d_id),
+                "state_id": int(st["state_id"]),
+                "district_name": str(st["district_name"]),
+                "state_name": str(st["state_name"]),
+                "year": 2026,
+                "month": m_idx,
+                "quarter": 1,
+                "year_index": 6,
+                "sin_month": round(float(np.sin(2 * np.pi * m_idx / 12)), 6),
+                "cos_month": round(float(np.cos(2 * np.pi * m_idx / 12)), 6),
+                "lag_1": lag_1,
+                "lag_2": lag_2,
+                "lag_3": lag_3,
+                "lag_12": lag_12,
+                "rolling_mean_3": rm3,
+                "rolling_mean_6": rm6,
+                "rolling_mean_12": rm12,
+                "rolling_std_6": rstd6,
+                "total_population": tot_pop,
+                "male_population": float(st["male_population"]),
+                "female_population": float(st["female_population"]),
+                "literate_population": float(st["literate_population"]),
+                "total_workers": float(st["total_workers"]),
+                "gender_ratio": float(st["gender_ratio"]),
+                "literacy_rate": float(st["literacy_rate"]),
+                "worker_ratio": float(st["worker_ratio"]),
+                "historical_crime_rate_per_100k": hcr,
+                "period": period_str,
+            })
+
+        df_step = pd.DataFrame(rows)
+        preds = clamp_predictions(model.predict(df_step[FEATURE_COLUMNS]))
+
+        for i, d_id in enumerate(d_ids_ordered):
+            pred_val = round(float(preds[i]), 2)
+            district_states[d_id]["history"].append(pred_val)
+            all_forward_forecasts.append({
+                "district_id": d_id,
+                "district_name": rows[i]["district_name"],
+                "state_id": rows[i]["state_id"],
+                "state_name": rows[i]["state_name"],
+                "forecast_period": period_str,
+                "predicted_incident_count": pred_val,
+                "model_version": model_version,
+                "model_name": model_name,
+            })
+
+    logger.info(
+        "Generated %d multi-step forward forecasts across %d periods (%s).",
+        len(all_forward_forecasts),
+        len(periods),
+        ", ".join(periods),
+    )
+    return all_forward_forecasts
+
+
 def build_next_month_feature_matrix(panel_df: pd.DataFrame) -> pd.DataFrame:
     """
     Constructs the operational 1-step ahead feature matrix for 2026-01-01 (January 2026)
     for all 640 districts strictly using historical trailing statistics through 2025-12.
     """
-    districts = []
-    for d_id, grp in panel_df.groupby("district_id"):
-        grp = grp.sort_values("period_date")
-        last_row = grp.iloc[-1]
-
-        # 2025 monthly series for this district
-        y2025 = grp[grp["year"] == 2025].sort_values("month")
-        inc_2025 = y2025["incident_count"].values  # 12 months (Jan-Dec)
-
-        lag_1 = float(inc_2025[-1])  # Dec 2025
-        lag_2 = float(inc_2025[-2])  # Nov 2025
-        lag_3 = float(inc_2025[-3])  # Oct 2025
-        lag_12 = float(inc_2025[0])  # Jan 2025
-
-        rm3 = round(float(np.mean(inc_2025[-3:])), 4)
-        rm6 = round(float(np.mean(inc_2025[-6:])), 4)
-        rm12 = round(float(np.mean(inc_2025)), 4)
-        rstd6 = round(float(np.std(inc_2025[-6:], ddof=1)), 4)
-
-        tot_pop = float(last_row["total_population"])
-        hcr = round(float((rm12 / tot_pop) * 100000), 4)
-
-        districts.append({
-            "district_id": int(d_id),
-            "state_id": int(last_row["state_id"]),
-            "district_name": str(last_row["district_name"]),
-            "state_name": str(last_row["state_name"]),
-            "year": 2026,
-            "month": 1,
-            "quarter": 1,
-            "year_index": 6,
-            "sin_month": round(float(np.sin(2 * np.pi * 1 / 12)), 6),
-            "cos_month": round(float(np.cos(2 * np.pi * 1 / 12)), 6),
-            "lag_1": lag_1,
-            "lag_2": lag_2,
-            "lag_3": lag_3,
-            "lag_12": lag_12,
-            "rolling_mean_3": rm3,
-            "rolling_mean_6": rm6,
-            "rolling_mean_12": rm12,
-            "rolling_std_6": rstd6,
-            "total_population": tot_pop,
-            "male_population": float(last_row["male_population"]),
-            "female_population": float(last_row["female_population"]),
-            "literate_population": float(last_row["literate_population"]),
-            "total_workers": float(last_row["total_workers"]),
-            "gender_ratio": float(last_row["gender_ratio"]),
-            "literacy_rate": float(last_row["literacy_rate"]),
-            "worker_ratio": float(last_row["worker_ratio"]),
-            "historical_crime_rate_per_100k": hcr,
-            "period": "2026-01-01",
-        })
-
-    return pd.DataFrame(districts)
+    forecasts = generate_forward_multistep_forecasts(panel_df, months_ahead=1)
+    return pd.DataFrame(forecasts)
 
 
 def populate_predictions(
@@ -172,6 +226,7 @@ def populate_predictions(
     parquet_path: str = "ml/data/panel_features_2020_2025.parquet",
     include_2025: bool = True,
     include_forward_2026: bool = True,
+    forward_months: int = 3,
 ) -> Dict[str, Any]:
     """
     Generates real model forecasts and populates `crime_predictions` using an idempotent strategy.
@@ -194,12 +249,11 @@ def populate_predictions(
         f_2025 = generate_forecasts(df_2025)
         all_forecasts.extend(f_2025)
 
-    # 2. Forward 2026-01-01 operational forecast (640 rows)
+    # 2. Forward operational forecasts (1–3 months forward: Jan, Feb, Mar 2026)
     if include_forward_2026:
-        logger.info("Constructing feature matrix for forward 2026-01 operational forecast...")
-        df_2026 = build_next_month_feature_matrix(panel_df)
-        f_2026 = generate_forecasts(df_2026)
-        all_forecasts.extend(f_2026)
+        logger.info("Generating forward operational forecasts for %d months...", forward_months)
+        f_forward = generate_forward_multistep_forecasts(panel_df, months_ahead=forward_months)
+        all_forecasts.extend(f_forward)
 
     logger.info("Total generated forecasts to store: %d.", len(all_forecasts))
 

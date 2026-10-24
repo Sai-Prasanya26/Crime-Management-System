@@ -10,13 +10,20 @@ from fastapi import APIRouter, Depends, Query, Path, status
 from sqlalchemy.orm import Session
 
 from backend.app.database.session import get_db
-from backend.app.api.deps import get_current_user
+from backend.app.api.deps import get_current_user, require_admin, require_analyst
 from backend.app.models.auth import User
 from backend.app.schemas.predictions import (
     PredictionOverviewResponse,
     PredictionItemResponse,
     DistrictPredictionSeriesResponse,
     ModelInfoResponse,
+    ModelListItemResponse,
+    EvaluationComparisonResponse,
+    ActualVsPredictedResponse,
+    TrainTriggerRequest,
+    TrainTriggerResponse,
+    GenerateTriggerRequest,
+    GenerateTriggerResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 from backend.app.services.prediction_service import PredictionService
@@ -38,6 +45,19 @@ def get_predictions_overview(
 
 
 @router.get(
+    "/models",
+    response_model=StandardListResponse[ModelListItemResponse],
+    summary="List Registered ML Models",
+    description="Retrieve all registered machine learning models and their evaluation metrics from the registry.",
+)
+def list_models(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StandardListResponse[ModelListItemResponse]:
+    return PredictionService.list_models(db)
+
+
+@router.get(
     "/model",
     response_model=ModelInfoResponse,
     summary="Get Active Model Information & Provenance",
@@ -51,9 +71,63 @@ def get_active_model_info(
 
 
 @router.get(
+    "/evaluation",
+    response_model=EvaluationComparisonResponse,
+    summary="Get Candidate Model Evaluation Comparison",
+    description="Retrieve out-of-sample evaluation comparisons across Seasonal Naïve, MA-3, Poisson, Random Forest, and HGBR.",
+)
+def get_model_evaluation(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> EvaluationComparisonResponse:
+    return PredictionService.get_evaluation_report(db)
+
+
+@router.get(
+    "/actual-vs-predicted",
+    response_model=ActualVsPredictedResponse,
+    summary="Get Actual vs Predicted Caseload Timeline",
+    description="Retrieve paired historical actual incidents and model predictions for 2024–2026, optionally filtered by district.",
+)
+def get_actual_vs_predicted(
+    district_id: Optional[int] = Query(None, description="Optional District ID filter"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ActualVsPredictedResponse:
+    return PredictionService.get_actual_vs_predicted(db, district_id=district_id)
+
+
+@router.get(
+    "/monthly",
+    response_model=StandardListResponse[PredictionItemResponse],
+    summary="List Monthly Predictions",
+    description="Retrieve paginated monthly crime predictions with optional state, district, period, and model version filters.",
+)
+def get_monthly_predictions(
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    district_id: Optional[int] = Query(None, description="Filter by District ID"),
+    forecast_period: Optional[str] = Query(None, description="Filter by forecast period date (YYYY-MM-DD)"),
+    model_version: Optional[str] = Query(None, description="Filter by model version (e.g. v1.0.0)"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StandardListResponse[PredictionItemResponse]:
+    return PredictionService.list_predictions(
+        db,
+        state_id=state_id,
+        district_id=district_id,
+        forecast_period=forecast_period,
+        model_version=model_version,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.get(
     "",
     response_model=StandardListResponse[PredictionItemResponse],
-    summary="List Crime Volume Predictions",
+    summary="List Crime Volume Predictions (Root Endpoint)",
     description="Retrieve paginated monthly crime predictions with optional state, district, period, and model version filters.",
 )
 def list_predictions(
@@ -74,6 +148,43 @@ def list_predictions(
         model_version=model_version,
         skip=skip,
         limit=limit,
+    )
+
+
+@router.post(
+    "/train",
+    response_model=TrainTriggerResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Trigger Model Refitting (Admin Only)",
+    description="Triggers training and refitting of the production ML forecasting model. Requires ADMIN role.",
+)
+def trigger_training(
+    body: Optional[TrainTriggerRequest] = None,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> TrainTriggerResponse:
+    refit = body.refit_production if body else True
+    return PredictionService.trigger_train(db, refit_production=refit)
+
+
+@router.post(
+    "/generate",
+    response_model=GenerateTriggerResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate Future Operational Predictions (Admin / Analyst)",
+    description="Generates future multi-step forecasts for the next 1–3 months and persists them in the database. Requires ADMIN or ANALYST role.",
+)
+def trigger_generation(
+    body: Optional[GenerateTriggerRequest] = None,
+    current_user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
+) -> GenerateTriggerResponse:
+    forward_months = body.forward_months if body else 3
+    include_2025 = body.include_2025 if body else True
+    return PredictionService.trigger_generate(
+        db,
+        forward_months=forward_months,
+        include_2025=include_2025,
     )
 
 
