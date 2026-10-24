@@ -256,4 +256,17 @@ python ml/inference/prediction_pipeline.py
 ```bash
 python -m unittest discover backend/tests
 ```
-*Executes all 100 automated backend tests.*
+*Executes all automated backend tests.*
+
+---
+
+## 16. Multi-Step Forecasting & Conformal Uncertainty Extension (Phase 8B)
+
+For detailed documentation on:
+- 3-way forecast status classification (`HISTORICAL_EVALUATION`, `PAST_FORECAST`, `CURRENT_FUTURE_FORECAST`)
+- Multi-step recursive walk-forward backtesting across horizons \(h=1, 3, 6\)
+- Inductive split conformal prediction intervals calibrated on 2024 residuals
+- Fresh forward operational horizon starting with the next calendar month (November 2026 – January 2027)
+
+See the dedicated documentation: [`docs/crime_forecasting_reliability.md`](file:///c:/Users/saipr.SAIPRASANYA.000/Desktop/Puppyyy/Major%20Project/docs/crime_forecasting_reliability.md).
+

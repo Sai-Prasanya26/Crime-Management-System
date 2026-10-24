@@ -1,7 +1,8 @@
 """
-Phase 8D: Prediction Service.
+Phase 8B: Prediction Service.
 
-Business logic layer orchestrating database access and formatting API schemas for prediction queries.
+Business logic layer orchestrating database access and formatting API schemas for prediction queries,
+multi-step forecasting, uncertainty intervals, and freshness status.
 """
 
 import os
@@ -31,7 +32,7 @@ from ml.inference.model_loader import get_production_metadata
 class PredictionService:
     @staticmethod
     def get_overview(db: Session) -> PredictionOverviewResponse:
-        """Retrieves high-level summary of crime volume forecasting pipeline."""
+        """Retrieves high-level summary of crime volume forecasting pipeline and freshness breakdown."""
         data = PredictionRepository.get_overview(db)
         return PredictionOverviewResponse(
             total_predictions=data["total_predictions"],
@@ -39,6 +40,14 @@ class PredictionService:
             earliest_period=data["earliest_period"],
             latest_period=data["latest_period"],
             periods_count=data["periods_count"],
+            historical_periods_count=data.get("historical_periods_count", 12),
+            past_forecast_periods_count=data.get("past_forecast_periods_count", 3),
+            current_forecast_periods_count=data.get("current_forecast_periods_count", 3),
+            current_forecast_start=data.get("current_forecast_start"),
+            current_forecast_end=data.get("current_forecast_end"),
+            forecast_origin_date=data.get("forecast_origin_date"),
+            calibration_method=data.get("calibration_method"),
+            status_breakdown=data.get("status_breakdown"),
             active_model_name=data["active_model_name"],
             active_model_version=data["active_model_version"],
             algorithm=data["algorithm"],
@@ -53,16 +62,20 @@ class PredictionService:
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
         forecast_period: Optional[str] = None,
+        forecast_status: Optional[str] = None,
+        is_latest: Optional[bool] = None,
         model_version: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
     ) -> StandardListResponse[PredictionItemResponse]:
-        """Lists prediction records with optional geographic/temporal filters."""
+        """Lists prediction records with optional geographic/temporal/status filters."""
         items, total = PredictionRepository.list_predictions(
             db,
             state_id=state_id,
             district_id=district_id,
             forecast_period=forecast_period,
+            forecast_status=forecast_status,
+            is_latest=is_latest,
             model_version=model_version,
             skip=skip,
             limit=limit,
@@ -99,7 +112,6 @@ class PredictionService:
                 detail="No active ML model found in registry.",
             )
 
-        # Attempt to enrich with metadata file
         try:
             file_meta = get_production_metadata()
             feature_cols = file_meta.get("feature_columns", FEATURE_COLUMNS)
@@ -157,8 +169,8 @@ class PredictionService:
     @staticmethod
     def get_evaluation_report(db: Session) -> EvaluationComparisonResponse:
         """
-        Retrieves out-of-sample evaluation comparison across baseline and candidate models
-        (Seasonal Naïve, MA-3, Poisson, Random Forest, HGBR) along with walk-forward results.
+        Retrieves out-of-sample evaluation comparison across baseline and candidate models,
+        multi-step backtesting horizons, and conformal prediction intervals.
         """
         meta_path = "ml/saved_models/training_metadata_v1.json"
         if os.path.exists(meta_path):
@@ -175,6 +187,19 @@ class PredictionService:
                 "Seasonal_Naive": {"MAE": 2.2616, "RMSE": 3.0170, "WAPE%": 49.13, "R2": 0.2899},
             }
             walk_forward_cv = []
+
+        # Load Phase 8B backtest and conformal metadata
+        bt_path = "ml/saved_models/backtest_and_conformal_metadata.json"
+        backtest_horizons = None
+        conformal_cal = None
+        if os.path.exists(bt_path):
+            try:
+                with open(bt_path, "r", encoding="utf-8") as f:
+                    bt_file = json.load(f)
+                backtest_horizons = bt_file.get("backtesting_results", {}).get("aggregate_horizons")
+                conformal_cal = bt_file.get("conformal_calibration")
+            except Exception:
+                pass
 
         sn_mae = test_metrics.get("Seasonal_Naive", {}).get("MAE", 2.2616)
         hgbr_mae = test_metrics.get("HistGradientBoosting", {}).get("MAE", 1.6956)
@@ -199,6 +224,8 @@ class PredictionService:
                 ),
             },
             walk_forward_cv=walk_forward_cv,
+            backtest_horizons=backtest_horizons,
+            conformal_calibration=conformal_cal,
             disclaimer="Predictions are statistical estimates based on historical records. They are not confirmed future incidents and should not be used as the sole basis for operational or policing decisions.",
         )
 
@@ -247,6 +274,8 @@ class PredictionService:
     def trigger_generate(
         db: Session,
         forward_months: int = 3,
+        forecast_origin_date: str = "2026-10-01",
+        calibrate_intervals: bool = True,
         include_2025: bool = True,
     ) -> GenerateTriggerResponse:
         """Triggers operational forward prediction generation and persistence."""
@@ -256,6 +285,8 @@ class PredictionService:
             summary = populate_predictions(
                 engine=db.bind,
                 forward_months=forward_months,
+                forecast_origin_date=forecast_origin_date,
+                calibrate_intervals=calibrate_intervals,
                 include_2025=include_2025,
             )
             return GenerateTriggerResponse(
@@ -265,6 +296,7 @@ class PredictionService:
                 periods_covered=summary["periods_covered"],
                 districts_count=summary["districts_count"],
                 generated_count=summary["generated_count"],
+                status_breakdown=summary.get("status_breakdown"),
                 message=f"Successfully generated and stored {summary['generated_count']} predictions across {len(summary['periods_covered'])} periods.",
             )
         except Exception as e:

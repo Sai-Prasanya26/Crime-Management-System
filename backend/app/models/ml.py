@@ -38,10 +38,19 @@ class CrimePrediction(Base):
     predicted_crime_count = Column(DECIMAL(10, 2), nullable=False)
     confidence_lower = Column(DECIMAL(10, 2), nullable=True)
     confidence_upper = Column(DECIMAL(10, 2), nullable=True)
+    prediction_interval_lower = Column(DECIMAL(10, 2), nullable=True)
+    prediction_interval_upper = Column(DECIMAL(10, 2), nullable=True)
+    forecast_status = Column(String(30), nullable=False, default="CURRENT_FUTURE_FORECAST")
+    forecast_origin_date = Column(Date, nullable=True)
+    horizon_step = Column(Integer, nullable=True)
+    is_latest = Column(Boolean, nullable=False, default=True)
     generated_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     __table_args__ = (
         Index("idx_pred_dist_date", "district_id", "prediction_date"),
+        Index("idx_pred_status", "forecast_status"),
+        Index("idx_pred_origin_date", "forecast_origin_date"),
+        Index("idx_pred_is_latest", "is_latest"),
         UniqueConstraint("district_id", "prediction_date", "model_id", name="uq_pred_district_date_model"),
     )
 

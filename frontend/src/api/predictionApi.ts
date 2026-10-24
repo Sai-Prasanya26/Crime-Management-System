@@ -8,6 +8,14 @@ export interface PredictionItem {
   state_name?: string;
   forecast_period: string;
   predicted_crime_count: number;
+  prediction_interval_lower?: number | null;
+  prediction_interval_upper?: number | null;
+  confidence_lower?: number | null;
+  confidence_upper?: number | null;
+  forecast_status: string;
+  forecast_origin_date?: string | null;
+  horizon_step?: number | null;
+  is_latest: boolean;
   model_version: string;
   model_name: string;
 }
@@ -18,6 +26,14 @@ export interface PredictionOverview {
   earliest_period: string;
   latest_period: string;
   periods_count: number;
+  historical_periods_count?: number;
+  past_forecast_periods_count?: number;
+  current_forecast_periods_count?: number;
+  current_forecast_start?: string | null;
+  current_forecast_end?: string | null;
+  forecast_origin_date?: string | null;
+  calibration_method?: string | null;
+  status_breakdown?: Record<string, number>;
   active_model_name: string;
   active_model_version: string;
   algorithm: string;
@@ -63,6 +79,8 @@ export interface EvaluationComparison {
     wape_reduction_points: number;
   };
   walk_forward_cv?: any[];
+  backtest_horizons?: Record<string, any>;
+  conformal_calibration?: Record<string, any>;
   disclaimer: string;
 }
 
@@ -70,6 +88,11 @@ export interface ActualVsPredictedPoint {
   period: string;
   actual_count?: number | null;
   predicted_count?: number | null;
+  prediction_interval_lower?: number | null;
+  prediction_interval_upper?: number | null;
+  confidence_lower?: number | null;
+  confidence_upper?: number | null;
+  forecast_status?: string | null;
   error?: number | null;
 }
 
@@ -87,6 +110,8 @@ export interface PredictionFilters {
   state_id?: number;
   district_id?: number;
   forecast_period?: string;
+  forecast_status?: string;
+  is_latest?: boolean;
   model_version?: string;
   skip?: number;
   limit?: number;
@@ -144,8 +169,14 @@ export const predictionApi = {
     return res.data;
   },
 
-  triggerGenerate: async (forwardMonths: number = 3) => {
-    const res = await apiClient.post('/predictions/generate', { forward_months: forwardMonths });
+  triggerGenerate: async (params?: {
+    forward_months?: number;
+    forecast_origin_date?: string;
+    calibrate_intervals?: boolean;
+    include_2025?: boolean;
+  }) => {
+    const payload = params || { forward_months: 3, forecast_origin_date: '2026-10-01', calibrate_intervals: true };
+    const res = await apiClient.post('/predictions/generate', payload);
     return res.data;
   },
 };

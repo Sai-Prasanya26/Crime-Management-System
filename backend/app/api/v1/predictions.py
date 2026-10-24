@@ -101,12 +101,14 @@ def get_actual_vs_predicted(
     "/monthly",
     response_model=StandardListResponse[PredictionItemResponse],
     summary="List Monthly Predictions",
-    description="Retrieve paginated monthly crime predictions with optional state, district, period, and model version filters.",
+    description="Retrieve paginated monthly crime predictions with optional state, district, period, status, and model version filters.",
 )
 def get_monthly_predictions(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     forecast_period: Optional[str] = Query(None, description="Filter by forecast period date (YYYY-MM-DD)"),
+    forecast_status: Optional[str] = Query(None, description="Filter by forecast status (HISTORICAL_EVALUATION, PAST_FORECAST, CURRENT_FUTURE_FORECAST)"),
+    is_latest: Optional[bool] = Query(None, description="Filter by latest forecast run flag"),
     model_version: Optional[str] = Query(None, description="Filter by model version (e.g. v1.0.0)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
@@ -118,6 +120,8 @@ def get_monthly_predictions(
         state_id=state_id,
         district_id=district_id,
         forecast_period=forecast_period,
+        forecast_status=forecast_status,
+        is_latest=is_latest,
         model_version=model_version,
         skip=skip,
         limit=limit,
@@ -128,12 +132,14 @@ def get_monthly_predictions(
     "",
     response_model=StandardListResponse[PredictionItemResponse],
     summary="List Crime Volume Predictions (Root Endpoint)",
-    description="Retrieve paginated monthly crime predictions with optional state, district, period, and model version filters.",
+    description="Retrieve paginated monthly crime predictions with optional state, district, period, status, and model version filters.",
 )
 def list_predictions(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     forecast_period: Optional[str] = Query(None, description="Filter by forecast period date (YYYY-MM-DD)"),
+    forecast_status: Optional[str] = Query(None, description="Filter by forecast status (HISTORICAL_EVALUATION, PAST_FORECAST, CURRENT_FUTURE_FORECAST)"),
+    is_latest: Optional[bool] = Query(None, description="Filter by latest forecast run flag"),
     model_version: Optional[str] = Query(None, description="Filter by model version (e.g. v1.0.0)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
@@ -145,6 +151,8 @@ def list_predictions(
         state_id=state_id,
         district_id=district_id,
         forecast_period=forecast_period,
+        forecast_status=forecast_status,
+        is_latest=is_latest,
         model_version=model_version,
         skip=skip,
         limit=limit,
@@ -172,7 +180,7 @@ def trigger_training(
     response_model=GenerateTriggerResponse,
     status_code=status.HTTP_200_OK,
     summary="Generate Future Operational Predictions (Admin / Analyst)",
-    description="Generates future multi-step forecasts for the next 1–3 months and persists them in the database. Requires ADMIN or ANALYST role.",
+    description="Generates future multi-step forecasts for the next 1–6 months and persists them in the database. Requires ADMIN or ANALYST role.",
 )
 def trigger_generation(
     body: Optional[GenerateTriggerRequest] = None,
@@ -180,10 +188,14 @@ def trigger_generation(
     db: Session = Depends(get_db),
 ) -> GenerateTriggerResponse:
     forward_months = body.forward_months if body else 3
+    forecast_origin_date = body.forecast_origin_date if body and body.forecast_origin_date else "2026-10-01"
+    calibrate_intervals = body.calibrate_intervals if body is not None else True
     include_2025 = body.include_2025 if body else True
     return PredictionService.trigger_generate(
         db,
         forward_months=forward_months,
+        forecast_origin_date=forecast_origin_date,
+        calibrate_intervals=calibrate_intervals,
         include_2025=include_2025,
     )
 

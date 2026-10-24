@@ -1,10 +1,9 @@
 """
-Phase 8D: Pydantic Schemas for Prediction Endpoints.
+Phase 8B: Pydantic Schemas for Prediction & Forecasting Endpoints.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
-from datetime import date, datetime
 
 
 class PredictionItemResponse(BaseModel):
@@ -17,6 +16,14 @@ class PredictionItemResponse(BaseModel):
     state_name: Optional[str] = None
     forecast_period: str
     predicted_crime_count: float
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
+    confidence_lower: Optional[float] = None
+    confidence_upper: Optional[float] = None
+    forecast_status: str = "CURRENT_FUTURE_FORECAST"
+    forecast_origin_date: Optional[str] = None
+    horizon_step: Optional[int] = None
+    is_latest: bool = True
     model_version: str
     model_name: str
 
@@ -27,6 +34,14 @@ class PredictionOverviewResponse(BaseModel):
     earliest_period: str
     latest_period: str
     periods_count: int
+    historical_periods_count: int = 12
+    past_forecast_periods_count: int = 3
+    current_forecast_periods_count: int = 3
+    current_forecast_start: Optional[str] = None
+    current_forecast_end: Optional[str] = None
+    forecast_origin_date: Optional[str] = None
+    calibration_method: Optional[str] = None
+    status_breakdown: Optional[Dict[str, int]] = None
     active_model_name: str
     active_model_version: str
     algorithm: str
@@ -77,6 +92,8 @@ class EvaluationComparisonResponse(BaseModel):
     metrics_summary: Dict[str, Dict[str, float]]
     relative_improvements: Dict[str, Any]
     walk_forward_cv: Optional[List[Dict[str, Any]]] = None
+    backtest_horizons: Optional[Dict[str, Any]] = None
+    conformal_calibration: Optional[Dict[str, Any]] = None
     disclaimer: str
 
 
@@ -84,6 +101,11 @@ class ActualVsPredictedPoint(BaseModel):
     period: str
     actual_count: Optional[float] = None
     predicted_count: Optional[float] = None
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
+    confidence_lower: Optional[float] = None
+    confidence_upper: Optional[float] = None
+    forecast_status: Optional[str] = None
     error: Optional[float] = None
 
 
@@ -112,8 +134,10 @@ class TrainTriggerResponse(BaseModel):
 
 
 class GenerateTriggerRequest(BaseModel):
-    forward_months: int = 3
-    include_2025: bool = True
+    forward_months: int = Field(3, ge=1, le=6, description="Forecast horizon steps in calendar months (1 to 6)")
+    forecast_origin_date: Optional[str] = Field("2026-10-01", description="Cutoff date for forecast origin")
+    calibrate_intervals: bool = Field(True, description="Whether to compute calibrated prediction intervals")
+    include_2025: bool = Field(True, description="Whether to include historical 2025 evaluation records")
 
 
 class GenerateTriggerResponse(BaseModel):
@@ -123,4 +147,5 @@ class GenerateTriggerResponse(BaseModel):
     periods_covered: List[str]
     districts_count: int
     generated_count: int
+    status_breakdown: Optional[Dict[str, int]] = None
     message: str
