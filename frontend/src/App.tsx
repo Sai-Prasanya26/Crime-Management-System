@@ -108,6 +108,7 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/administration" element={<Navigate to="/admin" replace />} />
 
           {/* User Profile & Account Management Route (All Authenticated Roles) */}
           <Route

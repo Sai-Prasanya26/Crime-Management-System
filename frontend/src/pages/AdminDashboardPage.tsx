@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   FileText,
+  UserCog,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -60,6 +61,12 @@ export const AdminDashboardPage: React.FC = () => {
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<SecurityAuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
+
+  // Pagination State
+  const [userPage, setUserPage] = useState<number>(1);
+  const USERS_PER_PAGE = 8;
+  const [auditPage, setAuditPage] = useState<number>(1);
+  const AUDIT_PER_PAGE = 10;
 
   const loadStaffData = async () => {
     setLoadingUsers(true);
@@ -198,8 +205,21 @@ export const AdminDashboardPage: React.FC = () => {
     );
   });
 
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = filteredUsers.slice(
+    (userPage - 1) * USERS_PER_PAGE,
+    userPage * USERS_PER_PAGE
+  );
+
+  const totalAuditPages = Math.max(1, Math.ceil(auditLogs.length / AUDIT_PER_PAGE));
+  const paginatedAuditLogs = auditLogs.slice(
+    (auditPage - 1) * AUDIT_PER_PAGE,
+    auditPage * AUDIT_PER_PAGE
+  );
+
   return (
     <DashboardLayout
+      icon={UserCog}
       title="System Administration"
       subtitle="Manage authorized staff access, roles and security activity."
       onRefresh={verifyAdminStatus}
@@ -213,7 +233,7 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="space-y-4">
           {/* Admin Verification Status Banner */}
           {adminVerified ? (
-            <div className="flex items-center justify-between rounded-lg border border-[#DCE2EA] bg-white p-3.5 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[#DCE2EA] bg-white p-3.5 shadow-2xs">
               <div className="flex items-center gap-3">
                 <div className="rounded p-2 bg-emerald-50 text-[#16805C]">
                   <ShieldCheck className="h-4 w-4" />
@@ -227,13 +247,13 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <span className="flex items-center gap-1.5 rounded bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-[#16805C] border border-emerald-200">
+              <span className="flex items-center gap-1.5 rounded bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-[#16805C] border border-emerald-200 shrink-0 self-start sm:self-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 VERIFIED ADMIN
               </span>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3.5 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3.5 shadow-2xs">
               <div className="flex items-center gap-3">
                 <div className="rounded p-2 bg-red-100 text-[#C53030]">
                   <ShieldAlert className="h-4 w-4" />
@@ -245,7 +265,7 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
               <button
                 onClick={verifyAdminStatus}
-                className="rounded-md bg-[#C53030] px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800 transition-colors cursor-pointer"
+                className="rounded-md bg-[#C53030] px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800 transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
               >
                 Retry Check
               </button>
@@ -322,7 +342,10 @@ export const AdminDashboardPage: React.FC = () => {
                   <input
                     type="text"
                     value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setUserSearchTerm(e.target.value);
+                      setUserPage(1);
+                    }}
                     placeholder="Search staff by name, email, role..."
                     className="w-full h-10 rounded-md border border-[#DCE2EA] bg-white py-1.5 pl-9 pr-3 text-[13px] text-[#172033] placeholder-slate-400 shadow-2xs focus:border-[#1D4ED8] focus:outline-none focus:ring-1 focus:ring-[#1D4ED8]"
                   />
@@ -380,7 +403,7 @@ export const AdminDashboardPage: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredUsers.map((member) => (
+                      paginatedUsers.map((member) => (
                         <tr key={member.id} className="hover:bg-slate-50/60 transition-colors">
                           <td className="py-2.5 px-3.5">
                             <div className="font-semibold text-[#172033] leading-tight">{member.full_name}</div>
@@ -442,6 +465,50 @@ export const AdminDashboardPage: React.FC = () => {
                     )}
                   </tbody>
                 </table>
+
+                {/* Pagination Controls for Staff Accounts */}
+                {filteredUsers.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#DCE2EA] bg-white px-3.5 py-3 text-[12px] text-[#5B6577]">
+                    <div>
+                      Showing{' '}
+                      <span className="font-semibold text-[#172033]">
+                        {(userPage - 1) * USERS_PER_PAGE + 1}
+                      </span>{' '}
+                      to{' '}
+                      <span className="font-semibold text-[#172033]">
+                        {Math.min(userPage * USERS_PER_PAGE, filteredUsers.length)}
+                      </span>{' '}
+                      of{' '}
+                      <span className="font-semibold text-[#172033]">
+                        {filteredUsers.length}
+                      </span>{' '}
+                      staff accounts
+                    </div>
+                    {totalUserPages > 1 && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                          disabled={userPage <= 1}
+                          className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[11.5px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-2 font-medium text-slate-600">
+                          Page {userPage} of {totalUserPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                          disabled={userPage >= totalUserPages}
+                          className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[11.5px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -607,7 +674,7 @@ export const AdminDashboardPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    auditLogs.map((log) => (
+                    paginatedAuditLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-2 px-3 font-mono text-[11px] text-slate-500">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A'}
@@ -635,6 +702,50 @@ export const AdminDashboardPage: React.FC = () => {
                   )}
                 </tbody>
               </table>
+
+              {/* Pagination Controls for Security Audit Log */}
+              {auditLogs.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#DCE2EA] bg-white px-3.5 py-3 text-[12px] text-[#5B6577]">
+                  <div>
+                    Showing{' '}
+                    <span className="font-semibold text-[#172033]">
+                      {(auditPage - 1) * AUDIT_PER_PAGE + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-semibold text-[#172033]">
+                      {Math.min(auditPage * AUDIT_PER_PAGE, auditLogs.length)}
+                    </span>{' '}
+                    of{' '}
+                    <span className="font-semibold text-[#172033]">
+                      {auditLogs.length}
+                    </span>{' '}
+                    audit events
+                  </div>
+                  {totalAuditPages > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                        disabled={auditPage <= 1}
+                        className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[11.5px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-2 font-medium text-slate-600">
+                        Page {auditPage} of {totalAuditPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))}
+                        disabled={auditPage >= totalAuditPages}
+                        className="rounded border border-[#DCE2EA] bg-white px-2.5 py-1 text-[11.5px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

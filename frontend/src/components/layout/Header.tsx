@@ -14,6 +14,7 @@ import {
   Sliders,
   BadgeDollarSign,
   FileText,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -45,6 +46,7 @@ const getOperationIcon = (title: string, pathname: string, customIcon?: LucideIc
   if (path.includes('/budget') || t.includes('budget')) return BadgeDollarSign;
   if (path.includes('/reports') || t.includes('report')) return FileText;
   if (path.includes('/dashboard') || t.includes('overview') || t.includes('dashboard')) return LayoutDashboard;
+  if (path.includes('/admin') || t.includes('admin')) return UserCog;
 
   return Shield;
 };
