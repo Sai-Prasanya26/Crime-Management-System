@@ -186,40 +186,180 @@ The project follows a rigorous, data-driven incremental development roadmap:
 
 ## 6. Getting Started & Verification
 
-### Unified Quick Start (Recommended)
-Double-click `start_project.bat` in the project root or run:
+### Prerequisites
+Before running the system, ensure the following software is installed on the host machine:
+- **Operating System:** Windows 10/11, macOS, or Linux (Ubuntu 22.04 LTS+)
+- **Python:** Python 3.11 or 3.12 (`python --version`)
+- **Node.js:** Node.js v18+ or v20+ with npm (`node -v`, `npm -v`)
+- **Database Engine:** MySQL Server 8.0+ (`mysql --version`)
+- **Git:** Git 2.40+ (`git --version`)
+
+---
+
+### Option A: Unified Launcher (Windows — Recommended)
+The repository includes a battle-tested one-click orchestrator that handles service dependencies, port discovery, MySQL health, schema validation, and concurrent launch:
+
 ```cmd
 start_project.bat
 ```
-This launcher checks prerequisites, verifies MySQL schema readiness, starts the FastAPI backend daemon on port 8000, and opens the Vite frontend on port 5174.
 
-### Manual Backend Setup
-1. Open a terminal and navigate to the project root:
+What the launcher does automatically:
+1. Detects and resolves the project root directory.
+2. Checks for foreign port conflicts on **8000** (FastAPI) and **5174** (Vite).
+3. Verifies MySQL server service (`MYSQL80`) and starts it if stopped.
+4. Executes pre-flight database schema checks across all core tables via `backend.scripts.launcher_service`.
+5. Boots the FastAPI backend daemon on `http://127.0.0.1:8000`.
+6. Boots the Vite frontend development server on `http://localhost:5174`.
+7. Launches the default web browser to the application portal.
+
+---
+
+### Option B: Manual Step-by-Step Setup
+
+#### Step 1: Database Setup (MySQL 8.0)
+1. Ensure your local MySQL server is running (default port `3306`).
+2. Log into the MySQL console:
    ```bash
-   # Activate virtual environment
-   backend\.venv\Scripts\Activate.ps1
+   mysql -u root -p
    ```
-2. Install Python dependencies:
+3. Create the database with UTF-8 character encoding:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS crime_management_db 
+     CHARACTER SET utf8mb4 
+     COLLATE utf8mb4_unicode_ci;
+   EXIT;
+   ```
+
+#### Step 2: Backend Environment Configuration
+1. Copy the environment template in the project root:
    ```bash
+   # Windows PowerShell:
+   Copy-Item .env.example .env
+   # Linux/macOS:
+   cp .env.example .env
+   ```
+2. Open `.env` and verify your MySQL credentials:
+   ```dotenv
+   MYSQL_HOST=localhost
+   MYSQL_PORT=3306
+   MYSQL_DATABASE=crime_management_db
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your_mysql_password
+   DATABASE_URL=mysql+pymysql://root:your_mysql_password@localhost:3306/crime_management_db
+   JWT_SECRET_KEY=change_me_to_a_secure_random_secret_in_production
+   APP_ENV=development
+   ```
+
+#### Step 3: Backend Python Environment & Dependencies
+1. Create and activate a dedicated Python virtual environment:
+   ```bash
+   # Windows PowerShell:
+   python -m venv backend\.venv
+   backend\.venv\Scripts\Activate.ps1
+
+   # Linux/macOS:
+   python3 -m venv backend/.venv
+   source backend/.venv/bin/activate
+   ```
+2. Upgrade pip and install all backend requirements:
+   ```bash
+   pip install --upgrade pip
    pip install -r backend/requirements.txt
    ```
-3. Run the FastAPI application:
+3. Run the database pre-flight verification script:
    ```bash
-   python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+   python -m backend.scripts.launcher_service verify-db 10
    ```
-4. Verify endpoints:
-   - Root Health: `http://127.0.0.1:8000/health`
-   - Detailed Health: `http://127.0.0.1:8000/api/v1/health`
-   - API Docs: `http://127.0.0.1:8000/api/v1/docs`
 
-### Manual Frontend Setup
-1. Open a terminal and navigate to `frontend`:
+#### Step 4: Start the FastAPI Backend
+Start the Uvicorn ASGI server:
+```bash
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+Verify backend connectivity in your browser or with curl:
+- **Root Health Check:** `http://127.0.0.1:8000/health` $\to$ `{"status": "ok"}`
+- **Detailed System Health:** `http://127.0.0.1:8000/api/v1/health` $\to$ `{"status": "ok", "database": "connected", "tables_verified": true}`
+- **Interactive OpenAPI Documentation:** `http://127.0.0.1:8000/api/v1/docs`
+
+#### Step 5: Frontend Environment & Dependencies
+1. Open a new terminal and navigate to the `frontend/` directory:
    ```bash
    cd frontend
    ```
-2. Install dependencies and start development server:
+2. Configure frontend environment variables:
+   ```bash
+   # Windows PowerShell:
+   Copy-Item .env.example .env
+   # Linux/macOS:
+   cp .env.example .env
+   ```
+3. Install frontend dependencies:
    ```bash
    npm install
-   npm run dev
    ```
-3. Access the portal in your browser: `http://localhost:5174` (or `http://localhost:5173`)
+
+#### Step 6: Start the Frontend Application
+Start the Vite development server:
+```bash
+npm run dev
+```
+Open your browser at `http://localhost:5174` (or `http://localhost:5173`).
+
+---
+
+### Step 7: Staff Authentication & Demonstration Accounts
+
+The system enforces server-side Role-Based Access Control (RBAC). In development, seed accounts are provisioned for role validation:
+
+| Role | Username | Email | Development Password | System Permissions |
+| :--- | :--- | :--- | :--- | :--- |
+| **ADMIN** | `admin` | `admin@crimeops.gov.in` | `Admin@12345` | Full system access, staff management, audit log access, scenario optimization, budget estimation. |
+| **ANALYST** | `analyst` | `analyst@crimeops.gov.in` | `Analyst@12345` | Predictive intelligence, explainable risk scoring, simulation optimization, budget analysis. |
+| **OFFICER** | `officer` | `officer@crimeops.gov.in` | `Officer@12345` | Read-only operational intelligence, incident analytics, district demographics. Blocked from admin & solver runs. |
+
+*In production, passwords must be securely reset via the Administrative Console, and unique cryptographically random JWT secrets must be set in `.env`.*
+
+---
+
+### Step 8: Running Automated Test Suites
+
+#### Complete Backend Regression Suite (173 tests)
+```bash
+backend\.venv\Scripts\python.exe -m unittest discover -s backend/tests -p "test_*.py"
+```
+
+#### Dedicated E2E Integration Suite (12 scenarios)
+```bash
+backend\.venv\Scripts\python.exe -m unittest backend/tests/test_end_to_end_integration.py
+```
+
+#### Frontend TypeScript Build & Linter
+```bash
+npm --prefix frontend run build
+npm --prefix frontend run lint
+```
+
+---
+
+### Step 9: Troubleshooting Guide
+
+| Issue / Error | Root Cause | Solution |
+| :--- | :--- | :--- |
+| **MySQL Service Not Running** (`OperationalError: 2003: Can't connect`) | Windows MySQL80 service is stopped or disabled. | Run `net start MYSQL80` in an administrative shell, or start via Windows Services (`services.msc`). |
+| **Port Conflict on 8000 or 5174** | An existing background process is holding the socket. | Identify and kill the process: `netstat -ano \| findstr :8000` followed by `taskkill /PID <PID> /F`. Or let `start_project.bat` detect it. |
+| **Database Access Denied** (`1045: Access denied for user 'root'@'localhost'`) | Password in `.env` doesn't match local MySQL root password. | Update `MYSQL_PASSWORD` and `DATABASE_URL` in `.env` to match your local password. |
+| **CORS Network Error** (`Access-Control-Allow-Origin blocked`) | Frontend running on unexpected port not listed in `CORS_ORIGINS`. | Ensure frontend is running on `http://localhost:5174` or `5173`. Additional domains can be added to `CORS_ORIGINS` in `.env` or `backend/app/core/config.py`. |
+| **Token Expired / 401 Unauthorized** | JWT access token expired (60-minute lifetime). | Navigate to `/login` and re-authenticate to obtain a fresh signed token. |
+| **Operational Allocation Halted (`INSUFFICIENT_DATA`)** | District baselines are unrecorded in official BPR&D data. | This is an intentional data-integrity safeguard. Switch `allocation_mode` to `"SIMULATION"` to run a hypothetical planning simulation. |
+
+---
+
+## 7. Handover Documentation Reference
+
+For comprehensive technical documentation, refer to:
+- **Final Project Handover Dossier:** [`docs/final_project_handover.md`](docs/final_project_handover.md)
+- **Phase 14 Completion Report:** [`docs/phase_14_completion_report.md`](docs/phase_14_completion_report.md)
+- **Phase 13 Quality & Security Review:** [`docs/final_quality_review.md`](docs/final_quality_review.md)
+- **Phase 12 End-to-End Validation:** [`docs/end_to_end_validation.md`](docs/end_to_end_validation.md)
+- **Backend API Specifications:** [`docs/backend_api_specification.md`](docs/backend_api_specification.md)
+- **Database Schema & Data Dictionary:** [`docs/data_dictionary.md`](docs/data_dictionary.md)
