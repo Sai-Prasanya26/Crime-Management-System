@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   const overviewItems: NavItem[] = [
     {
       name: 'Dashboard',
-      path: '/dashboard',
+      path: '/dashboard?workspace=fullscreen',
       icon: LayoutDashboard,
       exact: true,
     },

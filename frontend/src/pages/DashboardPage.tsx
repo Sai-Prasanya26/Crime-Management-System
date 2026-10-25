@@ -145,6 +145,15 @@ export const DashboardPage: React.FC = () => {
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
     const newParams = new URLSearchParams();
+    // Preserve full-screen workspace parameter if present
+    const workspaceParam = searchParams.get('workspace');
+    if (workspaceParam) {
+      newParams.set('workspace', workspaceParam);
+    }
+    const fullscreenParam = searchParams.get('fullscreen');
+    if (fullscreenParam) {
+      newParams.set('fullscreen', fullscreenParam);
+    }
     if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
     if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
     if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
@@ -228,7 +237,7 @@ export const DashboardPage: React.FC = () => {
         <EmptyState
           title="No Matching Incidents"
           message="No recorded crime events match the selected state, district, or date criteria."
-          onClearFilters={() => setFilters({})}
+          onClearFilters={() => handleFilterChange({})}
         />
       )}
 

@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
     } else {
-      navigate('/dashboard');
+      navigate('/dashboard?workspace=fullscreen');
     }
   };
 
