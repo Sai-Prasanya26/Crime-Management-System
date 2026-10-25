@@ -29,10 +29,16 @@ def get_overview(
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> CrimeOverviewResponse:
     return CrimeAnalyticsService.get_overview(
-        db, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+        db,
+        state_id=state_id,
+        district_id=district_id,
+        start_date=start_date,
+        end_date=end_date,
+        geography_mode=geography_mode,
     )
 
 
@@ -48,10 +54,17 @@ def get_trends(
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> TrendResponse:
     return CrimeAnalyticsService.get_trends(
-        db, interval=interval, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+        db,
+        interval=interval,
+        state_id=state_id,
+        district_id=district_id,
+        start_date=start_date,
+        end_date=end_date,
+        geography_mode=geography_mode,
     )
 
 
@@ -66,10 +79,16 @@ def get_by_category(
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> CategoryBreakdownResponse:
     return CrimeAnalyticsService.get_categories(
-        db, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+        db,
+        state_id=state_id,
+        district_id=district_id,
+        start_date=start_date,
+        end_date=end_date,
+        geography_mode=geography_mode,
     )
 
 
@@ -85,6 +104,7 @@ def get_by_type(
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> TypeBreakdownResponse:
     return CrimeAnalyticsService.get_types(
@@ -94,6 +114,7 @@ def get_by_type(
         district_id=district_id,
         start_date=start_date,
         end_date=end_date,
+        geography_mode=geography_mode,
     )
 
 
@@ -106,9 +127,12 @@ def get_by_type(
 def get_hourly(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> HourlyDistributionResponse:
-    return CrimeAnalyticsService.get_hourly(db, state_id=state_id, district_id=district_id)
+    return CrimeAnalyticsService.get_hourly(
+        db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+    )
 
 
 @router.get(
@@ -120,9 +144,12 @@ def get_hourly(
 def get_demographics(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> VictimDemographicsResponse:
-    return CrimeAnalyticsService.get_victim_demographics(db, state_id=state_id, district_id=district_id)
+    return CrimeAnalyticsService.get_victim_demographics(
+        db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+    )
 
 
 @router.get(
@@ -134,9 +161,12 @@ def get_demographics(
 def get_weapons(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
     district_id: Optional[int] = Query(None, description="Filter by District ID"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> WeaponDistributionResponse:
-    return CrimeAnalyticsService.get_weapons(db, state_id=state_id, district_id=district_id)
+    return CrimeAnalyticsService.get_weapons(
+        db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+    )
 
 
 @router.get(
@@ -149,6 +179,9 @@ def get_top_districts(
     metric: str = Query("volume", pattern="^(volume|rate)$", description="Ranking metric: 'volume' (absolute count) or 'rate' (crimes per 100k)"),
     limit: int = Query(10, ge=1, le=100, description="Number of districts to return"),
     state_id: Optional[int] = Query(None, description="Filter within State ID"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     db: Session = Depends(get_db),
 ) -> TopDistrictsResponse:
-    return CrimeAnalyticsService.get_top_districts(db, metric=metric, limit=limit, state_id=state_id)
+    return CrimeAnalyticsService.get_top_districts(
+        db, metric=metric, limit=limit, state_id=state_id, geography_mode=geography_mode
+    )

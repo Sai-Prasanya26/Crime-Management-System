@@ -18,28 +18,43 @@ import { analyticsApi } from '../api';
 import type { FilterParams, TrendResponse } from '../types';
 
 export const TrendsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<FilterParams>({
+    geography_mode: (searchParams.get('geography_mode') as 'current' | 'historical') || 'current',
+  });
   const [interval, setInterval] = useState<'year' | 'month' | 'day'>('month');
   const [trends, setTrends] = useState<TrendResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync filters from URL search params (year, state_id, district_id)
+  // Sync filters from URL search params (year, state_id, district_id, geography_mode)
   useEffect(() => {
     const year = searchParams.get('year');
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
-    if (year || stateId || districtId) {
+    const geoMode = searchParams.get('geography_mode') as 'current' | 'historical' | null;
+    if (year || stateId || districtId || geoMode) {
       setFilters((prev) => ({
         ...prev,
+        geography_mode: geoMode || prev.geography_mode || 'current',
         ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
         ...(stateId ? { state_id: Number(stateId) } : {}),
         ...(districtId ? { district_id: Number(districtId) } : {}),
       }));
     }
   }, [searchParams]);
+
+  const handleFilterChange = (newFilters: FilterParams) => {
+    setFilters(newFilters);
+    const newParams = new URLSearchParams();
+    if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
+    if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
+    if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
+    if (newFilters.start_date) newParams.set('start_date', newFilters.start_date);
+    if (newFilters.end_date) newParams.set('end_date', newFilters.end_date);
+    setSearchParams(newParams, { replace: true });
+  };
 
   const fetchTrends = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -104,7 +119,7 @@ export const TrendsPage: React.FC = () => {
     >
       <DashboardFilters
         filters={filters}
-        onFilterChange={(newFilters) => setFilters(newFilters)}
+        onFilterChange={handleFilterChange}
         isLoading={isLoading || isRefreshing}
       />
 

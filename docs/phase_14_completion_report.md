@@ -88,3 +88,4 @@ Audited directly against MySQL `crime_management_db` on port 3306:
    - BPR&D *Data on Police Organizations* publishes district-level statistics for 114 districts nationwide; the remaining 4,396 district entries remain `NULL` (unrecorded). Operational allocations on unrecorded districts correctly halt with `INSUFFICIENT_DATA`, permitting only transparent hypothetical simulations (`allocation_mode="SIMULATION"`).
 3. **External Deployment Blocker:**
    - As mandated by Critical Rule 10, no public domain or paid cloud infrastructure was provisioned. Deployment to cloud platforms (AWS, Azure, GCP, or DigitalOcean) requires server provisioning and DNS configuration by the platform administrator as outlined in the handover guide.
+

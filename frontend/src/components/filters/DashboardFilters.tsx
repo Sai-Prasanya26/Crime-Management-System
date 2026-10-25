@@ -15,11 +15,18 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   onFilterChange,
   isLoading,
 }) => {
-  const [geoView, setGeoView] = useState<'current' | 'historical'>('current');
+  const [geoView, setGeoView] = useState<'current' | 'historical'>(filters.geography_mode || 'current');
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  // Sync internal geoView when parent filters.geography_mode updates
+  useEffect(() => {
+    if (filters.geography_mode && filters.geography_mode !== geoView) {
+      setGeoView(filters.geography_mode);
+    }
+  }, [filters.geography_mode]);
 
   // Load States whenever geoView changes
   useEffect(() => {
@@ -95,7 +102,9 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   };
 
   const handleReset = () => {
-    onFilterChange({});
+    onFilterChange({
+      geography_mode: geoView,
+    });
   };
 
   const toggleGeoView = () => {
@@ -103,6 +112,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     setGeoView(nextView);
     onFilterChange({
       ...filters,
+      geography_mode: nextView,
       state_id: undefined,
       district_id: undefined,
     });
@@ -124,11 +134,16 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
           {/* Geography Layer Switcher */}
           <button
+            type="button"
             onClick={toggleGeoView}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-[#F4F7FA] px-2.5 text-[13px] font-medium text-[#172033] hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded border px-3 text-[13px] font-semibold transition-all cursor-pointer shrink-0 ${
+              geoView === 'current'
+                ? 'border-[#1769AA]/30 bg-[#0B1F3A] text-white hover:bg-[#122b4d] shadow-2xs'
+                : 'border-amber-400/40 bg-amber-50 text-amber-900 hover:bg-amber-100 shadow-2xs'
+            }`}
             title="Toggle between Current Administrative and Census 2011 Historical Geography"
           >
-            <Globe className="h-3.5 w-3.5 text-[#7C8796]" />
+            <Globe className={`h-3.5 w-3.5 ${geoView === 'current' ? 'text-sky-300' : 'text-amber-700'}`} />
             <span>{geoView === 'current' ? 'Current Admin (36 Entities)' : 'Historical (Census 2011)'}</span>
           </button>
 

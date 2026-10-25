@@ -73,6 +73,7 @@ export interface FilterParams {
   district_id?: number;
   start_date?: string;
   end_date?: string;
+  geography_mode?: 'current' | 'historical';
 }
 
 // ============================================================================
@@ -272,6 +273,10 @@ export interface CrimeOverviewResponse {
   latest_incident_date: string;
   filtered_by_state_id?: number | null;
   filtered_by_district_id?: number | null;
+  geography_mode?: 'current' | 'historical';
+  jurisdiction_label?: string;
+  jurisdiction_value?: string;
+  jurisdiction_subtext?: string;
 }
 
 export interface TrendItem {

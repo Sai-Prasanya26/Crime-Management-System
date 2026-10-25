@@ -29,9 +29,15 @@ class CrimeAnalyticsService:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> CrimeOverviewResponse:
         data = CrimeRepository.get_overview(
-            db, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+            db,
+            state_id=state_id,
+            district_id=district_id,
+            start_date=start_date,
+            end_date=end_date,
+            geography_mode=geography_mode,
         )
         return CrimeOverviewResponse(
             total_incidents=data["total_incidents"],
@@ -48,6 +54,10 @@ class CrimeAnalyticsService:
             latest_incident_date=data["latest_date"],
             filtered_by_state_id=state_id,
             filtered_by_district_id=district_id,
+            geography_mode=data.get("geography_mode", geography_mode),
+            jurisdiction_label=data.get("jurisdiction_label", "Administrative Entities"),
+            jurisdiction_value=data.get("jurisdiction_value", "36 States & UTs"),
+            jurisdiction_subtext=data.get("jurisdiction_subtext", "789 Modern Administrative Districts"),
         )
 
     @staticmethod
@@ -58,9 +68,16 @@ class CrimeAnalyticsService:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> TrendResponse:
         rows = CrimeRepository.get_trends(
-            db, interval=interval, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+            db,
+            interval=interval,
+            state_id=state_id,
+            district_id=district_id,
+            start_date=start_date,
+            end_date=end_date,
+            geography_mode=geography_mode,
         )
         items = [TrendItem(period=r["period"], incident_count=r["incident_count"]) for r in rows]
         return TrendResponse(interval=interval, total_points=len(items), items=items)
@@ -72,9 +89,15 @@ class CrimeAnalyticsService:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> CategoryBreakdownResponse:
         rows = CrimeRepository.get_crimes_by_category(
-            db, state_id=state_id, district_id=district_id, start_date=start_date, end_date=end_date
+            db,
+            state_id=state_id,
+            district_id=district_id,
+            start_date=start_date,
+            end_date=end_date,
+            geography_mode=geography_mode,
         )
         items = [CategoryBreakdownItem(**r) for r in rows]
         total = sum(i.incident_count for i in items)
@@ -88,6 +111,7 @@ class CrimeAnalyticsService:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> TypeBreakdownResponse:
         rows = CrimeRepository.get_crimes_by_type(
             db,
@@ -96,6 +120,7 @@ class CrimeAnalyticsService:
             district_id=district_id,
             start_date=start_date,
             end_date=end_date,
+            geography_mode=geography_mode,
         )
         items = [TypeBreakdownItem(**r) for r in rows]
         total = sum(i.incident_count for i in items)
@@ -106,8 +131,11 @@ class CrimeAnalyticsService:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> HourlyDistributionResponse:
-        rows = CrimeRepository.get_hourly_distribution(db, state_id=state_id, district_id=district_id)
+        rows = CrimeRepository.get_hourly_distribution(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         items = [HourlyDistributionItem(**r) for r in rows]
         peak = max(items, key=lambda x: x.incident_count).hour if items else 0
         return HourlyDistributionResponse(peak_hour=peak, items=items)
@@ -117,8 +145,11 @@ class CrimeAnalyticsService:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> VictimDemographicsResponse:
-        data = CrimeRepository.get_victim_demographics(db, state_id=state_id, district_id=district_id)
+        data = CrimeRepository.get_victim_demographics(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         return VictimDemographicsResponse(
             gender_distribution=data["gender_distribution"],
             age_distribution=data["age_distribution"],
@@ -130,8 +161,11 @@ class CrimeAnalyticsService:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> WeaponDistributionResponse:
-        rows = CrimeRepository.get_weapon_distribution(db, state_id=state_id, district_id=district_id)
+        rows = CrimeRepository.get_weapon_distribution(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         items = [WeaponDistributionItem(**r) for r in rows]
         total = sum(i.incident_count for i in items)
         return WeaponDistributionResponse(total_incidents=total, items=items)
@@ -142,7 +176,10 @@ class CrimeAnalyticsService:
         metric: str = "volume",
         limit: int = 10,
         state_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> TopDistrictsResponse:
-        rows = CrimeRepository.get_top_districts(db, metric=metric, limit=limit, state_id=state_id)
+        rows = CrimeRepository.get_top_districts(
+            db, metric=metric, limit=limit, state_id=state_id, geography_mode=geography_mode
+        )
         items = [TopDistrictItem(**r) for r in rows]
         return TopDistrictsResponse(metric=metric, items=items)

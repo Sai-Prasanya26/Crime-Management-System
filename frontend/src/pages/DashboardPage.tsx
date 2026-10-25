@@ -40,25 +40,27 @@ import type {
 } from '../types';
 
 export const DashboardPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<FilterParams>({
+    geography_mode: (searchParams.get('geography_mode') as 'current' | 'historical') || 'current',
+  });
   const [trendInterval, setTrendInterval] = useState<'year' | 'month' | 'day'>('month');
   const [rankingMetric, setRankingMetric] = useState<'volume' | 'rate'>('volume');
 
-  // Sync with URL query parameters (state_id, district_id, year, dimension)
+  // Sync with URL query parameters (state_id, district_id, year, geography_mode, dimension)
   useEffect(() => {
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
     const year = searchParams.get('year');
+    const geoMode = searchParams.get('geography_mode') as 'current' | 'historical' | null;
 
-    if (stateId || districtId || year) {
-      setFilters((prev) => ({
-        ...prev,
-        ...(stateId ? { state_id: Number(stateId) } : {}),
-        ...(districtId ? { district_id: Number(districtId) } : {}),
-        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
-      }));
-    }
+    setFilters((prev) => ({
+      ...prev,
+      geography_mode: geoMode || prev.geography_mode || 'current',
+      ...(stateId ? { state_id: Number(stateId) } : {}),
+      ...(districtId ? { district_id: Number(districtId) } : {}),
+      ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
+    }));
 
     const dimension = searchParams.get('dimension');
     if (dimension) {
@@ -116,6 +118,7 @@ export const DashboardPage: React.FC = () => {
           metric: rankingMetric,
           limit: 10,
           state_id: filters.state_id,
+          geography_mode: filters.geography_mode || 'current',
         }),
       ]);
 
@@ -141,6 +144,13 @@ export const DashboardPage: React.FC = () => {
 
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
+    const newParams = new URLSearchParams();
+    if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
+    if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
+    if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
+    if (newFilters.start_date) newParams.set('start_date', newFilters.start_date);
+    if (newFilters.end_date) newParams.set('end_date', newFilters.end_date);
+    setSearchParams(newParams, { replace: true });
   };
 
   const handleIntervalChange = (newInterval: 'year' | 'month' | 'day') => {
@@ -196,6 +206,45 @@ export const DashboardPage: React.FC = () => {
         onFilterChange={handleFilterChange}
         isLoading={isLoading || isRefreshing}
       />
+
+      {/* Geography Mode Context Banner */}
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border px-4 py-2.5 text-xs transition-colors shadow-2xs ${
+          (filters.geography_mode || 'current') === 'current'
+            ? 'border-blue-200 bg-blue-50/60 text-[#0B1F3A]'
+            : 'border-amber-300 bg-amber-50/80 text-amber-950'
+        }`}
+      >
+        <div className="flex items-start sm:items-center gap-2">
+          <Globe2
+            className={`h-4 w-4 shrink-0 mt-0.5 sm:mt-0 ${
+              (filters.geography_mode || 'current') === 'current' ? 'text-[#1769AA]' : 'text-amber-700'
+            }`}
+          />
+          <div className="leading-relaxed">
+            {(filters.geography_mode || 'current') === 'current' ? (
+              <span>
+                <strong className="font-semibold text-[#0B1F3A]">Current Administrative Framework:</strong> 28 States + 8 Union Territories = 36 modern jurisdictions, 789 administrative districts. Historical FIR incident totals reflect post-bifurcation territorial boundaries (e.g. Telangana 10 parent districts, Andhra Pradesh 13 parent districts).
+              </span>
+            ) : (
+              <span>
+                <strong className="font-semibold text-amber-950">Historical Baseline Framework (Census 2011):</strong> 35 States & UTs, 640 Census districts. Incident totals reflect original FIR reporting jurisdictions prior to state reorganizations (e.g. undivided Andhra Pradesh with all 23 historical districts).
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 flex items-center gap-2 self-start sm:self-auto">
+          <span
+            className={`inline-flex items-center rounded px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase ${
+              (filters.geography_mode || 'current') === 'current'
+                ? 'bg-[#0B1F3A] text-white'
+                : 'bg-amber-600 text-white'
+            }`}
+          >
+            {(filters.geography_mode || 'current') === 'current' ? 'Current Admin' : 'Census 2011'}
+          </span>
+        </div>
+      </div>
 
       {/* Loading State */}
       {isLoading && !overview && (
@@ -256,9 +305,20 @@ export const DashboardPage: React.FC = () => {
               color="blue"
             />
             <StatCard
-              title="Active Jurisdictions"
-              value={overview.total_districts.toLocaleString()}
-              subtext={`${overview.total_states} States & UTs`}
+              title={
+                overview.jurisdiction_label ||
+                (filters.geography_mode === 'historical' ? 'Census 2011 Districts' : 'Administrative Entities')
+              }
+              value={
+                overview.jurisdiction_value ||
+                (filters.geography_mode === 'historical'
+                  ? `${overview.total_districts.toLocaleString()} Districts`
+                  : `${overview.total_states} States & UTs`)
+              }
+              subtext={
+                overview.jurisdiction_subtext ||
+                `${overview.total_states} States & UTs`
+              }
               icon={Globe2}
               color="blue"
             />

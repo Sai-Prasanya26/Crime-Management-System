@@ -13,29 +13,50 @@ class CrimeRepository:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> Optional[List[int]]:
         """
         Resolves historical Census 2011 district IDs corresponding to filter parameters.
         Ensures dual-layer compatibility:
         - Modern child districts (e.g. current Hyderabad ID 644) resolve to historical parent (ID 9).
-        - Modern state filters (e.g. Telangana State ID 36) resolve to historical parent districts (IDs: 4, 9, 10, ...).
-        - Modern AP (State ID 2) resolves to the 13 true AP historical districts (excluding Telangana).
+        - In current admin mode: modern state filters (e.g. Telangana State ID 36) resolve to historical parent districts (IDs: 4, 9, 10, ...).
+        - In current admin mode: modern AP (State ID 2) resolves to the 13 true AP historical districts (excluding Telangana).
+        - In historical mode: historical state filters (e.g. undivided AP State ID 2) resolve to all 23 Census 2011 districts.
         """
         if district_id is not None:
             dist = db.query(District).filter(District.id == district_id).first()
-            if dist and dist.parent_district_id and not dist.is_census_2011:
-                return [dist.parent_district_id]
+            if dist:
+                if geography_mode == "current":
+                    if dist.parent_district_id and not dist.is_census_2011:
+                        return [dist.parent_district_id]
+                    if not dist.is_census_2011:
+                        mapped = (
+                            db.query(DistrictGeographyMapping.historical_district_id)
+                            .filter(DistrictGeographyMapping.current_district_id == district_id)
+                            .all()
+                        )
+                        if mapped:
+                            return [r[0] for r in mapped]
+                return [dist.id]
             return [district_id]
         elif state_id is not None:
-            mapped_ids = (
-                db.query(DistrictGeographyMapping.historical_district_id)
-                .join(District, DistrictGeographyMapping.current_district_id == District.id)
-                .filter(District.state_id == state_id)
-                .distinct()
-                .all()
-            )
-            if mapped_ids:
-                return [r[0] for r in mapped_ids]
+            if geography_mode == "current":
+                mapped_ids = (
+                    db.query(DistrictGeographyMapping.historical_district_id)
+                    .join(District, DistrictGeographyMapping.current_district_id == District.id)
+                    .filter(District.state_id == state_id)
+                    .distinct()
+                    .all()
+                )
+                if mapped_ids:
+                    return [r[0] for r in mapped_ids]
+                else:
+                    dist_ids = (
+                        db.query(District.id)
+                        .filter(District.state_id == state_id, District.is_census_2011 == True)
+                        .all()
+                    )
+                    return [r[0] for r in dist_ids]
             else:
                 dist_ids = (
                     db.query(District.id)
@@ -52,6 +73,7 @@ class CrimeRepository:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> Dict[str, Any]:
         query = db.query(
             func.count(CrimeIncident.id).label("total_incidents"),
@@ -63,7 +85,9 @@ class CrimeRepository:
             func.max(CrimeIncident.incident_date).label("latest_date"),
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -73,18 +97,6 @@ class CrimeRepository:
             query = query.filter(CrimeIncident.incident_date <= end_date)
 
         row = query.one()
-
-        # Total states count
-        states_count_query = db.query(func.count(func.distinct(District.state_id))).join(
-            CrimeIncident, District.id == CrimeIncident.district_id
-        )
-        if filter_ids is not None:
-            states_count_query = states_count_query.filter(CrimeIncident.district_id.in_(filter_ids))
-        if start_date is not None:
-            states_count_query = states_count_query.filter(CrimeIncident.incident_date >= start_date)
-        if end_date is not None:
-            states_count_query = states_count_query.filter(CrimeIncident.incident_date <= end_date)
-        total_states = states_count_query.scalar() or 0
 
         # Total categories count
         categories_count_query = db.query(func.count(func.distinct(CrimeType.category_id))).join(
@@ -98,6 +110,48 @@ class CrimeRepository:
             categories_count_query = categories_count_query.filter(CrimeIncident.incident_date <= end_date)
         total_categories = categories_count_query.scalar() or 0
 
+        # Determine jurisdiction metadata and entity counts based on geography_mode and filters
+        if district_id is not None:
+            dist = db.query(District).filter(District.id == district_id).first()
+            dist_name = dist.district_name if dist else f"District #{district_id}"
+            total_states = 1
+            total_districts = 1
+            jurisdiction_label = "Target District"
+            jurisdiction_value = dist_name
+            mode_desc = "Current Admin" if geography_mode == "current" else "Census 2011"
+            parent_info = f" ({dist.state.state_name})" if dist and dist.state else ""
+            jurisdiction_subtext = f"{mode_desc}{parent_info}"
+        elif state_id is not None:
+            state = db.query(State).filter(State.id == state_id).first()
+            state_name = state.state_name if state else f"State #{state_id}"
+            total_states = 1
+            if geography_mode == "current":
+                dist_cnt = db.query(District).filter(District.state_id == state_id, District.is_current_admin == True).count()
+                total_districts = dist_cnt or len(filter_ids or [])
+                jurisdiction_label = "Administrative Districts"
+                jurisdiction_value = f"{total_districts} Districts"
+                jurisdiction_subtext = f"{state_name} (Current Admin)"
+            else:
+                dist_cnt = db.query(District).filter(District.state_id == state_id, District.is_census_2011 == True).count()
+                total_districts = dist_cnt or len(filter_ids or [])
+                jurisdiction_label = "Census 2011 Districts"
+                jurisdiction_value = f"{total_districts} Districts"
+                jurisdiction_subtext = f"{state_name} (Census 2011 Undivided)"
+        else:
+            # Nationwide Overview
+            if geography_mode == "current":
+                total_states = 36
+                total_districts = 789
+                jurisdiction_label = "Administrative Entities"
+                jurisdiction_value = "36 States & UTs"
+                jurisdiction_subtext = "789 Modern Administrative Districts (28 States, 8 UTs)"
+            else:
+                total_states = 35
+                total_districts = 640
+                jurisdiction_label = "Census 2011 Districts"
+                jurisdiction_value = "640 Districts"
+                jurisdiction_subtext = "35 Census 2011 States & UTs"
+
         total_incidents = row.total_incidents or 0
         cases_closed = row.cases_closed or 0
         cases_open = row.cases_open or 0
@@ -105,7 +159,7 @@ class CrimeRepository:
 
         return {
             "total_incidents": total_incidents,
-            "total_districts": row.total_districts or 0,
+            "total_districts": total_districts,
             "total_states": total_states,
             "total_crime_types": row.total_crime_types or 0,
             "total_crime_categories": total_categories,
@@ -114,6 +168,10 @@ class CrimeRepository:
             "clearance_rate": clearance_rate,
             "earliest_date": str(row.earliest_date or ""),
             "latest_date": str(row.latest_date or ""),
+            "geography_mode": geography_mode,
+            "jurisdiction_label": jurisdiction_label,
+            "jurisdiction_value": jurisdiction_value,
+            "jurisdiction_subtext": jurisdiction_subtext,
         }
 
     @staticmethod
@@ -124,6 +182,7 @@ class CrimeRepository:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         if interval == "year":
             period_expr = func.date_format(CrimeIncident.incident_date, "%Y")
@@ -137,7 +196,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("incident_count"),
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -156,6 +217,7 @@ class CrimeRepository:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         query = (
             db.query(
@@ -168,7 +230,9 @@ class CrimeRepository:
             .join(CrimeIncident, CrimeType.id == CrimeIncident.crime_type_id)
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -202,6 +266,7 @@ class CrimeRepository:
         district_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         query = (
             db.query(
@@ -219,7 +284,9 @@ class CrimeRepository:
         if category_id is not None:
             query = query.filter(CrimeType.category_id == category_id)
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -258,6 +325,7 @@ class CrimeRepository:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         hour_expr = func.hour(CrimeIncident.incident_time)
         query = db.query(
@@ -265,7 +333,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("incident_count"),
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -285,6 +355,7 @@ class CrimeRepository:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> Dict[str, Any]:
         query = db.query(
             CrimeIncident.victim_gender,
@@ -292,7 +363,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("count"),
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -336,6 +409,7 @@ class CrimeRepository:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         wp_expr = func.coalesce(func.nullif(CrimeIncident.weapon_used, ""), "UNKNOWN")
         query = db.query(
@@ -343,7 +417,9 @@ class CrimeRepository:
             func.count(CrimeIncident.id).label("incident_count"),
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=district_id)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(CrimeIncident.district_id.in_(filter_ids))
 
@@ -364,6 +440,7 @@ class CrimeRepository:
         metric: str = "volume",
         limit: int = 10,
         state_id: Optional[int] = None,
+        geography_mode: str = "current",
     ) -> List[Dict[str, Any]]:
         query = (
             db.query(
@@ -378,7 +455,9 @@ class CrimeRepository:
             .outerjoin(DistrictDemographics, District.id == DistrictDemographics.district_id)
         )
 
-        filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=state_id, district_id=None)
+        filter_ids = CrimeRepository.resolve_filter_district_ids(
+            db, state_id=state_id, district_id=None, geography_mode=geography_mode
+        )
         if filter_ids is not None:
             query = query.filter(District.id.in_(filter_ids))
         else:

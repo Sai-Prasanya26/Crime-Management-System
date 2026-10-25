@@ -19,6 +19,10 @@ class CrimeOverviewResponse(BaseModel):
     latest_incident_date: str
     filtered_by_state_id: Optional[int] = None
     filtered_by_district_id: Optional[int] = None
+    geography_mode: str = "current"
+    jurisdiction_label: str = "Administrative Entities"
+    jurisdiction_value: str = "36 States & UTs"
+    jurisdiction_subtext: str = "789 Modern Administrative Districts"
 
 
 class TrendItem(BaseModel):
