@@ -6,7 +6,6 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
-  CheckCircle2,
 } from 'lucide-react';
 import type { TypeBreakdownResponse } from '../../types';
 
@@ -322,15 +321,6 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Footer info */}
-      <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-[#5D6878]">
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-          <span>Interactive sorting active across all 21 codified Indian Penal Code offenses</span>
-        </div>
-        <span>Verified Baseline Dataset • NCRB Standard Codification</span>
       </div>
     </div>
   );

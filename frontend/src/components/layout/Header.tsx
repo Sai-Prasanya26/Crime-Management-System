@@ -31,6 +31,7 @@ interface HeaderProps {
   isRefreshing?: boolean;
   onToggleSidebar?: () => void;
   hideSidebar?: boolean;
+  action?: React.ReactNode;
 }
 
 const getOperationIcon = (title: string, pathname: string, customIcon?: LucideIcon): LucideIcon => {
@@ -59,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing,
   onToggleSidebar,
   hideSidebar = false,
+  action,
 }) => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -107,9 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
   // =========================================================================
   if (hideSidebar) {
     return (
-      <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-3 sm:px-5 lg:px-6 shadow-2xs gap-3">
-        {/* Left: [← Back] | [Icon] Title + Short Subtitle */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 pr-1">
+      <header className="sticky top-0 z-20 flex min-h-16 w-full items-center justify-between border-b border-[#D9E1EA] bg-white px-3 sm:px-5 lg:px-6 shadow-2xs gap-3 py-2 flex-wrap sm:flex-nowrap">
+        {/* Left: [← Back] | [Icon] Title + Short Subtitle + Optional Action */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 min-w-0 pr-1">
           {/* 1. Back button */}
           <button
             type="button"
@@ -140,6 +142,13 @@ export const Header: React.FC<HeaderProps> = ({
               </p>
             )}
           </div>
+
+          {/* Action aligned to the right of title and subtitle */}
+          {action && (
+            <div className="flex items-center shrink-0">
+              {action}
+            </div>
+          )}
         </div>
 
         {/* Right: 5. User Profile Dropdown ONLY */}
@@ -198,6 +207,11 @@ export const Header: React.FC<HeaderProps> = ({
             </p>
           )}
         </div>
+        {action && (
+          <div className="flex items-center shrink-0">
+            {action}
+          </div>
+        )}
       </div>
 
       {/* Center: Global Intelligence Search (accessible on large desktop) */}

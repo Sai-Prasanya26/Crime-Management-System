@@ -11,6 +11,7 @@ interface DashboardLayoutProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   hideSidebar?: boolean;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -32,6 +33,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing,
   hideSidebar,
+  action,
   children,
 }) => {
   const location = useLocation();
@@ -69,6 +71,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
           hideSidebar={isOperationWorkspace}
+          action={action}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
 
@@ -99,9 +102,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <span className="block md:inline mt-0.5 md:mt-0 font-normal text-[#64748B]">
                 Data-Driven Crime Management System with AI-Based Resource Optimization
               </span>
-            </div>
-            <div className="text-[11px] text-[#5D6878] shrink-0 font-medium">
-              Restricted Law Enforcement Operations
             </div>
           </div>
         </footer>

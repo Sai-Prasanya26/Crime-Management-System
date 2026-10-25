@@ -2,9 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   BarChart3,
-  ArrowLeft,
-  FileSpreadsheet,
-  Layers,
+  LayoutDashboard,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -116,6 +114,16 @@ export const CrimeAnalyticsPage: React.FC = () => {
       subtitle="Detailed analysis of crime categories, offense types, temporal patterns, and reported incidents."
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
+      action={
+        <Link
+          to="/dashboard?workspace=fullscreen"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E1EA] bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 hover:border-[#BAC7D5] hover:bg-[#F4F7FA] hover:text-[#0B1F3A] transition-colors shadow-2xs shrink-0"
+          title="Navigate to Executive Dashboard"
+        >
+          <LayoutDashboard className="h-3.5 w-3.5 text-[#1769AA]" />
+          <span>Executive Dashboard</span>
+        </Link>
+      }
     >
       {/* Analytics Filter Toolbar */}
       <DashboardFilters
@@ -123,38 +131,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
         onFilterChange={handleFilterChange}
         isLoading={isLoading || isRefreshing}
       />
-
-      {/* Navigation & Context Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white px-4 py-2.5 text-xs shadow-2xs">
-        <div className="flex items-center gap-2">
-          <Link
-            to="/dashboard?workspace=fullscreen"
-            className="inline-flex items-center gap-1.5 font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Executive Overview Dashboard</span>
-          </Link>
-          <span className="text-slate-300">|</span>
-          <span className="text-[#5D6878]">
-            Detailed Crime Analytics Workspace
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          {types && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-[#5D6878]">
-              <FileSpreadsheet className="h-3.5 w-3.5 text-[#1769AA]" />
-              <span>{types.items.length} Codified Offenses</span>
-            </span>
-          )}
-          {categories && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-[#5D6878]">
-              <Layers className="h-3.5 w-3.5 text-[#1769AA]" />
-              <span>{categories.items.length} Legal Domains</span>
-            </span>
-          )}
-        </div>
-      </div>
 
       {/* Loading State */}
       {isLoading && !overview && (
