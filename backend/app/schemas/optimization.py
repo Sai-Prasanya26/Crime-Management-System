@@ -14,7 +14,10 @@ class OptimizationRunRequest(BaseModel):
     resource_type_id: int = Field(1, description="Resource Type ID (1: Police Officers, 2: Patrol Vehicles)")
     assessment_period: str = Field("2026-11-01", description="Assessment period date (YYYY-MM-DD)")
     scenario_name: Optional[str] = Field(None, description="Descriptive scenario name")
-    scenario_type: str = Field("BASELINE_CONSTRAINED", description="Scenario type: BASELINE_CONSTRAINED, CRITICAL_RISK_PRIORITY, PROPORTIONAL_WORKLOAD, RESERVE_HEAVY")
+    scenario_type: str = Field("BASELINE_CONSTRAINED", description="Scenario type: BASELINE_CONSTRAINED, CRITICAL_RISK_PRIORITY, PROPORTIONAL_WORKLOAD, RESERVE_HEAVY, HYPOTHETICAL_SIMULATION")
+    is_simulation: bool = Field(False, description="Explicit flag to run a hypothetical planning simulation instead of an operational deployment allocation")
+    allocation_mode: str = Field("OPERATIONAL", description="Allocation mode: OPERATIONAL or SIMULATION")
+    transferable_pool_size: Optional[int] = Field(None, description="Documented or simulated transferable pool size (cannot exceed standing pool)")
     pool_capacity_override: Optional[int] = Field(None, description="Optional override of state resource pool capacity")
     minimum_reserve_ratio: float = Field(0.20, ge=0.0, le=1.0, description="Minimum operational reserve ratio of required demand")
     risk_weight_factor: float = Field(1.0, ge=0.0, le=5.0, description="Weighting multiplier for risk score in shortfall penalty")
@@ -30,6 +33,7 @@ class OptimizationAllocationItem(BaseModel):
     risk_level: str
     priority_score: float
     baseline_quantity: Optional[int]
+    baseline_status: str = Field("OFFICIAL_DISTRICT_DISCLOSED", description="OFFICIAL_DISTRICT_DISCLOSED, UNRECORDED_DATA_UNAVAILABLE, or SIMULATION_ESTIMATE")
     required_quantity: int
     recommended_quantity: int
     change_quantity: int
@@ -43,6 +47,10 @@ class OptimizationRunResponse(BaseModel):
     run_id: str
     scenario_name: str
     scenario_type: str
+    is_simulation: bool = Field(False, description="True if run is a hypothetical simulation rather than an operational allocation")
+    allocation_mode: str = Field("OPERATIONAL", description="OPERATIONAL or SIMULATION")
+    data_validity: str = Field("VERIFIED", description="VERIFIED, INSUFFICIENT_DATA, or HYPOTHETICAL_SIMULATION_ONLY")
+    transferable_pool: Optional[int] = Field(None, description="Documented or simulated transferable pool size")
     state_id: Optional[int] = None
     state_name: Optional[str] = None
     resource_type_id: int
@@ -67,6 +75,9 @@ class OptimizationRunResponse(BaseModel):
     execution_duration_ms: int
     constraints_applied: Optional[Dict[str, Any]] = None
     explanation_summary: str
+    simulation_assumptions: Optional[List[str]] = None
+    verified_districts_count: int = Field(0, description="Count of districts with verified official non-null baseline disclosures")
+    unrecorded_districts_count: int = Field(0, description="Count of districts with unrecorded baseline inventories")
     created_at: str
     allocations: Optional[List[OptimizationAllocationItem]] = None
 
@@ -94,6 +105,7 @@ class OptimizationScenarioComparisonRequest(BaseModel):
     state_id: int = Field(..., description="State ID for scenario comparison")
     resource_type_id: int = Field(1, description="Resource Type ID")
     assessment_period: str = Field("2026-11-01", description="Assessment period date")
+    is_simulation: bool = Field(False, description="Whether the compared scenarios are hypothetical simulations")
     scenarios: List[OptimizationRunRequest] = Field(..., min_length=2, max_length=5, description="2 to 5 scenarios to compare")
 
 
@@ -104,3 +116,4 @@ class OptimizationScenarioComparisonResponse(BaseModel):
     assessment_period: str
     scenarios: List[OptimizationRunResponse]
     comparison_summary: str
+

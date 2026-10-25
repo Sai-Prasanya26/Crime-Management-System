@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     DECIMAL,
+    Boolean,
     ForeignKey,
     TIMESTAMP,
     Date,
@@ -43,6 +44,10 @@ class OptimizationRun(Base):
     forecast_model_version = Column(String(50), nullable=True)
     forecast_origin_date = Column(Date, nullable=True)
     algorithm = Column(String(50), nullable=False, default="MILP_SCIPY_V2")
+    is_simulation = Column(Boolean, nullable=False, default=False)
+    allocation_mode = Column(String(30), nullable=False, default="OPERATIONAL")
+    data_validity = Column(String(50), nullable=False, default="VERIFIED")
+    transferable_pool = Column(Integer, nullable=True)
     pool_capacity = Column(Integer, nullable=False)
     allocated_total = Column(Integer, nullable=False, default=0)
     remaining_pool = Column(Integer, nullable=False, default=0)
@@ -77,6 +82,7 @@ class OptimizationAllocation(Base):
     run_id = Column(String(64), nullable=False, index=True)
     district_id = Column(Integer, ForeignKey("districts.id", ondelete="RESTRICT"), nullable=False)
     baseline_quantity = Column(Integer, nullable=True)
+    baseline_status = Column(String(40), nullable=False, default="OFFICIAL_DISTRICT_DISCLOSED")
     required_quantity = Column(Integer, nullable=False, default=0)
     recommended_quantity = Column(Integer, nullable=False, default=0)
     change_quantity = Column(Integer, nullable=False, default=0)
@@ -98,3 +104,4 @@ class OptimizationAllocation(Base):
     # Relationships
     district = relationship("District")
     run = relationship("OptimizationRun", back_populates="allocations", primaryjoin="foreign(OptimizationAllocation.run_id)==OptimizationRun.run_id")
+

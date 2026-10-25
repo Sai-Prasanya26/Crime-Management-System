@@ -178,3 +178,4 @@ def compare_optimization_scenarios(
         req=request,
         user_id=current_user.id,
     )
+

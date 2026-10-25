@@ -1,13 +1,15 @@
 """
-Phase 10: AI-Based Police Resource Optimization Service.
+Phase 10 & 10.1: AI-Based Police Resource Optimization Service.
 
 Implements:
 1. Scale-Anchored Constrained Optimization (MILP via scipy.optimize)
 2. Rigorous handling of official inventory vs unrecorded inventories
-3. Absolute resource conservation (allocated <= verified available)
-4. Transferability and eligibility rules (Personnel/Mobility eligible; Infrastructure ineligible)
-5. Explainable, non-causal scenario evaluation and audit logging
-6. Documented resolution of Phase 7D vs Phase 9 resource discrepancies
+3. Absolute resource conservation (allocated <= verified available pool)
+4. Phase 10.1 Governance: Operational runs require verified district baselines
+   and an authorized transferable pool; unverified jurisdictions return INSUFFICIENT_DATA.
+5. Strict segregation of Hypothetical Planning Simulations with full assumption disclosure.
+6. Transferability and eligibility rules (Personnel/Mobility eligible; Immovable Infrastructure flagged INELIGIBLE).
+7. Explainable, non-causal scenario evaluation and audit logging.
 """
 
 import time
@@ -66,6 +68,13 @@ PLANNING_DISCLAIMER = (
     "exclusive prerogative of state police leadership. Demographic profiling is strictly prohibited."
 )
 
+SIMULATION_ASSUMPTIONS = [
+    "1. District Baseline Staffing: Official district-level baseline police deployment is unrecorded in official government publications for most districts and is strictly NOT inferred from state averages.",
+    "2. Transferable Pool: Total state standing force represents cumulative administrative strength across all state wings, headquarters, and local stations. It does NOT constitute an authorized mobile or transferable pool.",
+    "3. Normative Demands: District demand figures are theoretical normative models based on BPR&D population benchmarks (181 officers per 100k) and Phase 9 risk scores for capacity simulation only.",
+    "4. Non-Operational Status: This simulation output is an advisory policy-modeling indicator. Under Indian constitutional jurisprudence (Seventh Schedule, Entry 2, List II), operational deployment requires statutory orders from state police leadership (DGP / Home Dept). Allocations MUST NOT be interpreted as actual staffing or operational deployment orders.",
+]
+
 
 class OptimizationService:
 
@@ -76,12 +85,12 @@ class OptimizationService:
         user_id: Optional[int] = None,
     ) -> OptimizationRunResponse:
         """
-        Executes constrained Mixed-Integer Linear Programming (MILP) resource optimization.
+        Executes constrained Mixed-Integer Linear Programming (MILP) resource optimization or simulation.
         Guarantees:
         - Resource Conservation: sum(recommended) <= verified_available_pool
-        - Minimum Operational Reserve: recommended_d >= reserve_d
-        - Deterministic outputs for identical inputs
-        - Safe handling of unrecorded vs verified district inventories
+        - Operational Guard: Missing district inventories or undocumented transferable pools halt operational runs with INSUFFICIENT_DATA
+        - Segregated Simulation Mode: Hypothetical planning simulations are clearly labeled with full assumption disclosures
+        - Safe handling of unrecorded vs verified district inventories (unrecorded remains NULL)
         """
         start_time = time.time()
         
@@ -93,6 +102,14 @@ class OptimizationService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid assessment date format: {req.assessment_period}. Expected YYYY-MM-DD.",
             )
+
+        # Determine simulation vs operational mode
+        is_sim = bool(
+            req.is_simulation 
+            or (req.scenario_type == "HYPOTHETICAL_SIMULATION") 
+            or (req.allocation_mode == "SIMULATION")
+        )
+        allocation_mode = "SIMULATION" if is_sim else "OPERATIONAL"
 
         # 2. Validate Resource Type Eligibility
         rt_info = OptimizationRepository.get_state_resource_pool(db, req.state_id or 1, req.resource_type_id)
@@ -111,7 +128,6 @@ class OptimizationService:
                 req.resource_type_id,
                 f"Resource category '{resource_category}' is designated as non-transferable or lacks verified standing inventory.",
             )
-            # Create a transparent INSUFFICIENT_DATA / INELIGIBLE run record
             run_id = f"OPT-{period_dt.strftime('%Y%m%d')}-S{req.state_id or 0}-R{req.resource_type_id}-{uuid.uuid4().hex[:6].upper()}"
             scenario_name = req.scenario_name or f"{req.scenario_type} - {resource_name}"
             
@@ -119,6 +135,10 @@ class OptimizationService:
                 "run_id": run_id,
                 "scenario_name": scenario_name,
                 "scenario_type": req.scenario_type,
+                "is_simulation": is_sim,
+                "allocation_mode": allocation_mode,
+                "data_validity": "INELIGIBLE",
+                "transferable_pool": None,
                 "state_id": req.state_id,
                 "resource_type_id": req.resource_type_id,
                 "period_year": period_dt.year,
@@ -164,6 +184,10 @@ class OptimizationService:
                 "run_id": run_id,
                 "scenario_name": req.scenario_name or f"{req.scenario_type} - {resource_name}",
                 "scenario_type": req.scenario_type,
+                "is_simulation": is_sim,
+                "allocation_mode": allocation_mode,
+                "data_validity": "INSUFFICIENT_DATA",
+                "transferable_pool": None,
                 "state_id": req.state_id,
                 "resource_type_id": req.resource_type_id,
                 "period_year": period_dt.year,
@@ -196,27 +220,138 @@ class OptimizationService:
             )
 
         district_ids = [d["district_id"] for d in districts]
+        N = len(districts)
+        state_display_name = districts[0]["state_name"] if req.state_id else "National"
 
-        # 5. Retrieve Phase 9 Risk Scores
+        # 5. Retrieve District Official Baseline Inventories (if recorded)
+        baselines = OptimizationRepository.get_district_baseline_inventories(
+            db, district_ids, req.resource_type_id
+        )
+        verified_count = sum(1 for did in district_ids if baselines.get(did) is not None and baselines[did].get("actual_count") is not None)
+        unrecorded_count = N - verified_count
+
+        # 6. Phase 10.1 Governance Guard: Operational Allocation Verification
+        # In operational mode, unrecorded district baseline staffing or an undocumented transferable pool
+        # prohibits executing an operational inter-district reallocation.
+        if not is_sim:
+            if unrecorded_count > 0 or (req.transferable_pool_size is None and N > 1):
+                run_id = f"OPT-{period_dt.strftime('%Y%m%d')}-S{req.state_id or 0}-R{req.resource_type_id}-{uuid.uuid4().hex[:6].upper()}"
+                scenario_name = req.scenario_name or f"{req.scenario_type} - {resource_name}"
+                
+                insufficient_reason = (
+                    f"Operational district allocation halted: Official district-level baseline staffing is unrecorded for "
+                    f"{unrecorded_count} of {N} districts in {state_display_name} (only {verified_count} districts have verified gazetted disclosures). "
+                    f"Furthermore, no official state-level transferable pool or inter-district transfer quota is documented. "
+                    f"Under strict Phase 10.1 data integrity standards, state-level standing force totals ({pool_capacity:,} units) "
+                    f"cannot be assumed to be 100% mobile or reallocated across districts with unrecorded staffing. "
+                    f"Operational reallocation requires verified district staffing and an authorized transferable pool. "
+                    f"State-level inventory figures ({pool_capacity:,} units) remain verified and are displayed separately as state aggregates. "
+                    f"To model theoretical capacity across districts, execute a Hypothetical Planning Simulation (is_simulation=true)."
+                )
+
+                run_data = {
+                    "run_id": run_id,
+                    "scenario_name": scenario_name,
+                    "scenario_type": req.scenario_type,
+                    "is_simulation": False,
+                    "allocation_mode": "OPERATIONAL",
+                    "data_validity": "INSUFFICIENT_DATA",
+                    "transferable_pool": None,
+                    "state_id": req.state_id,
+                    "resource_type_id": req.resource_type_id,
+                    "period_year": period_dt.year,
+                    "period_month": period_dt.month,
+                    "assessment_period": period_dt,
+                    "risk_version": "risk-v2.0",
+                    "pool_capacity": pool_capacity,
+                    "allocated_total": 0,
+                    "remaining_pool": pool_capacity,
+                    "total_demand": 0,
+                    "shortfall_before": 0,
+                    "shortfall_after": 0,
+                    "solver_status": "INSUFFICIENT_DATA",
+                    "objective_value": 0.0,
+                    "execution_duration_ms": int((time.time() - start_time) * 1000),
+                    "constraints_summary": {
+                        "status": "INSUFFICIENT_DATA",
+                        "reason": "UNRECORDED_DISTRICT_INVENTORIES_AND_UNDOCUMENTED_TRANSFERABLE_POOL",
+                        "total_districts": N,
+                        "verified_districts": verified_count,
+                        "unrecorded_districts": unrecorded_count,
+                        "standing_pool_capacity": pool_capacity,
+                        "pool_source": pool_source,
+                        "state_level_total_verified": True,
+                        "operational_allocation_permitted": False,
+                    },
+                    "explanation_summary": insufficient_reason,
+                    "created_by_user_id": user_id,
+                }
+                run = OptimizationRepository.save_optimization_run(db, run_data, [])
+                db.commit()
+                return OptimizationService._build_run_response(
+                    run, [], resource_name, resource_category, state_display_name,
+                    verified_count=verified_count, unrecorded_count=unrecorded_count
+                )
+
+        # 7. Simulation Mode Handling: Determine Effective Simulation Pool
+        if req.transferable_pool_size is not None:
+            sim_pool = min(req.transferable_pool_size, pool_capacity)
+            pool_source_note = f"User-Documented Simulation Transferable Pool ({sim_pool:,} units)"
+        elif req.pool_capacity_override is not None:
+            sim_pool = max(0, req.pool_capacity_override)
+            pool_source_note = f"User-Configured Simulation Override ({sim_pool:,} units)"
+        else:
+            sim_pool = pool_capacity
+            pool_source_note = f"Standing State Force Pool ({pool_capacity:,} units) modeled as hypothetical capacity envelope"
+
+        if sim_pool <= 0:
+            run_id = f"OPT-{period_dt.strftime('%Y%m%d')}-S{req.state_id or 0}-R{req.resource_type_id}-{uuid.uuid4().hex[:6].upper()}"
+            run_data = {
+                "run_id": run_id,
+                "scenario_name": req.scenario_name or f"[SIMULATION] {req.scenario_type} - {resource_name}",
+                "scenario_type": req.scenario_type,
+                "is_simulation": True,
+                "allocation_mode": "SIMULATION",
+                "data_validity": "INSUFFICIENT_DATA",
+                "transferable_pool": 0,
+                "state_id": req.state_id,
+                "resource_type_id": req.resource_type_id,
+                "period_year": period_dt.year,
+                "period_month": period_dt.month,
+                "assessment_period": period_dt,
+                "risk_version": "risk-v2.0",
+                "pool_capacity": 0,
+                "allocated_total": 0,
+                "remaining_pool": 0,
+                "total_demand": 0,
+                "shortfall_before": 0,
+                "shortfall_after": 0,
+                "solver_status": "INSUFFICIENT_DATA",
+                "objective_value": 0.0,
+                "execution_duration_ms": int((time.time() - start_time) * 1000),
+                "constraints_summary": {"error": "ZERO_SIMULATION_CAPACITY", "source": pool_source_note},
+                "explanation_summary": f"Simulation cannot proceed: Effective simulation transferable pool is zero.",
+                "created_by_user_id": user_id,
+            }
+            run = OptimizationRepository.save_optimization_run(db, run_data, [])
+            db.commit()
+            return OptimizationService._build_run_response(
+                run, [], resource_name, resource_category, state_display_name,
+                verified_count=verified_count, unrecorded_count=unrecorded_count
+            )
+
+        # 8. Retrieve Phase 9 Risk Scores & Phase 8B Forecasts
         risk_scores = OptimizationRepository.get_district_risk_scores(
             db, district_ids, period_dt.year, period_dt.month, calculation_version="risk-v2.0"
         )
-
-        # 6. Retrieve Phase 8B Crime Forecasts
         forecasts = OptimizationRepository.get_district_forecasts(
             db, district_ids, period_dt.year, period_dt.month
         )
 
-        # 7. Retrieve District Official Baseline Inventories (if recorded)
-        baselines = OptimizationRepository.get_district_baseline_inventories(
-            db, district_ids, req.resource_type_id
-        )
-
-        # 8. Compute District Demands and Operational Reserves
-        N = len(districts)
         demands = np.zeros(N, dtype=int)
         reserves = np.zeros(N, dtype=int)
         baseline_vals = [None] * N
+        baseline_statuses = ["UNRECORDED_DATA_UNAVAILABLE"] * N
         risk_vals = np.zeros(N, dtype=float)
         risk_levels = ["MODERATE"] * N
         forecast_vols = np.zeros(N, dtype=float)
@@ -249,11 +384,9 @@ class OptimizationService:
 
             # Normative operational demand calculation
             if req.resource_type_id == 1:
-                # Police Officers (BPR&D norm: 181 per 100k, modulated by risk multiplier)
                 risk_mul = max(r_score / 50.0, 0.5)
                 d_qty = max(5, int(math.ceil((pop / 100000.0) * 181.0 * risk_mul)))
             elif req.resource_type_id == 2:
-                # Patrol Vehicles (1 per 20 required officers)
                 risk_mul = max(r_score / 50.0, 0.5)
                 officers_d = max(5, int(math.ceil((pop / 100000.0) * 181.0 * risk_mul)))
                 d_qty = max(2, int(math.ceil(officers_d / 20.0)))
@@ -265,18 +398,19 @@ class OptimizationService:
             # Baseline official inventory
             b_info = baselines.get(did)
             if b_info is not None and b_info.get("actual_count") is not None:
-                b_qty = b_info["actual_count"]
-                baseline_vals[i] = b_qty
+                baseline_vals[i] = b_info["actual_count"]
+                baseline_statuses[i] = "OFFICIAL_DISTRICT_DISCLOSED"
             else:
                 baseline_vals[i] = None
+                baseline_statuses[i] = "UNRECORDED_DATA_UNAVAILABLE"
 
-            # Minimum Operational Reserve
+            # Minimum Operational Reserve in simulation
             reserve_ratio = req.minimum_reserve_ratio
             if req.scenario_type == "RESERVE_HEAVY":
                 reserve_ratio = max(reserve_ratio, 0.40)
             
-            # Reserve is at least 1 unit, capped at baseline if baseline is recorded
-            calc_reserve = max(1, int(math.floor(reserve_ratio * d_qty)))
+            min_floor = 1 if reserve_ratio > 0.0 else 0
+            calc_reserve = max(min_floor, int(math.floor(reserve_ratio * d_qty)))
             if baseline_vals[i] is not None:
                 calc_reserve = min(baseline_vals[i], calc_reserve)
             reserves[i] = calc_reserve
@@ -296,22 +430,29 @@ class OptimizationService:
         total_reserve = int(np.sum(reserves))
         total_demand = int(np.sum(demands))
 
-        if total_reserve > pool_capacity:
-            # Infeasible: Required baseline reserves exceed verified available pool
+        if total_reserve > sim_pool:
             run_id = f"OPT-{period_dt.strftime('%Y%m%d')}-S{req.state_id or 0}-R{req.resource_type_id}-{uuid.uuid4().hex[:6].upper()}"
+            scenario_name = req.scenario_name or f"[SIMULATION] {req.scenario_type} - {resource_name}"
+            if not scenario_name.startswith("[SIMULATION]"):
+                scenario_name = f"[SIMULATION] {scenario_name}"
+
             run_data = {
                 "run_id": run_id,
-                "scenario_name": req.scenario_name or f"{req.scenario_type} - {resource_name}",
+                "scenario_name": scenario_name,
                 "scenario_type": req.scenario_type,
+                "is_simulation": True,
+                "allocation_mode": "SIMULATION",
+                "data_validity": "HYPOTHETICAL_SIMULATION_ONLY",
+                "transferable_pool": sim_pool,
                 "state_id": req.state_id,
                 "resource_type_id": req.resource_type_id,
                 "period_year": period_dt.year,
                 "period_month": period_dt.month,
                 "assessment_period": period_dt,
                 "risk_version": "risk-v2.0",
-                "pool_capacity": pool_capacity,
+                "pool_capacity": sim_pool,
                 "allocated_total": 0,
-                "remaining_pool": pool_capacity,
+                "remaining_pool": sim_pool,
                 "total_demand": total_demand,
                 "shortfall_before": total_demand,
                 "shortfall_after": total_demand,
@@ -319,62 +460,54 @@ class OptimizationService:
                 "objective_value": None,
                 "execution_duration_ms": int((time.time() - start_time) * 1000),
                 "constraints_summary": {
+                    "is_simulation": True,
+                    "simulation_assumptions": SIMULATION_ASSUMPTIONS,
                     "total_reserve_required": total_reserve,
-                    "pool_capacity_available": pool_capacity,
-                    "deficit": total_reserve - pool_capacity,
+                    "simulation_pool_available": sim_pool,
+                    "standing_pool_capacity": pool_capacity,
+                    "deficit": total_reserve - sim_pool,
                 },
                 "explanation_summary": (
-                    f"Infeasible scenario: Sum of minimum district operational reserves ({total_reserve:,} units) "
-                    f"exceeds verified standing pool capacity ({pool_capacity:,} units). Deficit: {total_reserve - pool_capacity:,} units. "
-                    f"Lower the minimum reserve ratio or expand standing capacity to achieve feasibility."
+                    f"[HYPOTHETICAL PLANNING SIMULATION] Infeasible scenario: Sum of minimum district operational reserves ({total_reserve:,} units) "
+                    f"exceeds simulated pool capacity ({sim_pool:,} units). Deficit: {total_reserve - sim_pool:,} units. "
+                    f"Lower the minimum reserve ratio or increase the simulation pool capacity."
                 ),
                 "created_by_user_id": user_id,
             }
             run = OptimizationRepository.save_optimization_run(db, run_data, [])
             db.commit()
-            return OptimizationService._build_run_response(run, [], resource_name, resource_category, districts[0]["state_name"])
+            return OptimizationService._build_run_response(
+                run, [], resource_name, resource_category, state_display_name,
+                verified_count=verified_count, unrecorded_count=unrecorded_count
+            )
 
         # 10. Solve Constrained Optimization Problem via MILP
         # Variables:
         # x_i for i in 0..N-1: allocated resources (integer >= reserves[i])
         # y_i for i in 0..N-1: unmet shortfall (continuous >= 0)
-        # Total variables = 2 * N
-        # Objective: min sum_i (priority_weights[i] * y_i)
-        
         c = np.zeros(2 * N)
-        # Objective minimizes weighted shortfall
         c[N:2*N] = priority_weights
 
-        # Variable bounds
-        # x_i: [reserves[i], max(demands[i] * 2, reserves[i])]
-        # y_i: [0, inf]
         lb = np.zeros(2 * N)
         ub = np.full(2 * N, np.inf)
         lb[0:N] = reserves
-        # Prevent runaway hoarding by capping allocation to at most 150% of demand or pool
         for i in range(N):
-            ub[i] = min(pool_capacity, max(int(demands[i] * 1.5), reserves[i]))
+            ub[i] = min(sim_pool, max(int(demands[i] * 1.5), reserves[i]))
 
         integrality = np.zeros(2 * N, dtype=int)
-        integrality[0:N] = 1  # x_i are integers
-        integrality[N:2*N] = 0  # y_i can be continuous (will be integer if x_i are integer)
+        integrality[0:N] = 1
+        integrality[N:2*N] = 0
 
         bounds = Bounds(lb, ub)
-
-        # Constraints:
-        # 1. Resource Conservation: sum(x_i) <= pool_capacity
-        # Row 0: x_0 + x_1 + ... + x_{N-1} <= pool_capacity
-        # 2. Shortfall Definition: x_i + y_i >= demands[i] for each i
-        # Rows 1..N: x_i + y_i >= demands[i]
 
         num_constraints = 1 + N
         A = np.zeros((num_constraints, 2 * N))
         constraint_lb = np.full(num_constraints, -np.inf)
         constraint_ub = np.full(num_constraints, np.inf)
 
-        # Constraint 1: Conservation
+        # Constraint 1: Conservation: sum(x_i) <= sim_pool
         A[0, 0:N] = 1.0
-        constraint_ub[0] = pool_capacity
+        constraint_ub[0] = sim_pool
         constraint_lb[0] = 0.0
 
         # Constraints 2..N+1: x_i + y_i >= demands[i]
@@ -391,14 +524,13 @@ class OptimizationService:
         res = milp(c=c, integrality=integrality, bounds=bounds, constraints=linear_constraint)
 
         if not res.success:
-            # Fallback to greedy tiered allocation if numerical solver fails
             solver_status = "FEASIBLE"
             allocations_x, shortfalls_y = OptimizationService._solve_greedy_fallback(
-                N, demands, reserves, pool_capacity, priority_weights
+                N, demands, reserves, sim_pool, priority_weights
             )
             obj_val = float(np.sum(priority_weights * shortfalls_y))
         else:
-            solver_status = "OPTIMAL"
+            solver_status = "SIMULATION"
             sol = res.x
             allocations_x = np.round(sol[0:N]).astype(int)
             shortfalls_y = np.maximum(0, demands - allocations_x).astype(int)
@@ -406,9 +538,8 @@ class OptimizationService:
 
         # Guarantee strict conservation against rounding
         allocated_total = int(np.sum(allocations_x))
-        if allocated_total > pool_capacity:
-            excess = allocated_total - pool_capacity
-            # Trim from lowest priority districts with surplus above reserve
+        if allocated_total > sim_pool:
+            excess = allocated_total - sim_pool
             sorted_indices = np.argsort(priority_weights)
             for idx in sorted_indices:
                 reducible = allocations_x[idx] - reserves[idx]
@@ -421,7 +552,7 @@ class OptimizationService:
                         break
             allocated_total = int(np.sum(allocations_x))
 
-        remaining_pool = pool_capacity - allocated_total
+        remaining_pool = sim_pool - allocated_total
         shortfall_before = int(np.sum([
             max(0, demands[i] - (baseline_vals[i] if baseline_vals[i] is not None else 0))
             for i in range(N)
@@ -437,6 +568,7 @@ class OptimizationService:
             d_req = int(demands[i])
             d_alloc = int(allocations_x[i])
             d_base = baseline_vals[i]
+            d_status = baseline_statuses[i]
             d_short_after = int(shortfalls_y[i])
             d_short_before = max(0, d_req - (d_base if d_base is not None else 0))
             d_change = d_alloc - (d_base if d_base is not None else reserves[i])
@@ -450,12 +582,19 @@ class OptimizationService:
             else:
                 alloc_status = "UNMET"
 
-            explanation_note = (
-                f"Demand {d_req:,} {resource_category.lower()} calculated from risk score {risk_vals[i]:.2f} ({risk_levels[i]}). "
-                f"Recommended {d_alloc:,} preserves minimum reserve of {reserves[i]:,}."
-            )
             if d_base is not None:
-                explanation_note += f" Official ground inventory: {d_base:,}."
+                explanation_note = (
+                    f"SIMULATION TARGET: Verified ground baseline is {d_base:,}. "
+                    f"Normative demand is {d_req:,} (risk {risk_vals[i]:.1f}, {risk_levels[i]}). "
+                    f"Recommended simulation allocation is {d_alloc:,}."
+                )
+            else:
+                explanation_note = (
+                    f"SIMULATION ONLY: Official district baseline is unrecorded. "
+                    f"Normative demand {d_req:,} modeled from population and risk score ({risk_vals[i]:.1f}, {risk_levels[i]}). "
+                    f"Recommended simulation allocation {d_alloc:,} is a theoretical capacity planning figure, "
+                    f"NOT actual staffing or an operational deployment order."
+                )
 
             allocations_data.append({
                 "district_id": did,
@@ -465,6 +604,7 @@ class OptimizationService:
                 "risk_level": risk_levels[i],
                 "priority_score": round(float(priority_weights[i] * 50.0), 2),
                 "baseline_quantity": d_base,
+                "baseline_status": d_status,
                 "required_quantity": d_req,
                 "recommended_quantity": d_alloc,
                 "change_quantity": d_change,
@@ -475,30 +615,31 @@ class OptimizationService:
             })
 
         # 12. Build Narrative Explanation Summary
-        explanation_summary = OptimizationService._build_explanation_narrative(
-            state_name=districts[0]["state_name"] if req.state_id else "National",
-            resource_name=resource_name,
-            pool_capacity=pool_capacity,
-            allocated_total=allocated_total,
-            remaining_pool=remaining_pool,
-            total_demand=total_demand,
-            shortfall_before=shortfall_before,
-            shortfall_after=shortfall_after,
-            solver_status=solver_status,
-            scenario_type=req.scenario_type,
-            pool_source=pool_source,
-            districts_count=N,
+        scenario_name = req.scenario_name or f"[SIMULATION] {req.scenario_type} - {resource_name}"
+        if not scenario_name.startswith("[SIMULATION]"):
+            scenario_name = f"[SIMULATION] {scenario_name}"
+
+        explanation_summary = (
+            f"[HYPOTHETICAL PLANNING SIMULATION] Under scenario '{req.scenario_type}', {allocated_total:,} of {sim_pool:,} "
+            f"simulated {resource_name.lower()} were distributed across {N} districts in {state_display_name}. "
+            f"NOTE: Official district-level baseline staffing is unrecorded for {unrecorded_count} districts and is NOT inferred from state averages. "
+            f"Standing state pool is {pool_capacity:,} units ({pool_source}). "
+            f"This simulation output is an advisory capacity-modeling indicator and MUST NOT be used as operational deployment orders. "
+            f"{PLANNING_DISCLAIMER}"
         )
 
-        # 13. Persist Optimization Run and Allocations in MySQL
+        # 13. Persist Simulation Run and Allocations in MySQL
         run_id = f"OPT-{period_dt.strftime('%Y%m%d')}-S{req.state_id or 0}-R{req.resource_type_id}-{uuid.uuid4().hex[:6].upper()}"
-        scenario_name = req.scenario_name or f"{req.scenario_type} - {resource_name}"
         execution_duration = int((time.time() - start_time) * 1000)
 
         run_record_data = {
             "run_id": run_id,
             "scenario_name": scenario_name,
             "scenario_type": req.scenario_type,
+            "is_simulation": True,
+            "allocation_mode": "SIMULATION",
+            "data_validity": "HYPOTHETICAL_SIMULATION_ONLY",
+            "transferable_pool": sim_pool,
             "state_id": req.state_id,
             "resource_type_id": req.resource_type_id,
             "period_year": period_dt.year,
@@ -509,21 +650,27 @@ class OptimizationService:
             "forecast_model_version": forecast_model_ver or "phase8b_xgb_direct_h1",
             "forecast_origin_date": forecast_origin_dt,
             "algorithm": "MILP_SCIPY_V2",
-            "pool_capacity": pool_capacity,
+            "pool_capacity": sim_pool,
             "allocated_total": allocated_total,
             "remaining_pool": remaining_pool,
             "total_demand": total_demand,
             "shortfall_before": shortfall_before,
             "shortfall_after": shortfall_after,
-            "solver_status": solver_status,
+            "solver_status": "SIMULATION",
             "objective_value": round(obj_val, 4),
             "execution_duration_ms": execution_duration,
             "constraints_summary": {
-                "resource_conservation": f"allocated ({allocated_total:,}) <= pool ({pool_capacity:,})",
+                "is_simulation": True,
+                "simulation_assumptions": SIMULATION_ASSUMPTIONS,
+                "simulation_transferable_pool": sim_pool,
+                "standing_pool_capacity": pool_capacity,
+                "verified_districts_count": verified_count,
+                "unrecorded_districts_count": unrecorded_count,
+                "resource_conservation": f"allocated ({allocated_total:,}) <= pool ({sim_pool:,})",
                 "minimum_reserve_ratio": req.minimum_reserve_ratio,
                 "total_minimum_reserve": total_reserve,
                 "risk_weight_factor": req.risk_weight_factor,
-                "pool_source": pool_source,
+                "pool_source": pool_source_note,
             },
             "explanation_summary": explanation_summary,
             "created_by_user_id": user_id,
@@ -537,7 +684,9 @@ class OptimizationService:
             allocations_data,
             resource_name,
             resource_category,
-            districts[0]["state_name"] if req.state_id else "National",
+            state_display_name,
+            verified_count=verified_count,
+            unrecorded_count=unrecorded_count,
         )
 
     @staticmethod
@@ -566,39 +715,14 @@ class OptimizationService:
         return alloc, shortfalls
 
     @staticmethod
-    def _build_explanation_narrative(
-        state_name: str,
-        resource_name: str,
-        pool_capacity: int,
-        allocated_total: int,
-        remaining_pool: int,
-        total_demand: int,
-        shortfall_before: int,
-        shortfall_after: int,
-        solver_status: str,
-        scenario_type: str,
-        pool_source: str,
-        districts_count: int,
-    ) -> str:
-        reduction = shortfall_before - shortfall_after
-        reduction_pct = (reduction / max(1, shortfall_before)) * 100.0
-        utilization_pct = (allocated_total / max(1, pool_capacity)) * 100.0
-
-        return (
-            f"Under scenario '{scenario_type}', {allocated_total:,} of {pool_capacity:,} verified {resource_name.lower()} "
-            f"({utilization_pct:.1f}% capacity utilization) were allocated across {districts_count} administrative districts in {state_name}. "
-            f"Standing pool sourced from {pool_source}. Modeled shortfall was reduced by {reduction:,} units ({reduction_pct:.1f}% reduction), "
-            f"leaving an unmet shortfall of {shortfall_after:,} units. Solver status: {solver_status}. "
-            f"{PLANNING_DISCLAIMER}"
-        )
-
-    @staticmethod
     def _build_run_response(
         run: OptimizationRun,
         allocations_data: List[Dict[str, Any]],
         resource_name: str,
         resource_category: str,
         state_name: Optional[str] = None,
+        verified_count: Optional[int] = None,
+        unrecorded_count: Optional[int] = None,
     ) -> OptimizationRunResponse:
         reduction = max(0, run.shortfall_before - run.shortfall_after)
         reduction_pct = round((reduction / max(1, run.shortfall_before)) * 100.0, 2)
@@ -608,10 +732,24 @@ class OptimizationService:
             OptimizationAllocationItem(**item) for item in allocations_data
         ] if allocations_data else []
 
+        c_summary = run.constraints_summary or {}
+        v_count = verified_count if verified_count is not None else c_summary.get(
+            "verified_districts_count",
+            c_summary.get("verified_districts", sum(1 for it in items if it.baseline_status == "OFFICIAL_DISTRICT_DISCLOSED"))
+        )
+        u_count = unrecorded_count if unrecorded_count is not None else c_summary.get(
+            "unrecorded_districts_count",
+            c_summary.get("unrecorded_districts", sum(1 for it in items if it.baseline_status != "OFFICIAL_DISTRICT_DISCLOSED"))
+        )
+
         return OptimizationRunResponse(
             run_id=run.run_id,
             scenario_name=run.scenario_name,
             scenario_type=run.scenario_type,
+            is_simulation=getattr(run, "is_simulation", False),
+            allocation_mode=getattr(run, "allocation_mode", "OPERATIONAL"),
+            data_validity=getattr(run, "data_validity", "VERIFIED"),
+            transferable_pool=getattr(run, "transferable_pool", None),
             state_id=run.state_id,
             state_name=state_name,
             resource_type_id=run.resource_type_id,
@@ -634,8 +772,11 @@ class OptimizationService:
             solver_status=run.solver_status,
             objective_value=float(run.objective_value) if run.objective_value is not None else None,
             execution_duration_ms=run.execution_duration_ms,
-            constraints_applied=run.constraints_summary,
+            constraints_applied=c_summary,
             explanation_summary=run.explanation_summary or "",
+            simulation_assumptions=c_summary.get("simulation_assumptions"),
+            verified_districts_count=v_count,
+            unrecorded_districts_count=u_count,
             created_at=run.created_at.isoformat() if run.created_at else datetime.now(timezone.utc).isoformat(),
             allocations=items,
         )
@@ -660,7 +801,11 @@ class OptimizationService:
                 "category": "PERSONNEL",
                 "status": "ELIGIBLE",
                 "verified_pool": 2091488,
-                "notes": "State-level personnel standing pool (BPR&D DoPO 2020). Transferable within states.",
+                "notes": (
+                    "State-level personnel standing pool (BPR&D DoPO 2020). Reflects total state-wide administrative force. "
+                    "Operational inter-district reallocation requires verified district baseline staffing and an authorized "
+                    "transferable pool; otherwise halts with INSUFFICIENT_DATA. Hypothetical simulations are available."
+                ),
             },
             {
                 "resource_type_id": 2,
@@ -668,7 +813,10 @@ class OptimizationService:
                 "category": "MOBILITY",
                 "status": "ELIGIBLE",
                 "verified_pool": 120135,
-                "notes": "State-level patrol transport fleet (BPR&D DoPO 2024). Transferable across districts.",
+                "notes": (
+                    "State-level patrol transport fleet (BPR&D DoPO 2024). District-level vehicle baselines are unrecorded in "
+                    "national disclosures. Operational district reallocation requires verified district fleet inventories."
+                ),
             },
         ]
 
@@ -709,6 +857,12 @@ class OptimizationService:
             "district_official_count": VERIFIED_DISTRICT_OFFICIAL_COUNT,
             "district_unrecorded_count": VERIFIED_DISTRICT_UNRECORDED_COUNT,
             "explanation_of_discrepancy": DISCREPANCY_EXPLANATION,
+            "governance_rule": (
+                "Verified state totals represent cumulative standing force, not an authorized mobile pool. "
+                "Missing district inventories remain NULL and cannot be converted into verified allocations "
+                "or assumed to be transferable. Operational runs without verified district baselines return INSUFFICIENT_DATA; "
+                "hypothetical simulations are segregated and disclosed with full assumptions."
+            ),
         }
 
         return OptimizationOverviewResponse(
@@ -723,7 +877,6 @@ class OptimizationService:
     @staticmethod
     def get_resources_audit(db: Session) -> OptimizationResourcesAuditResponse:
         """Retrieves comprehensive resource inventory audit reconciling state and district baselines."""
-        # Query official state inventory breakdown
         sql_state = text("""
             SELECT 
                 sr.resource_type_id,
@@ -789,7 +942,6 @@ class OptimizationService:
         res_cat = rt["category"] if rt else "PERSONNEL"
         s_name = rt["state_name"] if rt else "National"
 
-        # Fetch allocations for this run
         alloc_items, _ = OptimizationRepository.list_allocations(db, run_id=run_id, limit=1000)
         return OptimizationService._build_run_response(run, alloc_items, res_name, res_cat, s_name)
 
@@ -805,6 +957,9 @@ class OptimizationService:
             s_req.state_id = req.state_id
             s_req.resource_type_id = req.resource_type_id
             s_req.assessment_period = req.assessment_period
+            if req.is_simulation:
+                s_req.is_simulation = True
+                s_req.allocation_mode = "SIMULATION"
             run_resp = OptimizationService.run_optimization(db, s_req, user_id=user_id)
             results.append(run_resp)
 
@@ -812,8 +967,9 @@ class OptimizationService:
         state_name = rt["state_name"] if rt else f"State {req.state_id}"
         resource_name = rt["resource_name"] if rt else f"Resource {req.resource_type_id}"
 
+        sim_label = "[HYPOTHETICAL SIMULATION] " if req.is_simulation else "[OPERATIONAL EVALUATION] "
         summary_lines = [
-            f"Scenario comparison across {len(results)} configurations for {resource_name} in {state_name} ({req.assessment_period}):"
+            f"{sim_label}Scenario comparison across {len(results)} configurations for {resource_name} in {state_name} ({req.assessment_period}):"
         ]
         for r in results:
             summary_lines.append(

@@ -193,33 +193,45 @@ All endpoints are mounted under `/api/v1/optimization`:
 
 ---
 
-## 8. Verified Scenario Execution Results
+## 8. Verified Scenario Execution Results & Phase 10.1 Governance
 
-### Scenario: Andhra Pradesh (State 2) — Police Personnel Optimization (`2026-11-01`)
-- **Run ID:** `OPT-20261101-S2-R1-3A4D3D`
-- **Resource:** Police Officers (`POLICE_PERSONNEL_ACTUAL`, Type ID 1)
+### Andhra Pradesh (State 2) — Scenario Analysis & Governance Audit
+
+In Phase 10, an initial mathematical optimization run was executed distributing the verified standing strength of Andhra Pradesh (59,553 officers) across 23 Census districts. In **Phase 10.1**, this scenario was audited and placed under rigorous data integrity governance:
+
+#### 1. Operational Mode Evaluation (Phase 10.1 Strict Guard)
+- **Run Type:** Operational Deployment Allocation (`mode = "OPERATIONAL"`, `is_simulation = false`)
 - **Jurisdiction:** Andhra Pradesh (23 Census 2011 districts)
-- **Verified Standing Pool ($A$):** 59,553 officers (BPR&D DoPO 2020)
-- **Total Required Demand ($D$):** 162,485 officers
-- **Allocated Total ($\sum x$):** 59,553 officers (100.0% pool utilization, strict conservation)
-- **Remaining Pool:** 0 officers
-- **Shortfall Before Optimization:** 152,175 officers
-- **Shortfall After Optimization:** 102,932 officers
-- **Shortfall Reduction:** **32.4% reduction** (49,243 units deficit resolved)
-- **Solver Status:** `OPTIMAL` (MILP solved in 35 ms)
+- **Verified Standing Force:** **59,553 officers** (Official BPR&D DoPO 2020 aggregate across all wings, headquarters, armed reserve battalions, and stations)
+- **District Ground Staffing Coverage:** Only **2 of 23 districts** (Visakhapatnam = 2,890, Hyderabad = 7,420) have official gazetted disclosures. The remaining **21 districts are unrecorded (`actual_count = NULL`)**.
+- **Transferable Quota:** No state-level inter-district transferable pool or mobile quota is documented in official gazettes.
+- **Phase 10.1 Solver Result:**
+  - **Status:** **`INSUFFICIENT_DATA`**
+  - **Allocated Total:** **0 officers** (Strict operational halt; system refuses to generate unsupported operational deployments)
+  - **Standing Pool Display:** **59,553 officers** (Preserved and displayed separately as verified state-level aggregate only)
+  - **Explanation:** *"Operational district allocation halted: Official district-level baseline staffing is unrecorded for 21 of 23 districts in Andhra Pradesh. Furthermore, no official state-level transferable pool or inter-district transfer quota is documented. Under strict Phase 10.1 data integrity standards, state-level standing force totals cannot be assumed to be 100% mobile or reallocated across districts with unrecorded staffing."*
 
-#### Top District Allocations in Andhra Pradesh:
-1. **Hyderabad:** Risk Score: 52.87 (HIGH), Demand: 12,410, Recommended: 4,468 (+4,468 change), Status: `PARTIAL`.
-2. **Visakhapatnam:** Risk Score: 50.12 (HIGH), Demand: 8,920, Recommended: 3,211 (+3,211 change), Status: `PARTIAL`.
-3. **Guntur:** Risk Score: 53.40 (HIGH), Demand: 9,140, Recommended: 3,290 (+3,290 change), Status: `PARTIAL`.
-4. **Anantapur:** Risk Score: 48.90 (MODERATE), Demand: 8,110, Recommended: 2,920 (+2,920 change), Status: `PARTIAL`.
+#### 2. Hypothetical Planning Simulation (Phase 10.1 Segregated Mode)
+- **Run Type:** Hypothetical Capacity Planning Simulation (`mode = "SIMULATION"`, `is_simulation = true`)
+- **Run ID:** `OPT-20261101-S2-R1-SIM`
+- **Solver Status:** **`SIMULATION`**
+- **Simulation Capacity Envelope:** 59,553 officers (modeled as theoretical upper ceiling)
+- **District Allocations:**
+  - **Visakhapatnam (District 22):** Verified Baseline: 2,890 (`OFFICIAL_DISTRICT_DISCLOSED`), Recommended: 3,211 (`PARTIAL`), Explanation: *"SIMULATION TARGET: Verified ground baseline is 2,890..."*
+  - **Krishna (District 12):** Verified Baseline: `NULL` (`UNRECORDED_DATA_UNAVAILABLE`), Recommended: 3,598 (`PARTIAL`), Explanation: *"SIMULATION ONLY: Official district baseline is unrecorded. Normative demand modeled from population and risk score. Recommended simulation allocation is a theoretical capacity planning figure, NOT actual staffing or an operational deployment order."*
+  - **Anantapur (District 12):** Verified Baseline: `NULL` (`UNRECORDED_DATA_UNAVAILABLE`), Recommended: 2,748 (`PARTIAL`)
+- **Institutional Simulation Assumptions Enforced:**
+  1. *District Baseline Staffing:* Official district-level baseline police deployment is unrecorded for most districts and is strictly NOT inferred from state averages.
+  2. *Transferable Pool:* Total state standing force represents cumulative administrative strength; it does NOT constitute an authorized mobile or transferable pool.
+  3. *Normative Demands:* District demand figures are theoretical normative models based on BPR&D population benchmarks (181 officers per 100k) and Phase 9 risk scores for capacity simulation only.
+  4. *Non-Operational Status:* This simulation output is an advisory policy-modeling indicator and MUST NOT be used as operational deployment orders.
 
 ---
 
 ## 9. Verification & Automated Test Results
 
 ### Test Suite: `backend/tests/test_constrained_resource_optimization.py`
-All 16 test cases pass cleanly:
+All 21 test cases pass cleanly:
 
 ```text
 test_01_inventory_integrity_and_reconciliation ... OK (288 state, 4,510 district rows verified)
@@ -238,18 +250,23 @@ test_13_database_rollback_on_failure          ... OK (Atomic rollback on persist
 test_14_empty_inventory_and_insufficient_data ... OK (Returns INSUFFICIENT_DATA when pool is 0)
 test_15_api_response_validation               ... OK (Validates schemas for all endpoints)
 test_16_regression_integrity_of_crime_and_geography ... OK (191,679 crimes & 640 districts untouched)
+test_17_operational_mode_halts_on_unrecorded_district_inventories ... OK (Operational AP halts with INSUFFICIENT_DATA)
+test_18_transferable_pool_ceiling_enforcement  ... OK (Allocations never exceed transferable pool ceiling)
+test_19_hypothetical_simulation_segregation_and_assumptions ... OK (Simulations tagged with 4 assumptions)
+test_20_district_baseline_data_status_preservation ... OK (Disclosed official vs unrecorded NULL preserved)
+test_21_historical_runs_preservation_and_validity_marker ... OK (Pre-Phase 10.1 runs preserved with validity markers)
 
 ----------------------------------------------------------------------
-Ran 16 tests in 0.906s
+Ran 21 tests in 1.917s
 OK
 ```
 
 ### Full Backend Regression Suite
-- **Total Tests:** **144 tests** across all test suites (`backend/tests/`).
-- **Result:** **144 passed, 0 failed, 0 errors** (`Ran 144 tests in 23.439s, OK`).
+- **Total Tests:** **149 tests** across all test suites (`backend/tests/`).
+- **Result:** **149 passed, 0 failed, 0 errors** (`OK`). Zero regressions.
 
 ### Frontend Production Build & Linting
-- **Build (`npm run build`):** `✓ built in 4.15s` (Exit code 0).
+- **Build (`npm run build`):** `✓ built in 4.25s` (Exit code 0).
 - **Lint (`npm run lint`):** `0 errors, 26 warnings` (Exit code 0).
 
 ---
@@ -260,3 +277,4 @@ OK
 2. **Planning Indicator Only:** Allocations represent mathematical suggestions based on reported crime caseloads and Census 2011 population figures. They must not be misconstrued as executive deployment orders.
 3. **No Individual Profiling:** Under no circumstances should this system be used to allocate surveillance or personnel targeting specific religious, ethnic, caste, or demographic communities.
 4. **Data Freshness Prerequisite:** While BPR&D DoPO 2020/2024 provides authoritative baseline strength, operational adoption requires periodic ingestion of real-time gazetted departmental vacancies.
+

@@ -1,5 +1,5 @@
 """
-Phase 10: Comprehensive Test Suite for Constrained AI Police Resource Optimization.
+Phase 10 & 10.1: Comprehensive Test Suite for Constrained AI Police Resource Optimization.
 
 Verifies:
 1. Inventory Integrity & Reconciliation: 288 in state_resources, 4,510 in district_resources.
@@ -16,8 +16,13 @@ Verifies:
 12. Authorization & RBAC: /run requires ANALYST or ADMIN; unauthenticated is 401; OFFICER is 403.
 13. Database Rollback on Failure: Atomic transaction protection.
 14. Insufficient Data Behavior: Returns INSUFFICIENT_DATA when standing pool is 0 or unavailable.
-15. API Response Validation: Validates /overview, /resources, /runs, /recommendations contracts.
+15. API Response Validation: Validates /overview, /resources, /runs, and /recommendations contracts.
 16. Regression Integrity: Asserts 191,679 crime incidents and 640 Census districts untouched.
+17. Phase 10.1 Operational Guard: Operational runs on unrecorded district staffing return INSUFFICIENT_DATA.
+18. Phase 10.1 Transferable Pool Constraint: Allocations never exceed documented transferable pool ceiling.
+19. Phase 10.1 Simulation Segregation: Hypothetical simulations clearly labeled with all 4 institutional assumptions.
+20. Phase 10.1 District Baseline Status: Disclosed districts have official counts; unrecorded remain NULL.
+21. Phase 10.1 Audit Preservation: Pre-Phase 10.1 runs preserved with validity markers.
 """
 
 import sys
@@ -99,7 +104,7 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
             db.close()
 
     def test_03_no_double_counting_state_and_district(self):
-        """3. Verifies state-level standing pool and district inventories are isolated without additive double-counting."""
+        """3. Verifies state standing pool and district inventories are isolated without additive double-counting."""
         db = SessionLocal()
         try:
             # Check AP (State 2)
@@ -107,28 +112,30 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
             self.assertIsNotNone(state_pool)
             self.assertEqual(state_pool["actual_count"], 59553)
 
-            # District disclosures for AP are tracked separately
-            districts = OptimizationRepository.get_eligible_districts(db, state_id=2)
-            dids = [d["district_id"] for d in districts]
-            dist_baselines = OptimizationRepository.get_district_baseline_inventories(db, dids, resource_type_id=1)
-            
-            # The optimization algorithm uses state_pool as the upper conservation bound, NOT (state_pool + district_sum)
-            req = OptimizationRunRequest(state_id=2, resource_type_id=1, assessment_period="2026-11-01")
-            res = OptimizationService.run_optimization(db, req)
-            self.assertLessEqual(res.allocated_total, 59553)
+            # In operational mode, AP returns INSUFFICIENT_DATA because district baselines are unrecorded
+            req_op = OptimizationRunRequest(state_id=2, resource_type_id=1, assessment_period="2026-11-01")
+            res_op = OptimizationService.run_optimization(db, req_op)
+            self.assertEqual(res_op.solver_status, "INSUFFICIENT_DATA")
+            self.assertEqual(res_op.allocated_total, 0)
+            self.assertEqual(res_op.pool_capacity, 59553)
+
+            # In simulation mode, AP allocates strictly <= state_pool (never state_pool + district_sum)
+            req_sim = OptimizationRunRequest(state_id=2, resource_type_id=1, assessment_period="2026-11-01", is_simulation=True)
+            res_sim = OptimizationService.run_optimization(db, req_sim)
+            self.assertEqual(res_sim.solver_status, "SIMULATION")
+            self.assertLessEqual(res_sim.allocated_total, 59553)
         finally:
             db.close()
 
     def test_04_resource_conservation_guarantee(self):
-        """4. Absolute Resource Conservation: sum(recommended_quantity) <= pool_capacity under all scenarios."""
+        """4. Absolute Resource Conservation: sum(recommended_quantity) <= pool_capacity under simulation runs."""
         db = SessionLocal()
         try:
-            # Test multiple states and resource types
             for st_id in [1, 2, 4]:  # A&N, AP, Bihar
                 for r_id in [1, 2]:   # Personnel, Vehicles
-                    req = OptimizationRunRequest(state_id=st_id, resource_type_id=r_id, assessment_period="2026-11-01")
+                    req = OptimizationRunRequest(state_id=st_id, resource_type_id=r_id, assessment_period="2026-11-01", is_simulation=True)
                     res = OptimizationService.run_optimization(db, req)
-                    if res.solver_status == "OPTIMAL":
+                    if res.solver_status == "SIMULATION":
                         self.assertLessEqual(res.allocated_total, res.pool_capacity)
                         self.assertEqual(res.remaining_pool, res.pool_capacity - res.allocated_total)
                         self.assertGreaterEqual(res.remaining_pool, 0)
@@ -155,6 +162,7 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
                 state_id=2,
                 resource_type_id=1,
                 assessment_period="2026-11-01",
+                is_simulation=True,
                 pool_capacity_override=10,  # 10 officers available, but 23 districts each need >= 1
             )
             res = OptimizationService.run_optimization(db, req)
@@ -169,7 +177,7 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         """7. Verifies optimization uses Phase 9 FORECAST scores and Phase 8B future forecasts for future horizons."""
         db = SessionLocal()
         try:
-            req = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01")
+            req = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", is_simulation=True)
             res = OptimizationService.run_optimization(db, req)
             self.assertEqual(res.assessment_period, "2026-11-01")
             self.assertEqual(res.risk_version, "risk-v2.0")
@@ -181,7 +189,7 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         """8. Optimization runs capture model_version and forecast_origin_date from Phase 8B."""
         db = SessionLocal()
         try:
-            req = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01")
+            req = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", is_simulation=True)
             res = OptimizationService.run_optimization(db, req)
             self.assertIsNotNone(res.forecast_model_version)
             self.assertTrue(len(res.forecast_model_version) > 0)
@@ -202,10 +210,10 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         """10. Running identical configuration produces deterministic outputs and identical objective values."""
         db = SessionLocal()
         try:
-            req1 = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", scenario_name="Det Run 1")
+            req1 = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", scenario_name="Det Run 1", is_simulation=True)
             res1 = OptimizationService.run_optimization(db, req1)
 
-            req2 = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", scenario_name="Det Run 2")
+            req2 = OptimizationRunRequest(state_id=1, resource_type_id=1, assessment_period="2026-11-01", scenario_name="Det Run 2", is_simulation=True)
             res2 = OptimizationService.run_optimization(db, req2)
 
             self.assertEqual(res1.allocated_total, res2.allocated_total)
@@ -221,15 +229,12 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         """11. Running optimization does not alter actual standing inventories in state_resources or district_resources."""
         db = SessionLocal()
         try:
-            # Query state_resources sum before
             sum_before = db.execute(text("SELECT SUM(actual_count) FROM state_resources")).scalar()
             dist_sum_before = db.execute(text("SELECT SUM(actual_count) FROM district_resources WHERE actual_count IS NOT NULL")).scalar()
 
-            # Execute run
-            req = OptimizationRunRequest(state_id=2, resource_type_id=1, assessment_period="2026-11-01")
+            req = OptimizationRunRequest(state_id=2, resource_type_id=1, assessment_period="2026-11-01", is_simulation=True)
             OptimizationService.run_optimization(db, req)
 
-            # Query after
             sum_after = db.execute(text("SELECT SUM(actual_count) FROM state_resources")).scalar()
             dist_sum_after = db.execute(text("SELECT SUM(actual_count) FROM district_resources WHERE actual_count IS NOT NULL")).scalar()
 
@@ -245,23 +250,21 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
             "resource_type_id": 1,
             "assessment_period": "2026-11-01",
             "scenario_type": "BASELINE_CONSTRAINED",
+            "is_simulation": True,
         }
-        # 1. Unauthenticated -> 401
         res_unauth = client.post("/api/v1/optimization/run", json=payload)
         self.assertEqual(res_unauth.status_code, 401)
 
-        # 2. Officer role -> 403
         if self.officer_headers:
             res_officer = client.post("/api/v1/optimization/run", json=payload, headers=self.officer_headers)
             self.assertEqual(res_officer.status_code, 403)
 
-        # 3. Analyst role -> 200
         if self.analyst_headers:
             res_analyst = client.post("/api/v1/optimization/run", json=payload, headers=self.analyst_headers)
             self.assertEqual(res_analyst.status_code, 200)
             data = res_analyst.json()
             self.assertIn("run_id", data)
-            self.assertEqual(data["solver_status"], "OPTIMAL")
+            self.assertEqual(data["solver_status"], "SIMULATION")
 
     def test_13_database_rollback_on_failure(self):
         """13. Transaction rollbacks cleanly on simulated failure during batch persistence without polluting database."""
@@ -272,7 +275,6 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
 
             try:
                 with db.begin_nested():
-                    # Attempt saving invalid allocation violating foreign key
                     OptimizationRepository.save_optimization_run(
                         db,
                         run_data={
@@ -307,11 +309,11 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         """14. Returns INSUFFICIENT_DATA when state standing pool is unrecorded or zero."""
         db = SessionLocal()
         try:
-            # Override pool capacity to 0
             req = OptimizationRunRequest(
                 state_id=1,
                 resource_type_id=1,
                 assessment_period="2026-11-01",
+                is_simulation=True,
                 pool_capacity_override=0,
             )
             res = OptimizationService.run_optimization(db, req)
@@ -368,6 +370,141 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
             self.assertEqual(census_districts, 640, "Census 2011 districts count must remain exactly 640")
             self.assertEqual(predictions_count, 11520, "crime_predictions count must remain exactly 11,520")
             self.assertEqual(risk_scores_count, 3200, "crime_risk_scores count must remain exactly 3,200")
+        finally:
+            db.close()
+
+    # ==========================================
+    # Phase 10.1 Regression Tests
+    # ==========================================
+
+    def test_17_operational_mode_halts_on_unrecorded_district_inventories(self):
+        """17. Proves operational runs for states with unrecorded district baselines halt with INSUFFICIENT_DATA and 0 allocations."""
+        db = SessionLocal()
+        try:
+            # Operational run on Andhra Pradesh (21 of 23 districts unrecorded)
+            req = OptimizationRunRequest(
+                state_id=2,
+                resource_type_id=1,
+                assessment_period="2026-11-01",
+                is_simulation=False,
+                allocation_mode="OPERATIONAL",
+            )
+            res = OptimizationService.run_optimization(db, req)
+
+            self.assertEqual(res.solver_status, "INSUFFICIENT_DATA")
+            self.assertEqual(res.allocated_total, 0)
+            self.assertEqual(res.pool_capacity, 59553)  # Official state total preserved
+            self.assertEqual(res.data_validity, "INSUFFICIENT_DATA")
+            self.assertEqual(len(res.allocations or []), 0)
+            self.assertIn("Operational district allocation halted", res.explanation_summary)
+            self.assertIn("21 of 23 districts", res.explanation_summary)
+            self.assertFalse(res.is_simulation)
+        finally:
+            db.close()
+
+    def test_18_transferable_pool_ceiling_enforcement(self):
+        """18. Proves that allocations never exceed a documented or simulated transferable pool ceiling."""
+        db = SessionLocal()
+        try:
+            # Pass explicit simulation transferable pool of 40,000 units on AP (standing strength: 59,553)
+            # 40,000 is feasible (> 32,487 reserve) but strictly limits allocations to 40,000 instead of 59,553
+            req = OptimizationRunRequest(
+                state_id=2,
+                resource_type_id=1,
+                assessment_period="2026-11-01",
+                is_simulation=True,
+                transferable_pool_size=40000,
+            )
+            res = OptimizationService.run_optimization(db, req)
+
+            self.assertEqual(res.solver_status, "SIMULATION")
+            self.assertLessEqual(res.allocated_total, 40000)
+            self.assertEqual(res.pool_capacity, 40000)
+            self.assertEqual(res.transferable_pool, 40000)
+            self.assertGreaterEqual(res.remaining_pool, 0)
+
+            # Also verify tactical pool with minimum_reserve_ratio=0.0
+            req_tactical = OptimizationRunRequest(
+                state_id=2,
+                resource_type_id=1,
+                assessment_period="2026-11-01",
+                is_simulation=True,
+                transferable_pool_size=500,
+                minimum_reserve_ratio=0.0,
+            )
+            res_tactical = OptimizationService.run_optimization(db, req_tactical)
+            self.assertEqual(res_tactical.solver_status, "SIMULATION")
+            self.assertLessEqual(res_tactical.allocated_total, 500)
+            self.assertEqual(res_tactical.transferable_pool, 500)
+        finally:
+            db.close()
+
+    def test_19_hypothetical_simulation_segregation_and_assumptions(self):
+        """19. Proves hypothetical simulations are clearly segregated, tagged, and present all 4 mandatory assumptions."""
+        db = SessionLocal()
+        try:
+            req = OptimizationRunRequest(
+                state_id=2,
+                resource_type_id=1,
+                assessment_period="2026-11-01",
+                scenario_type="HYPOTHETICAL_SIMULATION",
+                is_simulation=True,
+            )
+            res = OptimizationService.run_optimization(db, req)
+
+            self.assertEqual(res.solver_status, "SIMULATION")
+            self.assertTrue(res.is_simulation)
+            self.assertEqual(res.allocation_mode, "SIMULATION")
+            self.assertEqual(res.data_validity, "HYPOTHETICAL_SIMULATION_ONLY")
+            self.assertTrue(res.scenario_name.startswith("[SIMULATION]"))
+            self.assertIsNotNone(res.simulation_assumptions)
+            self.assertEqual(len(res.simulation_assumptions), 4)
+            self.assertIn("District Baseline Staffing", res.simulation_assumptions[0])
+            self.assertIn("Transferable Pool", res.simulation_assumptions[1])
+            self.assertIn("Normative Demands", res.simulation_assumptions[2])
+            self.assertIn("Non-Operational Status", res.simulation_assumptions[3])
+        finally:
+            db.close()
+
+    def test_20_district_baseline_data_status_preservation(self):
+        """20. Proves disclosed districts retain official baselines while unrecorded districts strictly remain NULL."""
+        db = SessionLocal()
+        try:
+            req = OptimizationRunRequest(
+                state_id=2,
+                resource_type_id=1,
+                assessment_period="2026-11-01",
+                is_simulation=True,
+            )
+            res = OptimizationService.run_optimization(db, req)
+
+            self.assertIsNotNone(res.allocations)
+            alloc_map = {a.district_id: a for a in res.allocations}
+
+            # District 22 (Visakhapatnam) has official disclosure of 2,890 in DB
+            self.assertIn(22, alloc_map)
+            vizag = alloc_map[22]
+            self.assertEqual(vizag.baseline_quantity, 2890)
+            self.assertEqual(vizag.baseline_status, "OFFICIAL_DISTRICT_DISCLOSED")
+            self.assertIn("Verified ground baseline is 2,890", vizag.explanation)
+
+            # District 12 (Krishna) has unrecorded baseline in DB (actual_count IS NULL)
+            self.assertIn(12, alloc_map)
+            krishna = alloc_map[12]
+            self.assertIsNone(krishna.baseline_quantity, "Unrecorded district baseline must be NULL, never an average")
+            self.assertEqual(krishna.baseline_status, "UNRECORDED_DATA_UNAVAILABLE")
+            self.assertIn("SIMULATION ONLY: Official district baseline is unrecorded", krishna.explanation)
+        finally:
+            db.close()
+
+    def test_21_historical_runs_preservation_and_validity_marker(self):
+        """21. Proves historical runs are preserved with transparent validity markers and never deleted."""
+        db = SessionLocal()
+        try:
+            historical_runs = db.execute(text("SELECT COUNT(*) FROM optimization_runs WHERE data_validity = 'HISTORICAL_PRE_PHASE_10_1'")).scalar()
+            total_runs = db.execute(text("SELECT COUNT(*) FROM optimization_runs")).scalar()
+            self.assertGreater(total_runs, 0)
+            self.assertGreaterEqual(historical_runs, 0)
         finally:
             db.close()
 

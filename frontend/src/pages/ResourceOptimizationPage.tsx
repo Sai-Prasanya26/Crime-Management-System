@@ -634,7 +634,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                   </button>
                 </div>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  <strong>Discrepancy Audit Resolution:</strong> In earlier summary reports, <code>state_resources</code> was cited as 4,320 due to quoting the theoretical matrix size (36 States &times; 120 Catalog Types = 4,320). Physical database auditing confirms exactly <strong>288 verified rows</strong> across 36 active States/UTs &times; 8 official BPR&amp;D categories. Similarly, <code>district_resources</code> contains exactly <strong>4,510 rows</strong> (114 official district disclosures + 4,396 unrecorded rows with strict NULL invariants), reflecting post-Phase 7D verified departmental gazette ingestions.
+                  <strong>Discrepancy Audit &amp; Phase 10.1 Inventory Governance:</strong> Physical database auditing confirms exactly <strong>288 verified rows</strong> in <code>state_resources</code> across 36 active States/UTs &times; 8 official BPR&amp;D categories, representing aggregate administrative strength. <code>district_resources</code> contains exactly <strong>4,510 rows</strong> (114 official district disclosures + 4,396 unrecorded rows with strict NULL invariants). In accordance with Phase 10.1 data integrity rules, unrecorded district staffing prevents operational inter-district reallocations (returning <code>INSUFFICIENT_DATA</code>), while hypothetical planning simulations are strictly labeled and segregated with full assumption disclosure.
                 </p>
               </div>
 

@@ -260,7 +260,10 @@ export interface OptimizationRunRequest {
   resource_type_id: number;
   assessment_period: string;
   scenario_name?: string;
-  scenario_type: 'BASELINE_CONSTRAINED' | 'CRITICAL_RISK_PRIORITY' | 'PROPORTIONAL_WORKLOAD' | 'RESERVE_HEAVY';
+  scenario_type: 'BASELINE_CONSTRAINED' | 'CRITICAL_RISK_PRIORITY' | 'PROPORTIONAL_WORKLOAD' | 'RESERVE_HEAVY' | 'HYPOTHETICAL_SIMULATION';
+  is_simulation?: boolean;
+  allocation_mode?: 'OPERATIONAL' | 'SIMULATION';
+  transferable_pool_size?: number;
   pool_capacity_override?: number;
   minimum_reserve_ratio?: number;
   risk_weight_factor?: number;
@@ -276,6 +279,7 @@ export interface OptimizationAllocationItem {
   risk_level: string;
   priority_score: number;
   baseline_quantity: number | null;
+  baseline_status?: string;
   required_quantity: number;
   recommended_quantity: number;
   change_quantity: number;
@@ -289,6 +293,10 @@ export interface OptimizationRunResponse {
   run_id: string;
   scenario_name: string;
   scenario_type: string;
+  is_simulation?: boolean;
+  allocation_mode?: string;
+  data_validity?: string;
+  transferable_pool?: number | null;
   state_id?: number | null;
   state_name?: string | null;
   resource_type_id: number;
@@ -313,6 +321,9 @@ export interface OptimizationRunResponse {
   execution_duration_ms: number;
   constraints_applied?: Record<string, any> | null;
   explanation_summary: string;
+  simulation_assumptions?: string[] | null;
+  verified_districts_count?: number;
+  unrecorded_districts_count?: number;
   created_at: string;
   allocations?: OptimizationAllocationItem[];
 }
@@ -373,6 +384,7 @@ export interface OptimizationScenarioComparisonRequest {
   state_id: number;
   resource_type_id: number;
   assessment_period: string;
+  is_simulation?: boolean;
   scenarios: OptimizationRunRequest[];
 }
 
