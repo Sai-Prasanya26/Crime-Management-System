@@ -17,7 +17,11 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   };
 
   return (
-    <div className="flex min-h-[220px] w-full flex-col items-center justify-center p-8 text-center">
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex min-h-[220px] w-full flex-col items-center justify-center p-8 text-center"
+    >
       <Loader2 className={`${sizeClasses[size]} animate-spin text-[#4F46E5]`} />
       <p className="mt-4 text-sm font-semibold text-[#0F172A]">{message}</p>
       <p className="mt-1 text-xs text-[#64748B]">Retrieving operational intelligence records...</p>

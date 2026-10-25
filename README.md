@@ -161,49 +161,43 @@ Major Project/
 
 ## 5. Development Phases
 
-The project follows a strict 18-phase incremental development roadmap:
+The project follows a rigorous, data-driven incremental development roadmap:
 
-- [x] **PHASE 1 — Project Foundation** *(Current Status)*
-- [ ] **PHASE 2** — Database Design
-- [ ] **PHASE 3** — Data Cleaning & Import Pipeline
-- [ ] **PHASE 4** — MySQL Integration
-- [ ] **PHASE 5** — FastAPI Backend Foundation
-- [ ] **PHASE 6** — Authentication & Authorization
-- [ ] **PHASE 7** — React Frontend Foundation
-- [ ] **PHASE 8** — Crime Analytics
-- [ ] **PHASE 9** — Machine Learning Pipeline
-- [ ] **PHASE 10** — Crime Prediction
-- [ ] **PHASE 11** — Crime Risk Analysis
-- [ ] **PHASE 12** — Resource Optimization
-- [ ] **PHASE 13** — Budget Estimation
-- [ ] **PHASE 14** — AI-Based Insights
-- [ ] **PHASE 15** — Interactive Risk Map
-- [ ] **PHASE 16** — PDF Reports
-- [ ] **PHASE 17** — Admin Panel
-- [ ] **PHASE 18** — Testing, Security & Final Optimization
+- [x] **PHASE 1 — Project Foundation**
+- [x] **PHASE 2 — Database Design & Schema**
+- [x] **PHASE 3 — Data Cleaning & Ingestion Pipeline (191,679 Historical Records)**
+- [x] **PHASE 4 — MySQL Integration & Constraints**
+- [x] **PHASE 5 — FastAPI Backend Architecture & Repositories**
+- [x] **PHASE 6 — Argon2id Authentication & Role-Based Access Control (RBAC)**
+- [x] **PHASE 7 — Full-Stack Interactive Crime Intelligence Dashboard**
+- [x] **PHASE 7A–7D — Census 2011 Modern Geography & Official BPR&D Resource Integration**
+- [x] **PHASE 8A–8B — Production ML Crime Forecasting Pipeline (HGBR, 11,520 Predictions)**
+- [x] **PHASE 9 — Explainable Crime Risk Scoring Engine (v2.0, 3,200 Assessments)**
+- [x] **PHASE 10 & 10.1 — AI-Based Constrained Resource Optimization & Operational Integrity Barrier**
+- [x] **PHASE 11 — Assumption-Based Budget Estimation, Benchmark Rates & Scenario Comparison**
+- [x] **PHASE 12 — End-to-End Integration, Regression & Acceptance Validation**
+- [x] **PHASE 13 — Final Quality Review, Security Audit & Performance Optimization** *(Current Status)*
 
 > [!NOTE]
-> **Current Project Status: Phase 1 — Project Foundation**
-> In this phase, the modular architecture, directory structure, environment templates, minimal backend health check, and minimal landing page have been created. Final tables, ML models, import scripts, authentication, and dashboards will be built in their respective upcoming phases.
+> **Current Project Status: Phase 13 Validated**
+> All analytical, forecasting, risk scoring, optimization, and budget workflows are fully integrated and verified across 173 backend tests and clean frontend builds.
 
 ---
 
 ## 6. Getting Started & Verification
 
-### Prerequisites
-- Node.js (v18+) & npm
-- Python (v3.10+)
-- MySQL Server (for Phase 4+)
+### Unified Quick Start (Recommended)
+Double-click `start_project.bat` in the project root or run:
+```cmd
+start_project.bat
+```
+This launcher checks prerequisites, verifies MySQL schema readiness, starts the FastAPI backend daemon on port 8000, and opens the Vite frontend on port 5174.
 
-### Backend Setup & Execution
+### Manual Backend Setup
 1. Open a terminal and navigate to the project root:
    ```bash
-   # Create and activate virtual environment (if not already created)
-   python -m venv backend/.venv
-   # Windows PowerShell:
+   # Activate virtual environment
    backend\.venv\Scripts\Activate.ps1
-   # Linux/macOS:
-   source backend/.venv/bin/activate
    ```
 2. Install Python dependencies:
    ```bash
@@ -213,23 +207,19 @@ The project follows a strict 18-phase incremental development roadmap:
    ```bash
    python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
    ```
-4. Verify the health check endpoint:
-   - URL: `http://127.0.0.1:8000/health`
-   - Response: `{"status": "ok"}`
+4. Verify endpoints:
+   - Root Health: `http://127.0.0.1:8000/health`
+   - Detailed Health: `http://127.0.0.1:8000/api/v1/health`
    - API Docs: `http://127.0.0.1:8000/api/v1/docs`
 
-### Frontend Setup & Execution
-1. Open a separate terminal and navigate to `frontend`:
+### Manual Frontend Setup
+1. Open a terminal and navigate to `frontend`:
    ```bash
    cd frontend
    ```
-2. Install dependencies (already initialized):
+2. Install dependencies and start development server:
    ```bash
    npm install
-   ```
-3. Start the development server:
-   ```bash
    npm run dev
    ```
-4. Access the frontend in your browser:
-   - `http://localhost:5173`
+3. Access the portal in your browser: `http://localhost:5174` (or `http://localhost:5173`)

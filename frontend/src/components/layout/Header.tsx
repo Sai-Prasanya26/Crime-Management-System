@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 2. Relevant Operation Lucide Icon */}
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EAF3FA] text-[#1769AA] border border-[#BAC7D5]/40 shrink-0">
-            <OperationIcon className="h-4 w-4" />
+            {React.createElement(OperationIcon, { className: "h-4 w-4" })}
           </div>
 
           {/* 3. Title & 4. Short Subtitle */}

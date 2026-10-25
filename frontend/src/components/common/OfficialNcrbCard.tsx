@@ -17,9 +17,7 @@ export const OfficialNcrbCard: React.FC = () => {
         const y = await officialCrimeApi.getAvailableYears();
         if (y.length > 0) {
           setYears(y);
-          if (!y.includes(selectedYear)) {
-            setSelectedYear(y[0]);
-          }
+          setSelectedYear((prev) => (!y.includes(prev) ? y[0] : prev));
         }
       } catch (err) {
         console.error('Failed to load NCRB years:', err);

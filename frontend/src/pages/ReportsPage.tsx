@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   FileText,
   Download,
@@ -66,7 +66,7 @@ export const ReportsPage: React.FC = () => {
     },
   ]);
 
-  const handleExport = (reportId: string, title: string) => {
+  const handleExport = useCallback((reportId: string, title: string) => {
     const exportData = {
       report_id: reportId,
       report_title: title,
@@ -91,9 +91,9 @@ export const ReportsPage: React.FC = () => {
 
     setDownloadSuccess(`Export completed for "${title}".`);
     setTimeout(() => setDownloadSuccess(null), 4000);
-  };
+  }, []);
 
-  const handleGenerateReport = (e: React.FormEvent) => {
+  const handleGenerateReport = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const newId = `rep-0${reportsList.length + 1}`;
     const typeLabel =
@@ -117,7 +117,7 @@ export const ReportsPage: React.FC = () => {
 
     setReportsList((prev) => [newReport, ...prev]);
     handleExport(newId, newReport.name);
-  };
+  }, [reportsList.length, reportType, targetScope, timeframe, handleExport]);
 
   return (
     <DashboardLayout

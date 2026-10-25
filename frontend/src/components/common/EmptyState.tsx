@@ -13,7 +13,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onClearFilters,
 }) => {
   return (
-    <div className="flex min-h-[220px] w-full flex-col items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-8 text-center">
+    <div
+      role="status"
+      aria-label={title}
+      className="flex min-h-[220px] w-full flex-col items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-8 text-center"
+    >
       <div className="rounded-full bg-[#F1F5F9] p-3 text-[#64748B]">
         <Database className="h-8 w-8" />
       </div>
