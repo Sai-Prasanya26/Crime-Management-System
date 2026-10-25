@@ -219,6 +219,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   return (
     <DashboardLayout
+      hideSidebar
       icon={UserCog}
       title="System Administration"
       subtitle="Manage authorized staff access, roles and security activity."

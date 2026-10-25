@@ -24,6 +24,8 @@ const DEDICATED_OPERATION_ROUTES = [
   '/resources',
   '/budget',
   '/reports',
+  '/admin',
+  '/administration',
 ];
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
