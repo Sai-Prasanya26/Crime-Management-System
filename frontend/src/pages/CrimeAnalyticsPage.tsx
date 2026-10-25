@@ -112,8 +112,8 @@ export const CrimeAnalyticsPage: React.FC = () => {
     <DashboardLayout
       hideSidebar
       icon={BarChart3}
-      title="Crime Offense &amp; Classification Analytics"
-      subtitle="Granular statutory offense investigation, legal category classifications, longitudinal trajectory comparisons, and codified offense inventory."
+      title="Crime Analytics"
+      subtitle="Detailed analysis of crime categories, offense types, temporal patterns, and reported incidents."
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
     >
@@ -136,7 +136,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
           </Link>
           <span className="text-slate-300">|</span>
           <span className="text-[#5D6878]">
-            Detailed Offense &amp; Statutory Analysis Workspace
+            Detailed Crime Analytics Workspace
           </span>
         </div>
 
