@@ -95,44 +95,18 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
   return (
     <div className={`space-y-4 transition-opacity ${isLoading ? 'opacity-70' : 'opacity-100'}`}>
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D9E1EA] pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <CalendarRange className="h-4 w-4" />
-            </div>
-            <h2 className="text-[17px] font-bold text-[#0B1F3A]">
-              Longitudinal Offense Trajectory &amp; Period Comparison
-            </h2>
+      <div className="border-b border-[#D9E1EA] pb-3">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <CalendarRange className="h-4 w-4" />
           </div>
-          <p className="text-[12px] text-[#5D6878] mt-0.5">
-            Multi-period temporal trajectory, monthly volume fluctuations, and year-over-year comparative shifts
-          </p>
+          <h2 className="text-[17px] font-bold text-[#0B1F3A]">
+            Longitudinal Offense Trajectory &amp; Period Comparison
+          </h2>
         </div>
-        <div className="flex items-center gap-1.5 self-start sm:self-auto bg-[#F4F7FA] p-1 rounded-lg border border-[#D9E1EA]">
-          <button
-            type="button"
-            onClick={() => setTemporalMode('month')}
-            className={`px-3 py-1 text-[11.5px] font-semibold rounded transition-colors cursor-pointer ${
-              temporalMode === 'month'
-                ? 'bg-white text-[#1769AA] shadow-2xs'
-                : 'text-[#5D6878] hover:text-[#0B1F3A]'
-            }`}
-          >
-            Monthly Trajectory
-          </button>
-          <button
-            type="button"
-            onClick={() => setTemporalMode('year')}
-            className={`px-3 py-1 text-[11.5px] font-semibold rounded transition-colors cursor-pointer ${
-              temporalMode === 'year'
-                ? 'bg-white text-[#1769AA] shadow-2xs'
-                : 'text-[#5D6878] hover:text-[#0B1F3A]'
-            }`}
-          >
-            Yearly Comparison
-          </button>
-        </div>
+        <p className="text-[12px] text-[#5D6878] mt-0.5">
+          Multi-period temporal trajectory, monthly volume fluctuations, and year-over-year comparative shifts
+        </p>
       </div>
 
       {/* Grid: 7 cols (Longitudinal Trajectory Chart) | 5 cols (Annual YoY Comparative Dynamics) */}
@@ -140,8 +114,8 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
         {/* Left Column (7 cols): Longitudinal Trajectory Area / Bar Chart */}
         <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3 mb-3">
+              <div className="min-w-0">
                 <h3 className="text-[14px] font-bold text-[#0B1F3A] flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-[#1769AA]" />
                   <span>
@@ -150,15 +124,44 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
                       : 'Annual Incident Volume Comparison'}
                   </span>
                 </h3>
-                <p className="text-[11px] text-[#5D6878]">
+                <p className="text-[11px] text-[#5D6878] mt-0.5">
                   {temporalMode === 'month'
                     ? 'Continuous temporal volume across reporting months'
                     : 'Year-over-year annual volume trajectory'}
                 </p>
               </div>
-              <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-0.5 rounded border border-[#D9E1EA] self-start sm:self-auto">
-                {totalPeriods} Time Periods
-              </span>
+
+              {/* Right: Segmented Trajectory Toggle & Period Counter */}
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-1 bg-[#F4F7FA] p-0.5 rounded-lg border border-[#D9E1EA]">
+                  <button
+                    type="button"
+                    onClick={() => setTemporalMode('month')}
+                    className={`px-2.5 py-1 text-[11.5px] font-semibold rounded-md transition-colors cursor-pointer ${
+                      temporalMode === 'month'
+                        ? 'bg-white text-[#1769AA] shadow-2xs'
+                        : 'text-[#5D6878] hover:text-[#0B1F3A]'
+                    }`}
+                  >
+                    Monthly Trajectory
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemporalMode('year')}
+                    className={`px-2.5 py-1 text-[11.5px] font-semibold rounded-md transition-colors cursor-pointer ${
+                      temporalMode === 'year'
+                        ? 'bg-white text-[#1769AA] shadow-2xs'
+                        : 'text-[#5D6878] hover:text-[#0B1F3A]'
+                    }`}
+                  >
+                    Yearly Comparison
+                  </button>
+                </div>
+
+                <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded-md border border-[#D9E1EA] whitespace-nowrap">
+                  {totalPeriods} Time Periods
+                </span>
+              </div>
             </div>
 
             {/* Metric summary pills */}
