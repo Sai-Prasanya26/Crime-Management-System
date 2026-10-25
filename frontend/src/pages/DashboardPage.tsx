@@ -336,9 +336,9 @@ export const DashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* 3. Crime Classification & Types (Categories 5 cols + Types 7 cols) */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div id="categories-section" className="lg:col-span-5 min-w-0">
+          {/* 3. Crime Classification & Types (Equal 2-Column Desktop Grid) */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-stretch">
+            <div id="categories-section" className="min-w-0 h-full">
               {categories && (
                 <CrimeCategoryChart
                   data={categories.items}
@@ -346,7 +346,7 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div id="types-section" className="lg:col-span-7 min-w-0">
+            <div id="types-section" className="min-w-0 h-full">
               {types && (
                 <CrimeTypeChart
                   data={types.items}
@@ -356,9 +356,9 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Temporal Patterns & Weapon Involvement (Hourly 6 cols + Weapons 6 cols) */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div id="hourly-section" className="lg:col-span-6 min-w-0">
+          {/* 4. Temporal Patterns & Weapon Involvement (Equal 2-Column Desktop Grid) */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-stretch">
+            <div id="hourly-section" className="min-w-0 h-full">
               {hourly && (
                 <HourlyDistributionChart
                   data={hourly.items}
@@ -366,7 +366,7 @@ export const DashboardPage: React.FC = () => {
                 />
               )}
             </div>
-            <div id="weapons-section" className="lg:col-span-6 min-w-0">
+            <div id="weapons-section" className="min-w-0 h-full">
               {weapons && (
                 <WeaponDistributionChart
                   data={weapons.items}
@@ -376,7 +376,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 5. Victim Demographics Profile (Age Cohorts & Gender Split) */}
+          {/* 5. Victim Demographics Profile (Full-Width Responsive Card) */}
           <div id="demographics-section" className="w-full min-w-0">
             {demographics && (
               <VictimDemographicsChart
@@ -386,9 +386,9 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* 6. Geographic Intelligence & Case Disposition Health */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch">
             {/* Top Jurisdictions Table (7 cols) */}
-            <div id="districts-section" className="lg:col-span-7 min-w-0">
+            <div id="districts-section" className="lg:col-span-7 min-w-0 h-full">
               {topDistricts && (
                 <TopDistrictsTable
                   districts={topDistricts.items}
@@ -402,24 +402,24 @@ export const DashboardPage: React.FC = () => {
             {/* Case Status & Legal Adjudication Health Panel (5 cols) */}
             <div
               id="cases-section"
-              className="lg:col-span-5 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between"
+              className="lg:col-span-5 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between h-full"
             >
               <div>
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3.5 min-h-[58px]">
                   <div className="flex items-center gap-2">
                     <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
                       <Scale className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                      <h3 className="text-[16px] font-bold text-[#0B1F3A]">
                         Case Adjudication &amp; Disposition Health
                       </h3>
-                      <p className="text-[11px] text-[#5D6878]">
+                      <p className="mt-0.5 text-[12px] text-[#5D6878]">
                         Institutional clearance throughput and active case resolution
                       </p>
                     </div>
                   </div>
-                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                  <span className="rounded bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-200">
                     Live Disposition
                   </span>
                 </div>

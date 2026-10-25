@@ -23,8 +23,8 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
       : 1;
 
   return (
-    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+    <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
@@ -42,6 +42,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
         {/* Metric Toggle */}
         <div className="flex items-center rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[12px]">
           <button
+            type="button"
             onClick={() => onMetricChange('volume')}
             disabled={isLoading}
             className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors cursor-pointer ${
@@ -54,6 +55,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
             By Volume
           </button>
           <button
+            type="button"
             onClick={() => onMetricChange('rate')}
             disabled={isLoading}
             className={`flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors cursor-pointer ${
@@ -68,7 +70,7 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
         </div>
       </div>
 
-      <div className="mt-3.5 overflow-x-auto">
+      <div className="my-2 flex-1 overflow-x-auto">
         <table className="w-full min-w-[560px] text-left text-[13px]">
           <thead>
             <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] whitespace-nowrap">
@@ -131,6 +133,12 @@ export const TopDistrictsTable: React.FC<TopDistrictsTableProps> = ({
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Aligned Table Footer */}
+      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-[#5D6878]">
+        <span>Displaying top 10 ranked districts by {metric === 'volume' ? 'incident volume' : 'per-capita crime rate'}</span>
+        <span className="font-semibold text-slate-700">Census 2011 Baseline</span>
       </div>
     </div>
   );

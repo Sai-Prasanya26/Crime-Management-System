@@ -30,8 +30,8 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
   const displayedData = data.slice(0, displayCount);
 
   return (
-    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+    <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded p-1.5 bg-amber-50 text-[#C98512]">
@@ -48,6 +48,7 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
           {[5, 8, 12, 21].map((count) => (
             <button
               key={count}
+              type="button"
               onClick={() => setDisplayCount(count)}
               className={`rounded px-2.5 py-1 font-medium transition-colors cursor-pointer ${
                 displayCount === count
@@ -61,7 +62,7 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="mt-3.5 h-64 w-full">
+      <div className="my-auto py-2 h-[260px] w-full">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-slate-400">
             No crime type data found
@@ -71,7 +72,7 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
             <BarChart
               data={displayedData}
               layout="vertical"
-              margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+              margin={{ top: 5, right: 25, left: 110, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" horizontal={false} />
               <XAxis
@@ -84,8 +85,9 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
                 dataKey="crime_name"
                 type="category"
                 stroke="#D9E1EA"
-                tick={{ fill: '#0B1F3A', fontSize: 11, width: 80 }}
-                width={80}
+                tick={{ fill: '#0B1F3A', fontSize: 11 }}
+                tickFormatter={(val) => (val.length > 15 ? `${val.slice(0, 14)}…` : val)}
+                width={110}
               />
               <Tooltip
                 contentStyle={{
@@ -99,7 +101,7 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
                 itemStyle={{ color: '#0B1F3A', fontWeight: 600 }}
                 formatter={(val: any, _name: any, item: any) => [
                   `${Number(val).toLocaleString()} incidents (${item.payload.percentage.toFixed(1)}%)`,
-                  `Code: ${item.payload.crime_code} [${item.payload.severity_level}]`,
+                  `${item.payload.crime_name} [${item.payload.severity_level}]`,
                 ]}
               />
               <Bar dataKey="incident_count" radius={[0, 3, 3, 0]}>
@@ -115,15 +117,17 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
         )}
       </div>
 
-      {/* Severity Legend */}
-      <div className="mt-2.5 flex flex-wrap items-center justify-end gap-3 pt-2 text-[11px] text-[#5D6878]">
-        <span className="font-semibold text-slate-700">Severity:</span>
-        {Object.entries(SEVERITY_COLORS).map(([tier, color]) => (
-          <div key={tier} className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-            <span className="font-medium">{tier}</span>
-          </div>
-        ))}
+      {/* Aligned Severity Legend Footer */}
+      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5D6878]">
+        <span className="font-semibold text-slate-700">Severity Tier Classification:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          {Object.entries(SEVERITY_COLORS).map(([tier, color]) => (
+            <div key={tier} className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className="font-medium text-slate-600">{tier}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

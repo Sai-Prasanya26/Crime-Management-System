@@ -46,8 +46,8 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
   }));
 
   return (
-    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+    <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
@@ -69,13 +69,13 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
         )}
       </div>
 
-      <div className="mt-3.5 grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <div className="my-2 grid grid-cols-1 gap-6 lg:grid-cols-12 items-center">
         {/* Age Cohorts Bar Chart */}
         <div className="lg:col-span-7">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
             Incidents by Age Cohort
           </p>
-          <div className="h-48 w-full">
+          <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={ageData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#EDF2F7" vertical={false} />
@@ -108,8 +108,8 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
             Gender Classification
           </p>
-          <div className="flex items-center gap-2.5">
-            <div className="h-36 w-36 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-40 w-40 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -118,8 +118,8 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
                     nameKey="label"
                     cx="50%"
                     cy="50%"
-                    innerRadius={30}
-                    outerRadius={48}
+                    innerRadius={32}
+                    outerRadius={52}
                     paddingAngle={3}
                   >
                     {genderData.map((entry) => (
@@ -151,22 +151,28 @@ export const VictimDemographicsChart: React.FC<VictimDemographicsChartProps> = (
               </ResponsiveContainer>
             </div>
 
-            <div className="flex-1 space-y-1.5">
+            <div className="flex-1 space-y-2">
               {genderData.map((g) => (
-                <div key={g.genderKey} className="flex items-center justify-between text-[12px]">
-                  <div className="flex items-center gap-1.5">
+                <div key={g.genderKey} className="flex items-center justify-between text-[12px] rounded border border-slate-100 bg-[#F4F7FA] px-2.5 py-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0 pr-1">
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: GENDER_COLORS[g.genderKey] || '#7C8796' }}
                     />
-                    <span className="text-slate-600 font-medium">{g.label}</span>
+                    <span className="text-slate-700 font-medium truncate">{g.label}</span>
                   </div>
-                  <span className="font-semibold text-[#0B1F3A]">{g.percentage.toFixed(1)}%</span>
+                  <span className="font-bold text-[#0B1F3A] shrink-0">{g.percentage.toFixed(1)}%</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Aligned Demographics Footer */}
+      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5D6878]">
+        <span className="font-semibold text-slate-700">Demographic Normalization: Census 2011 gender-disaggregated age cohorts</span>
+        <span>Total Analyzed Profiles: <strong className="text-[#0B1F3A]">{totalGender.toLocaleString()}</strong></span>
       </div>
     </div>
   );

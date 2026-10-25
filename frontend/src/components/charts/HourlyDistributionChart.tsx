@@ -30,8 +30,8 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
   const peakItem = data.find((d) => d.hour === peakHour);
 
   return (
-    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+    <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
@@ -45,7 +45,7 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         </div>
 
         {peakItem && (
-          <div className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-[#C98512]">
+          <div className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-[#C98512] shrink-0">
             <Siren className="h-3.5 w-3.5 text-[#C98512]" />
             <span>
               Peak: {peakHour.toString().padStart(2, '0')}:00 ({peakItem.incident_count.toLocaleString()} cases)
@@ -54,7 +54,7 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         )}
       </div>
 
-      <div className="mt-3.5 h-64 w-full">
+      <div className="my-auto py-2 h-[260px] w-full">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-slate-400">
             No hourly distribution data available
@@ -103,11 +103,11 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         )}
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between rounded border border-[#D9E1EA] bg-[#F4F7FA] px-3 py-1.5 text-xs text-[#5D6878]">
-        <span className="text-[11px] font-medium">
+      <div className="mt-auto flex items-center justify-between rounded border border-[#D9E1EA] bg-[#F4F7FA] px-3 py-2 text-xs text-[#5D6878]">
+        <span className="text-[11px] font-medium truncate mr-2">
           Operational Shift Recommendation: Concentrate coverage 16:00–22:00.
         </span>
-        <div className="flex items-center gap-3 text-[11px]">
+        <div className="flex items-center gap-3 text-[11px] shrink-0">
           <span className="flex items-center gap-1.5 font-medium text-slate-700">
             <span className="h-2 w-2 rounded-xs bg-[#1769AA]" /> Normal
           </span>
