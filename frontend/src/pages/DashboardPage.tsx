@@ -207,45 +207,6 @@ export const DashboardPage: React.FC = () => {
         isLoading={isLoading || isRefreshing}
       />
 
-      {/* Geography Mode Context Banner */}
-      <div
-        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border px-4 py-2.5 text-xs transition-colors shadow-2xs ${
-          (filters.geography_mode || 'current') === 'current'
-            ? 'border-blue-200 bg-blue-50/60 text-[#0B1F3A]'
-            : 'border-amber-300 bg-amber-50/80 text-amber-950'
-        }`}
-      >
-        <div className="flex items-start sm:items-center gap-2">
-          <Globe2
-            className={`h-4 w-4 shrink-0 mt-0.5 sm:mt-0 ${
-              (filters.geography_mode || 'current') === 'current' ? 'text-[#1769AA]' : 'text-amber-700'
-            }`}
-          />
-          <div className="leading-relaxed">
-            {(filters.geography_mode || 'current') === 'current' ? (
-              <span>
-                <strong className="font-semibold text-[#0B1F3A]">Current Administrative Framework:</strong> 28 States + 8 Union Territories = 36 modern jurisdictions, 789 administrative districts. Historical FIR incident totals reflect post-bifurcation territorial boundaries (e.g. Telangana 10 parent districts, Andhra Pradesh 13 parent districts).
-              </span>
-            ) : (
-              <span>
-                <strong className="font-semibold text-amber-950">Historical Baseline Framework (Census 2011):</strong> 35 States & UTs, 640 Census districts. Incident totals reflect original FIR reporting jurisdictions prior to state reorganizations (e.g. undivided Andhra Pradesh with all 23 historical districts).
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="shrink-0 flex items-center gap-2 self-start sm:self-auto">
-          <span
-            className={`inline-flex items-center rounded px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase ${
-              (filters.geography_mode || 'current') === 'current'
-                ? 'bg-[#0B1F3A] text-white'
-                : 'bg-amber-600 text-white'
-            }`}
-          >
-            {(filters.geography_mode || 'current') === 'current' ? 'Current Admin' : 'Census 2011'}
-          </span>
-        </div>
-      </div>
-
       {/* Loading State */}
       {isLoading && !overview && (
         <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
