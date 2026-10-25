@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { Clock, TrendingUp, AlertTriangle, Sun, Moon, Sunrise, Sunset } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  TrendingUp,
+  TrendingDown,
+  CalendarRange,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Activity,
+  Layers,
+} from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -10,50 +19,78 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Cell,
 } from 'recharts';
 import type { TrendResponse, HourlyDistributionResponse } from '../../types';
 
 interface TemporalAnalysisSectionProps {
   monthlyTrends: TrendResponse | null;
   yearlyTrends: TrendResponse | null;
-  hourly: HourlyDistributionResponse | null;
+  hourly?: HourlyDistributionResponse | null;
   isLoading?: boolean;
 }
 
 export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = ({
   monthlyTrends,
   yearlyTrends,
-  hourly,
   isLoading,
 }) => {
   const [temporalMode, setTemporalMode] = useState<'month' | 'year'>('month');
 
   const activeTrendData = temporalMode === 'month' ? monthlyTrends?.items || [] : yearlyTrends?.items || [];
 
-  // Calculate analytical temporal summary metrics
+  // Summary statistics for active trend view
   const totalPeriods = activeTrendData.length;
   const counts = activeTrendData.map((d) => d.incident_count);
   const maxCount = counts.length > 0 ? Math.max(...counts) : 0;
   const minCount = counts.length > 0 ? Math.min(...counts) : 0;
   const avgCount = counts.length > 0 ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : 0;
 
-  // Diurnal Phase Calculations (24 Hours)
-  const hourlyItems = hourly?.items || [];
-  const nightWatch = hourlyItems.filter((h) => h.hour >= 0 && h.hour < 6);
-  const morningShift = hourlyItems.filter((h) => h.hour >= 6 && h.hour < 12);
-  const afternoonShift = hourlyItems.filter((h) => h.hour >= 12 && h.hour < 18);
-  const eveningWatch = hourlyItems.filter((h) => h.hour >= 18 && h.hour <= 23);
+  // Identify peak and lowest period items
+  const peakItem = activeTrendData.find((d) => d.incident_count === maxCount);
+  const minItem = activeTrendData.find((d) => d.incident_count === minCount);
 
-  const sumPhase = (items: typeof hourlyItems) => items.reduce((s, i) => s + i.incident_count, 0);
-  const nightTotal = sumPhase(nightWatch);
-  const morningTotal = sumPhase(morningShift);
-  const afternoonTotal = sumPhase(afternoonShift);
-  const eveningTotal = sumPhase(eveningWatch);
-  const dailyTotal = nightTotal + morningTotal + afternoonTotal + eveningTotal || 1;
+  // Annual Year-over-Year calculations from yearlyTrends
+  const yearlyItems = useMemo(() => yearlyTrends?.items || [], [yearlyTrends]);
+  const totalYearlyVolume = useMemo(
+    () => yearlyItems.reduce((acc, curr) => acc + curr.incident_count, 0) || 1,
+    [yearlyItems]
+  );
+  const maxYearVolume = useMemo(
+    () => (yearlyItems.length > 0 ? Math.max(...yearlyItems.map((y) => y.incident_count)) : 1),
+    [yearlyItems]
+  );
 
-  const peakHour = hourly?.peak_hour ?? 18;
-  const peakHourItem = hourlyItems.find((h) => h.hour === peakHour);
+  const annualAnalysis = useMemo(() => {
+    return yearlyItems.map((item, index) => {
+      let yoyChangePct: number | null = null;
+      if (index > 0) {
+        const prev = yearlyItems[index - 1].incident_count;
+        if (prev > 0) {
+          yoyChangePct = ((item.incident_count - prev) / prev) * 100;
+        }
+      }
+      const sharePct = (item.incident_count / totalYearlyVolume) * 100;
+      return {
+        ...item,
+        yoyChangePct,
+        sharePct,
+      };
+    });
+  }, [yearlyItems, totalYearlyVolume]);
+
+  // Overall trajectory momentum
+  const trajectoryMomentum = useMemo(() => {
+    if (annualAnalysis.length < 2) return { label: 'Baseline Consistency', color: 'text-slate-600', icon: Minus };
+    const latest = annualAnalysis[annualAnalysis.length - 1];
+    if (latest.yoyChangePct === null) return { label: 'Baseline Consistency', color: 'text-slate-600', icon: Minus };
+    if (latest.yoyChangePct > 1.5) {
+      return { label: `Volume Surge (+${latest.yoyChangePct.toFixed(1)}% YoY)`, color: 'text-rose-700 bg-rose-50 border-rose-200', icon: TrendingUp };
+    }
+    if (latest.yoyChangePct < -1.5) {
+      return { label: `Volume Reduction (${latest.yoyChangePct.toFixed(1)}% YoY)`, color: 'text-emerald-800 bg-emerald-50 border-emerald-200', icon: TrendingDown };
+    }
+    return { label: `Volume Stable (${latest.yoyChangePct.toFixed(1)}% YoY)`, color: 'text-blue-800 bg-blue-50 border-blue-200', icon: Activity };
+  }, [annualAnalysis]);
 
   return (
     <div className={`space-y-4 transition-opacity ${isLoading ? 'opacity-70' : 'opacity-100'}`}>
@@ -62,14 +99,14 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <Clock className="h-4 w-4" />
+              <CalendarRange className="h-4 w-4" />
             </div>
             <h2 className="text-[17px] font-bold text-[#0B1F3A]">
-              Temporal Crime Analysis &amp; Incident Chronology
+              Longitudinal Offense Trajectory &amp; Period Comparison
             </h2>
           </div>
           <p className="text-[12px] text-[#5D6878] mt-0.5">
-            Analysis of longitudinal patterns, seasonal trends, and 24-hour diurnal crime cycles
+            Multi-period temporal trajectory, monthly volume fluctuations, and year-over-year comparative shifts
           </p>
         </div>
         <div className="flex items-center gap-1.5 self-start sm:self-auto bg-[#F4F7FA] p-1 rounded-lg border border-[#D9E1EA]">
@@ -98,9 +135,9 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
         </div>
       </div>
 
-      {/* Grid: Row of Two Deep Analytical Cards */}
+      {/* Grid: 7 cols (Longitudinal Trajectory Chart) | 5 cols (Annual YoY Comparative Dynamics) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column (7 cols): Longitudinal Trend Analysis */}
+        {/* Left Column (7 cols): Longitudinal Trajectory Area / Bar Chart */}
         <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
@@ -108,7 +145,9 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
                 <h3 className="text-[14px] font-bold text-[#0B1F3A] flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-[#1769AA]" />
                   <span>
-                    {temporalMode === 'month' ? 'Longitudinal Monthly Incident Volume' : 'Annual Incident Volume Comparison'}
+                    {temporalMode === 'month'
+                      ? 'Longitudinal Monthly Incident Volume'
+                      : 'Annual Incident Volume Comparison'}
                   </span>
                 </h3>
                 <p className="text-[11px] text-[#5D6878]">
@@ -125,27 +164,34 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
             {/* Metric summary pills */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#5D6878] block">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#5D6878] block truncate">
                   Average / Period
                 </span>
-                <span className="text-[15px] font-bold font-mono text-[#0B1F3A]">
+                <span className="text-[15px] font-bold font-mono text-[#0B1F3A] block">
                   {avgCount.toLocaleString()}
                 </span>
+                <span className="text-[10px] text-[#7C8796] block truncate">Per reporting interval</span>
               </div>
               <div className="rounded bg-rose-50/50 border border-rose-200/60 p-2.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-rose-700 block">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-rose-700 block truncate">
                   Peak Period
                 </span>
-                <span className="text-[15px] font-bold font-mono text-rose-700">
+                <span className="text-[15px] font-bold font-mono text-rose-700 block">
                   {maxCount.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-rose-600/80 block truncate">
+                  {peakItem?.period || 'Peak volume'}
                 </span>
               </div>
               <div className="rounded bg-emerald-50/50 border border-emerald-200/60 p-2.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-emerald-800 block">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-emerald-800 block truncate">
                   Lowest Period
                 </span>
-                <span className="text-[15px] font-bold font-mono text-emerald-800">
+                <span className="text-[15px] font-bold font-mono text-emerald-800 block">
                   {minCount.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-emerald-700/80 block truncate">
+                  {minItem?.period || 'Lowest volume'}
                 </span>
               </div>
             </div>
@@ -239,141 +285,94 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
           </div>
         </div>
 
-        {/* Right Column (5 cols): 24-Hour Diurnal Activity */}
+        {/* Right Column (5 cols): Annual Comparative Dynamics & Year-over-Year Trajectory */}
         <div className="lg:col-span-5 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-3 mb-3">
               <div>
                 <h3 className="text-[14px] font-bold text-[#0B1F3A] flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#1769AA]" />
-                  <span>Incident Activity by Hour (24-Hour Diurnal Cycle)</span>
+                  <Layers className="h-4 w-4 text-[#1769AA]" />
+                  <span>Annual Comparative Dynamics</span>
                 </h3>
                 <p className="text-[11px] text-[#5D6878]">
-                  Incident occurrence distribution across 24 hourly intervals
+                  Year-over-Year volume distribution and trajectory momentum
                 </p>
               </div>
             </div>
 
-            {/* Peak Hour Alert Banner */}
-            <div className="rounded-md border border-amber-200 bg-amber-50/70 p-2.5 mb-3 flex items-center justify-between gap-2 text-[11.5px]">
-              <div className="flex items-center gap-1.5 text-amber-900 font-semibold">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>
-                  Peak Patrol Hour: {String(peakHour).padStart(2, '0')}:00 hrs
-                </span>
+            {/* Trajectory Momentum Banner */}
+            <div className={`rounded-md border p-2.5 mb-3 flex items-center justify-between gap-2 text-[11.5px] ${trajectoryMomentum.color}`}>
+              <div className="flex items-center gap-1.5 font-semibold">
+                <Activity className="h-4 w-4 shrink-0" />
+                <span>Annual Trajectory:</span>
               </div>
-              <span className="font-mono font-bold text-amber-950">
-                {peakHourItem?.incident_count.toLocaleString() || 0} incidents (
-                {peakHourItem?.percentage.toFixed(1) || 0}%)
-              </span>
+              <span className="font-bold">{trajectoryMomentum.label}</span>
             </div>
 
-            {/* Diurnal Phase Metrics (4 Operational Shifts) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3.5">
-              <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2 text-center">
-                <div className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase text-[#5D6878] mb-0.5">
-                  <Moon className="h-3 w-3 text-indigo-500" />
-                  <span>Night (00–06)</span>
+            {/* Annual Volume Breakdown List */}
+            <div className="space-y-2.5 mb-3">
+              {annualAnalysis.length === 0 ? (
+                <div className="text-xs text-slate-400 text-center py-6">
+                  No annual breakdown data available
                 </div>
-                <span className="text-[12px] font-bold font-mono text-[#0B1F3A] block">
-                  {nightTotal.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-[#7C8796]">
-                  {((nightTotal / dailyTotal) * 100).toFixed(1)}%
-                </span>
-              </div>
-
-              <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2 text-center">
-                <div className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase text-[#5D6878] mb-0.5">
-                  <Sunrise className="h-3 w-3 text-amber-500" />
-                  <span>Morning (06–12)</span>
-                </div>
-                <span className="text-[12px] font-bold font-mono text-[#0B1F3A] block">
-                  {morningTotal.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-[#7C8796]">
-                  {((morningTotal / dailyTotal) * 100).toFixed(1)}%
-                </span>
-              </div>
-
-              <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2 text-center">
-                <div className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase text-[#5D6878] mb-0.5">
-                  <Sun className="h-3 w-3 text-orange-500" />
-                  <span>Day (12–18)</span>
-                </div>
-                <span className="text-[12px] font-bold font-mono text-[#0B1F3A] block">
-                  {afternoonTotal.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-[#7C8796]">
-                  {((afternoonTotal / dailyTotal) * 100).toFixed(1)}%
-                </span>
-              </div>
-
-              <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2 text-center">
-                <div className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase text-[#5D6878] mb-0.5">
-                  <Sunset className="h-3 w-3 text-rose-500" />
-                  <span>Evening (18–24)</span>
-                </div>
-                <span className="text-[12px] font-bold font-mono text-[#0B1F3A] block">
-                  {eveningTotal.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-[#7C8796]">
-                  {((eveningTotal / dailyTotal) * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-
-            {/* 24-Hour Bar Chart */}
-            <div className="h-[180px] w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={hourlyItems} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                  <XAxis
-                    dataKey="hour"
-                    tick={{ fill: '#64748B', fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={{ stroke: '#CBD5E1' }}
-                    tickFormatter={(h) => `${h}h`}
-                  />
-                  <YAxis
-                    tick={{ fill: '#64748B', fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={{ stroke: '#CBD5E1' }}
-                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const data = payload[0].payload;
-                      const isPeak = data.hour === peakHour;
-                      return (
-                        <div className="rounded-lg border border-[#BAC7D5] bg-white p-2.5 shadow-md text-[12px]">
-                          <p className="font-semibold text-[#0B1F3A]">
-                            Hour {String(data.hour).padStart(2, '0')}:00 hrs {isPeak ? '(Peak Hour)' : ''}
-                          </p>
-                          <p className="text-[#1769AA] font-mono font-bold mt-0.5">
-                            {Number(data.incident_count).toLocaleString()} incidents ({data.percentage.toFixed(1)}%)
-                          </p>
+              ) : (
+                annualAnalysis.map((item) => {
+                  const pctOfMax = (item.incident_count / maxYearVolume) * 100;
+                  return (
+                    <div key={item.period} className="rounded-md border border-slate-100 bg-[#F8FAFC] p-2.5">
+                      <div className="flex items-center justify-between text-[12px] mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#0B1F3A]">Year {item.period}</span>
+                          <span className="text-[10px] text-[#7C8796] font-mono">
+                            ({item.sharePct.toFixed(1)}% share)
+                          </span>
                         </div>
-                      );
-                    }}
-                  />
-                  <Bar dataKey="incident_count" radius={[2, 2, 0, 0]}>
-                    {hourlyItems.map((entry) => (
-                      <Cell
-                        key={`cell-${entry.hour}`}
-                        fill={entry.hour === peakHour ? '#EA580C' : '#1769AA'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span className="font-bold text-[#0B1F3A]">
+                            {item.incident_count.toLocaleString()}
+                          </span>
+                          {item.yoyChangePct !== null ? (
+                            <span
+                              className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                                item.yoyChangePct > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : item.yoyChangePct < 0
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {item.yoyChangePct > 0 ? (
+                                <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
+                              ) : item.yoyChangePct < 0 ? (
+                                <ArrowDownRight className="h-2.5 w-2.5 mr-0.5" />
+                              ) : null}
+                              {item.yoyChangePct > 0 ? `+${item.yoyChangePct.toFixed(1)}%` : `${item.yoyChangePct.toFixed(1)}%`}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                              Baseline
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Mini Proportional Bar */}
+                      <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#1769AA] transition-all duration-300"
+                          style={{ width: `${Math.min(pctOfMax, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-[#5D6878]">
-            <span>Orange bar highlights peak surveillance requirement</span>
-            <span className="font-mono font-semibold text-[#0B1F3A]">24h Patrol Matrix</span>
+            <span>Annual deltas calculated against preceding reporting year</span>
+            <span className="font-mono font-semibold text-[#0B1F3A]">YoY Comparative Index</span>
           </div>
         </div>
       </div>

@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { BarChart3 } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import {
+  BarChart3,
+  ArrowLeft,
+  FileSpreadsheet,
+  Layers,
+} from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
@@ -8,8 +13,6 @@ import EmptyState from '../components/common/EmptyState';
 import DashboardFilters from '../components/filters/DashboardFilters';
 import { CrimeClassificationSection } from '../components/analytics/CrimeClassificationSection';
 import { TemporalAnalysisSection } from '../components/analytics/TemporalAnalysisSection';
-import { DemographicsAnalysisSection } from '../components/analytics/DemographicsAnalysisSection';
-import { WeaponAnalysisSection } from '../components/analytics/WeaponAnalysisSection';
 import { CrimeDetailTable } from '../components/analytics/CrimeDetailTable';
 import { analyticsApi } from '../api';
 import type {
@@ -18,9 +21,6 @@ import type {
   CategoryBreakdownResponse,
   TypeBreakdownResponse,
   TrendResponse,
-  HourlyDistributionResponse,
-  VictimDemographicsResponse,
-  WeaponDistributionResponse,
 } from '../types';
 
 export const CrimeAnalyticsPage: React.FC = () => {
@@ -56,15 +56,12 @@ export const CrimeAnalyticsPage: React.FC = () => {
     setSearchParams(newParams, { replace: true });
   };
 
-  // Analytical data states
+  // Dedicated analytical data states
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
   const [types, setTypes] = useState<TypeBreakdownResponse | null>(null);
   const [monthlyTrends, setMonthlyTrends] = useState<TrendResponse | null>(null);
   const [yearlyTrends, setYearlyTrends] = useState<TrendResponse | null>(null);
-  const [hourly, setHourly] = useState<HourlyDistributionResponse | null>(null);
-  const [demographics, setDemographics] = useState<VictimDemographicsResponse | null>(null);
-  const [weapons, setWeapons] = useState<WeaponDistributionResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -79,24 +76,19 @@ export const CrimeAnalyticsPage: React.FC = () => {
     setError(null);
 
     try {
+      // Parallel fetch targeted specifically to offense classification, rankings, trends, and detail inventory
       const [
         overviewRes,
         catRes,
         typesRes,
         monthlyRes,
         yearlyRes,
-        hourlyRes,
-        demogRes,
-        weaponsRes,
       ] = await Promise.all([
         analyticsApi.getOverview(filters),
         analyticsApi.getByCategory(filters),
         analyticsApi.getByType(undefined, filters),
         analyticsApi.getTrends('month', filters),
         analyticsApi.getTrends('year', filters),
-        analyticsApi.getHourly(filters),
-        analyticsApi.getDemographics(filters),
-        analyticsApi.getWeapons(filters),
       ]);
 
       setOverview(overviewRes);
@@ -104,9 +96,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
       setTypes(typesRes);
       setMonthlyTrends(monthlyRes);
       setYearlyTrends(yearlyRes);
-      setHourly(hourlyRes);
-      setDemographics(demogRes);
-      setWeapons(weaponsRes);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch analytical metrics from backend API.');
     } finally {
@@ -123,8 +112,8 @@ export const CrimeAnalyticsPage: React.FC = () => {
     <DashboardLayout
       hideSidebar
       icon={BarChart3}
-      title="Crime Analytics"
-      subtitle="Detailed analysis of crime characteristics, patterns and case activity across jurisdictions and reporting periods."
+      title="Crime Offense &amp; Classification Analytics"
+      subtitle="Granular statutory offense investigation, legal category classifications, longitudinal trajectory comparisons, and codified offense inventory."
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
     >
@@ -135,10 +124,42 @@ export const CrimeAnalyticsPage: React.FC = () => {
         isLoading={isLoading || isRefreshing}
       />
 
+      {/* Navigation & Context Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white px-4 py-2.5 text-xs shadow-2xs">
+        <div className="flex items-center gap-2">
+          <Link
+            to="/dashboard?workspace=fullscreen"
+            className="inline-flex items-center gap-1.5 font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Executive Overview Dashboard</span>
+          </Link>
+          <span className="text-slate-300">|</span>
+          <span className="text-[#5D6878]">
+            Detailed Offense &amp; Statutory Analysis Workspace
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          {types && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#5D6878]">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-[#1769AA]" />
+              <span>{types.items.length} Codified Offenses</span>
+            </span>
+          )}
+          {categories && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#5D6878]">
+              <Layers className="h-3.5 w-3.5 text-[#1769AA]" />
+              <span>{categories.items.length} Legal Domains</span>
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Loading State */}
       {isLoading && !overview && (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-2xs">
-          <LoadingState message="Aggregating statutory offense analytics, demographics and weapon metrics..." />
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
+          <LoadingState message="Aggregating statutory offense analytics, categories, and longitudinal data..." />
         </div>
       )}
 
@@ -160,35 +181,23 @@ export const CrimeAnalyticsPage: React.FC = () => {
         />
       )}
 
-      {/* Dedicated Crime Analytics Workspace Sections */}
+      {/* Dedicated Crime Analytics Workspace Sections (Non-Duplicative) */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <div className="space-y-6">
-          {/* SECTION 1: Crime Classification (Categories & Ranked Crime Types) */}
+          {/* SECTION 1: Crime Classification & Ranked Offenses (Interactive Category filter + ranked types) */}
           <CrimeClassificationSection
             categories={categories}
             types={types}
           />
 
-          {/* SECTION 2: Temporal Pattern (Monthly/Yearly Trends & 24-hr Diurnal Cycle) */}
+          {/* SECTION 2: Longitudinal Offense Trajectory & Period Comparison (Monthly/Yearly with Annual YoY Dynamics) */}
           <TemporalAnalysisSection
             monthlyTrends={monthlyTrends}
             yearlyTrends={yearlyTrends}
-            hourly={hourly}
             isLoading={isRefreshing}
           />
 
-          {/* SECTION 3: Victim Profile (Age Cohort Distribution & Gender Breakdown) */}
-          <DemographicsAnalysisSection
-            demographics={demographics}
-            totalIncidents={overview.total_incidents}
-          />
-
-          {/* SECTION 4: Weapon Involvement (Ranked 6 Weapon Classifications with Lethality Tiers) */}
-          <WeaponAnalysisSection
-            weapons={weapons}
-          />
-
-          {/* OPTIONAL COMPACT DETAIL TABLE: Crime Analysis Detail */}
+          {/* SECTION 3: Codified Statutory Crime Detail Table (All 21 IPC offenses with search, filter, and multi-column sort) */}
           <CrimeDetailTable
             types={types}
           />

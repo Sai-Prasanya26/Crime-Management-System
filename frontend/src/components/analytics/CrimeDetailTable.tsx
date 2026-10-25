@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Table as TableIcon,
+  FileSpreadsheet,
   Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Filter,
+  CheckCircle2,
 } from 'lucide-react';
 import type { TypeBreakdownResponse } from '../../types';
 
@@ -46,7 +47,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
 
   const items = useMemo(() => types?.items || [], [types]);
 
-  // Extract unique categories & severities for filter dropdowns
+  // Extract unique categories for filter dropdowns
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     items.forEach((item) => set.add(item.category_name));
@@ -112,37 +113,39 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
       return <ArrowUpDown className="ml-1 h-3 w-3 text-slate-400 opacity-60" />;
     }
     return sortOrder === 'asc' ? (
-      <ArrowUp className="ml-1 h-3 w-3 text-blue-600 font-bold" />
+      <ArrowUp className="ml-1 h-3 w-3 text-[#1769AA] font-bold" />
     ) : (
-      <ArrowDown className="ml-1 h-3 w-3 text-blue-600 font-bold" />
+      <ArrowDown className="ml-1 h-3 w-3 text-[#1769AA] font-bold" />
     );
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
+    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
       {/* Table Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-              <TableIcon className="h-4 w-4" />
+            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+              <FileSpreadsheet className="h-4 w-4" />
             </div>
-            <h3 className="text-base font-bold text-[#0A192F]">
-              Crime Analysis Detail
+            <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+              Codified Statutory Crime Inventory &amp; Detail Analysis
             </h3>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Comprehensive statutory offense inventory across all codified crime classifications with severity ratings, legal codes, and volume shares.
+          <p className="mt-0.5 text-[12px] text-[#5D6878]">
+            Comprehensive statutory offense catalog across all 21 codified Indian Penal Code crime types with severity tiers, legal codes, and volume shares
           </p>
         </div>
 
-        <div className="text-xs text-slate-500 self-start sm:self-auto">
-          Showing <span className="font-semibold text-slate-800">{filteredAndSortedItems.length}</span> of {items.length} offenses
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
+            Showing <strong className="text-[#0B1F3A]">{filteredAndSortedItems.length}</strong> of {items.length} Codified Offenses
+          </span>
         </div>
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="mt-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+      <div className="mt-3.5 flex flex-col md:flex-row items-stretch md:items-center gap-3">
         {/* Search input */}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -150,14 +153,14 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filter by offense name, legal code (OFF-xx), or category..."
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden"
+            placeholder="Search by offense name, legal code (OFF-xx), or category..."
+            className="w-full rounded-md border border-[#D9E1EA] bg-[#F8FAFC] py-2 pl-9 pr-3 text-xs text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:bg-white focus:outline-hidden"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               Clear
             </button>
@@ -170,9 +173,9 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-hidden"
+            className="rounded-md border border-[#D9E1EA] bg-white px-2.5 py-2 text-xs text-[#0B1F3A] focus:border-[#1769AA] focus:outline-hidden"
           >
-            <option value="ALL">All Categories</option>
+            <option value="ALL">All Statutory Categories</option>
             {availableCategories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -184,29 +187,29 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-hidden"
+            className="rounded-md border border-[#D9E1EA] bg-white px-2.5 py-2 text-xs text-[#0B1F3A] focus:border-[#1769AA] focus:outline-hidden"
           >
-            <option value="ALL">All Severities</option>
-            <option value="CRITICAL">Critical</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
+            <option value="ALL">All Severity Tiers</option>
+            <option value="CRITICAL">Critical Tier</option>
+            <option value="HIGH">High Tier</option>
+            <option value="MEDIUM">Medium Tier</option>
+            <option value="LOW">Low Tier</option>
           </select>
         </div>
       </div>
 
       {/* Responsive Table with horizontal internal scrolling */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
-        <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-[#D9E1EA]">
+        <table className="w-full min-w-[700px] border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-              <th scope="col" className="py-3 px-3 w-16">
+            <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-bold uppercase tracking-wider text-[#5D6878]">
+              <th scope="col" className="py-2.5 px-3 w-18">
                 Code
               </th>
               <th
                 scope="col"
                 onClick={() => handleSort('crime_name')}
-                className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                className="py-2.5 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
                   <span>Crime Classification / Type</span>
@@ -216,7 +219,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
               <th
                 scope="col"
                 onClick={() => handleSort('category_name')}
-                className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                className="py-2.5 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
                   <span>Category Domain</span>
@@ -226,7 +229,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
               <th
                 scope="col"
                 onClick={() => handleSort('severity_level')}
-                className="py-3 px-3 cursor-pointer hover:bg-slate-100 transition-colors"
+                className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
                   <span>Severity Tier</span>
@@ -236,17 +239,17 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
               <th
                 scope="col"
                 onClick={() => handleSort('incident_count')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                className="py-2.5 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center justify-end">
-                  <span>Incident Count</span>
+                  <span>Reported Incidents</span>
                   {renderSortIndicator('incident_count')}
                 </div>
               </th>
               <th
                 scope="col"
                 onClick={() => handleSort('percentage')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors w-32"
+                className="py-2.5 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors w-36"
               >
                 <div className="flex items-center justify-end">
                   <span>Volume Share</span>
@@ -259,7 +262,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             {filteredAndSortedItems.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-slate-500">
-                  No crime classifications match the selected criteria.
+                  No codified crime classifications match the selected criteria.
                 </td>
               </tr>
             ) : (
@@ -274,15 +277,15 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
                 return (
                   <tr
                     key={item.crime_type_id}
-                    className="transition-colors hover:bg-slate-50/80"
+                    className="transition-colors hover:bg-slate-50/70"
                   >
-                    <td className="py-3 px-3 font-mono text-[11px] font-semibold text-slate-500">
+                    <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-slate-500">
                       {item.crime_code}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-[#0A192F]">
+                    <td className="py-2.5 px-4 font-semibold text-[#0B1F3A]">
                       {item.crime_name}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${catStyle.bg} ${catStyle.text}`}
                       >
@@ -290,24 +293,24 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
                         {item.category_name}
                       </span>
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-2.5 px-3">
                       <span
-                        className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${badge.bg} ${badge.text} ${badge.border}`}
+                        className={`inline-block rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badge.bg} ${badge.text} ${badge.border}`}
                       >
                         {item.severity_level}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                    <td className="py-2.5 px-4 text-right font-mono font-bold text-[#0B1F3A]">
                       {item.incident_count.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-2.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <span className="font-mono text-slate-700">
+                        <span className="font-mono text-[#5D6878] font-medium">
                           {item.percentage.toFixed(2)}%
                         </span>
                         <div className="hidden sm:block h-1.5 w-12 rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-blue-600"
+                            className="h-full rounded-full bg-[#1769AA]"
                             style={{ width: `${Math.min(100, item.percentage * 10)}%` }}
                           />
                         </div>
@@ -322,9 +325,12 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
       </div>
 
       {/* Footer info */}
-      <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-slate-500">
-        <span>Click any column header to sort. Table scrolls horizontally on smaller screens.</span>
-        <span>Standard Indian Penal Code statutory offenses</span>
+      <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-[#5D6878]">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+          <span>Interactive sorting active across all 21 codified Indian Penal Code offenses</span>
+        </div>
+        <span>Verified Baseline Dataset • NCRB Standard Codification</span>
       </div>
     </div>
   );
