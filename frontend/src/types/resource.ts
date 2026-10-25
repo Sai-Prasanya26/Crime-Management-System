@@ -249,3 +249,138 @@ export interface ResourceCrimeComparisonResponse {
   disclaimer: string;
   items: StateCrimeResourceComparisonItem[];
 }
+
+
+// ==========================================
+// Phase 10: Constrained AI Optimization Types
+// ==========================================
+
+export interface OptimizationRunRequest {
+  state_id?: number;
+  resource_type_id: number;
+  assessment_period: string;
+  scenario_name?: string;
+  scenario_type: 'BASELINE_CONSTRAINED' | 'CRITICAL_RISK_PRIORITY' | 'PROPORTIONAL_WORKLOAD' | 'RESERVE_HEAVY';
+  pool_capacity_override?: number;
+  minimum_reserve_ratio?: number;
+  risk_weight_factor?: number;
+  stability_penalty?: number;
+  calculation_version?: string;
+}
+
+export interface OptimizationAllocationItem {
+  district_id: number;
+  district_name: string;
+  state_name: string;
+  risk_score: number;
+  risk_level: string;
+  priority_score: number;
+  baseline_quantity: number | null;
+  required_quantity: number;
+  recommended_quantity: number;
+  change_quantity: number;
+  shortfall_before: number;
+  shortfall_after: number;
+  allocation_status: string;
+  explanation?: string | null;
+}
+
+export interface OptimizationRunResponse {
+  run_id: string;
+  scenario_name: string;
+  scenario_type: string;
+  state_id?: number | null;
+  state_name?: string | null;
+  resource_type_id: number;
+  resource_name: string;
+  resource_category: string;
+  assessment_period: string;
+  risk_version: string;
+  forecast_model_id?: number | null;
+  forecast_model_version?: string | null;
+  forecast_origin_date?: string | null;
+  algorithm: string;
+  pool_capacity: number;
+  allocated_total: number;
+  remaining_pool: number;
+  total_demand: number;
+  shortfall_before: number;
+  shortfall_after: number;
+  shortfall_reduction_pct: number;
+  pool_utilization_pct: number;
+  solver_status: string;
+  objective_value?: number | null;
+  execution_duration_ms: number;
+  constraints_applied?: Record<string, any> | null;
+  explanation_summary: string;
+  created_at: string;
+  allocations?: OptimizationAllocationItem[];
+}
+
+export interface OptimizationOverviewResponse {
+  total_runs_executed: number;
+  verified_official_inventory_summary: {
+    state_resources_count: number;
+    district_resources_count: number;
+    district_official_count: number;
+    district_unrecorded_count: number;
+    explanation_of_discrepancy: string;
+  };
+  eligible_categories: Array<{
+    resource_type_id: number;
+    resource_name: string;
+    category: string;
+    status: string;
+    verified_pool: number;
+    notes: string;
+  }>;
+  ineligible_categories: Array<{
+    resource_type_id: number;
+    resource_name: string;
+    category: string;
+    status: string;
+    reason: string;
+  }>;
+  recent_runs: OptimizationRunResponse[];
+  planning_disclaimer: string;
+}
+
+export interface OptimizationResourcesAuditResponse {
+  state_resources_count: number;
+  district_resources_count: number;
+  district_official_count: number;
+  district_unrecorded_count: number;
+  discrepancy_explanation: string;
+  resource_types: Array<{
+    id: number;
+    code: string;
+    name: string;
+    category: string;
+    eligible: boolean;
+  }>;
+  state_inventory_breakdown: Array<{
+    resource_type_id: number;
+    resource_name: string;
+    category: string;
+    states_covered: number;
+    total_verified_count: number;
+    reference_years: string;
+    primary_source: string;
+  }>;
+}
+
+export interface OptimizationScenarioComparisonRequest {
+  state_id: number;
+  resource_type_id: number;
+  assessment_period: string;
+  scenarios: OptimizationRunRequest[];
+}
+
+export interface OptimizationScenarioComparisonResponse {
+  comparison_id: string;
+  state_name: string;
+  resource_name: string;
+  assessment_period: string;
+  scenarios: OptimizationRunResponse[];
+  comparison_summary: string;
+}

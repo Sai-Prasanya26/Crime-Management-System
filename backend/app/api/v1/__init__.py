@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from backend.app.api.v1 import health, geography, analytics, auth, official_crime, admin, predictions, risk, resources
+from backend.app.api.v1 import health, geography, analytics, auth, official_crime, admin, predictions, risk, resources, optimization
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["Health"])
@@ -11,4 +11,5 @@ api_router.include_router(official_crime.router, prefix="/official-crime", tags=
 api_router.include_router(predictions.router, prefix="/predictions", tags=["Predictions"])
 api_router.include_router(risk.router, prefix="/risk", tags=["Risk Assessment"])
 api_router.include_router(resources.router, prefix="/resources", tags=["Resource Optimization"])
+api_router.include_router(optimization.router, prefix="/optimization", tags=["Constrained Resource Optimization"])
 

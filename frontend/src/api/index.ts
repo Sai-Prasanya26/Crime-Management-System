@@ -6,4 +6,5 @@ export { default as officialCrimeApi } from './officialCrimeApi';
 export { riskApi } from './riskApi';
 export { resourceApi } from './resourceApi';
 export { predictionApi } from './predictionApi';
+export { default as optimizationApi } from './optimizationApi';
 
