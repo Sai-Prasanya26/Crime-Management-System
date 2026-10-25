@@ -8,6 +8,7 @@ import {
   Compass,
   AlertTriangle,
   Building,
+  RefreshCw,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
@@ -19,10 +20,13 @@ import type {
   StateItem,
   DistrictItem,
   DistrictDetailResponse,
+  JurisdictionProfileResponse,
 } from '../types';
 
 export const DistrictsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const geographyMode = (searchParams.get('geography_mode') || searchParams.get('view') || 'current') as 'current' | 'historical';
+
   const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>();
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
@@ -32,9 +36,13 @@ export const DistrictsPage: React.FC = () => {
   const [districtDetail, setDistrictDetail] = useState<DistrictDetailResponse | null>(null);
   const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);
 
+  // Jurisdiction Profile State
+  const [jurisdictionProfile, setJurisdictionProfile] = useState<JurisdictionProfileResponse | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load States and apply initial state param if present
@@ -42,7 +50,7 @@ export const DistrictsPage: React.FC = () => {
     let isMounted = true;
     const loadStates = async () => {
       try {
-        const res = await geographyApi.getStates();
+        const res = await geographyApi.getStates(geographyMode);
         if (isMounted) {
           setStates(res.items);
           const stateParam = searchParams.get('state');
@@ -64,7 +72,7 @@ export const DistrictsPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [searchParams]);
+  }, [searchParams, geographyMode]);
 
   // Load Districts when state changes and apply district param if present
   useEffect(() => {
@@ -75,7 +83,7 @@ export const DistrictsPage: React.FC = () => {
         return;
       }
       try {
-        const res = await geographyApi.getDistricts(selectedStateId);
+        const res = await geographyApi.getDistricts(selectedStateId, geographyMode);
         if (isMounted) {
           setDistricts(res.items);
           const districtParam = searchParams.get('district');
@@ -97,7 +105,7 @@ export const DistrictsPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedStateId, searchParams]);
+  }, [selectedStateId, searchParams, geographyMode]);
 
   // Load District Detail with Demographics
   useEffect(() => {
@@ -106,18 +114,46 @@ export const DistrictsPage: React.FC = () => {
         setDistrictDetail(null);
         return;
       }
-      setLoadingDetail(true);
       try {
         const res = await geographyApi.getDistrictDetail(selectedDistrictId);
         setDistrictDetail(res);
       } catch (err) {
         console.error('Failed to load district detail:', err);
-      } finally {
-        setLoadingDetail(false);
       }
     };
     loadDetail();
   }, [selectedDistrictId]);
+
+  // Fetch Jurisdiction Profile (State Overview or District Profile)
+  const fetchJurisdictionProfile = useCallback(async () => {
+    if (!selectedStateId && !selectedDistrictId) {
+      setJurisdictionProfile(null);
+      setProfileError(null);
+      return;
+    }
+    setLoadingProfile(true);
+    setProfileError(null);
+    try {
+      const res = await geographyApi.getJurisdictionProfile({
+        state_id: selectedStateId,
+        district_id: selectedDistrictId,
+        geography_mode: geographyMode,
+      });
+      setJurisdictionProfile(res);
+    } catch (err: any) {
+      console.error('Failed to load jurisdiction profile:', err);
+      setProfileError(
+        err?.response?.data?.detail || err?.message || 'Failed to load jurisdiction profile data.'
+      );
+      setJurisdictionProfile(null);
+    } finally {
+      setLoadingProfile(false);
+    }
+  }, [selectedStateId, selectedDistrictId, geographyMode]);
+
+  useEffect(() => {
+    fetchJurisdictionProfile();
+  }, [fetchJurisdictionProfile]);
 
   // Load Top Districts ranking
   const fetchTopDistricts = useCallback(async (isRefresh = false) => {
@@ -132,6 +168,7 @@ export const DistrictsPage: React.FC = () => {
         metric,
         limit: 15,
         state_id: selectedStateId,
+        geography_mode: geographyMode,
       });
       setTopDistricts(data);
     } catch (err: any) {
@@ -140,22 +177,60 @@ export const DistrictsPage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [metric, selectedStateId]);
+  }, [metric, selectedStateId, geographyMode]);
 
   useEffect(() => {
     fetchTopDistricts();
   }, [fetchTopDistricts]);
 
-  // Selected district crime metrics lookup
-  const selectedDistrictStats = useMemo(() => {
-    if (!selectedDistrictId || !topDistricts) return null;
-    return topDistricts.items.find((d) => d.district_id === selectedDistrictId);
-  }, [selectedDistrictId, topDistricts]);
-
   const selectedStateName = useMemo(() => {
     if (!selectedStateId) return null;
     return states.find((s) => s.id === selectedStateId)?.state_name;
   }, [selectedStateId, states]);
+
+  const selectedDistrictName = useMemo(() => {
+    if (!selectedDistrictId) return null;
+    return (
+      districts.find((d) => d.id === selectedDistrictId)?.district_name ||
+      districtDetail?.district_name ||
+      jurisdictionProfile?.district_name
+    );
+  }, [selectedDistrictId, districts, districtDetail, jurisdictionProfile]);
+
+  const profileHeading = useMemo(() => {
+    if (selectedDistrictId) {
+      const dist = selectedDistrictName || 'Selected District';
+      const st = selectedStateName || districtDetail?.state_name || jurisdictionProfile?.state_name || '';
+      return `${dist}${st ? `, ${st}` : ''}`;
+    }
+    if (selectedStateName) {
+      return `${selectedStateName} (State Overview)`;
+    }
+    return 'Jurisdiction Profile';
+  }, [selectedDistrictId, selectedDistrictName, selectedStateName, districtDetail, jurisdictionProfile]);
+
+  const handleStateChange = (stateId?: number) => {
+    setSelectedStateId(stateId);
+    setSelectedDistrictId(undefined);
+    setDistrictDetail(null);
+    setJurisdictionProfile(null);
+    setProfileError(null);
+  };
+
+  const handleDistrictChange = (districtId?: number) => {
+    setSelectedDistrictId(districtId);
+    setDistrictDetail(null);
+    setJurisdictionProfile(null);
+    setProfileError(null);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedStateId(undefined);
+    setSelectedDistrictId(undefined);
+    setDistrictDetail(null);
+    setJurisdictionProfile(null);
+    setProfileError(null);
+  };
 
   return (
     <DashboardLayout
@@ -163,7 +238,12 @@ export const DistrictsPage: React.FC = () => {
       icon={MapPin}
       title="Geographic Intelligence"
       subtitle="Spatial crime density, hotspots and jurisdictional distribution"
-      onRefresh={() => fetchTopDistricts(true)}
+      onRefresh={() => {
+        fetchTopDistricts(true);
+        if (selectedStateId || selectedDistrictId) {
+          fetchJurisdictionProfile();
+        }
+      }}
       isRefreshing={isRefreshing}
     >
       {/* State & District Lookup Filter Toolbar */}
@@ -179,8 +259,7 @@ export const DistrictsPage: React.FC = () => {
               value={selectedStateId || ''}
               onChange={(e) => {
                 const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                setSelectedStateId(val);
-                setSelectedDistrictId(undefined);
+                handleStateChange(val);
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
@@ -197,7 +276,7 @@ export const DistrictsPage: React.FC = () => {
                 value={selectedDistrictId || ''}
                 onChange={(e) => {
                   const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                  setSelectedDistrictId(val);
+                  handleDistrictChange(val);
                 }}
                 className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
@@ -213,10 +292,7 @@ export const DistrictsPage: React.FC = () => {
 
           {selectedStateId && (
             <button
-              onClick={() => {
-                setSelectedStateId(undefined);
-                setSelectedDistrictId(undefined);
-              }}
+              onClick={handleResetFilters}
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -256,7 +332,7 @@ export const DistrictsPage: React.FC = () => {
                       Tactical Geographic Crime Distribution
                     </h3>
                     <p className="text-[12px] text-[#5D6878]">
-                      Spatial incident density across 789 administrative districts
+                      Spatial incident density across {geographyMode === 'historical' ? '640 Census 2011 districts' : '789 administrative districts'}
                     </p>
                   </div>
                 </div>
@@ -281,7 +357,7 @@ export const DistrictsPage: React.FC = () => {
                     Spatial Coordinate Grid &bull; Boundary Analysis
                   </span>
                   <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[#1D7FE2]">
-                    789 Monitored Jurisdictions
+                    {geographyMode === 'historical' ? '640 Monitored Jurisdictions' : '789 Monitored Jurisdictions'}
                   </span>
                 </div>
               </div>
@@ -345,87 +421,147 @@ export const DistrictsPage: React.FC = () => {
 
           {/* SECTION 4: Selected Location Detail (When state or district selected) */}
           {(selectedDistrictId || selectedStateId) && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs transition-all">
               <div className="flex items-center justify-between border-b border-blue-200/60 pb-3">
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-[#1769AA]" />
                   <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                    Jurisdiction Profile:{' '}
-                    {selectedDistrictId
-                      ? `${districtDetail?.district_name || 'Selected District'}, ${districtDetail?.state_name || selectedStateName}`
-                      : `${selectedStateName} (State Overview)`}
+                    Jurisdiction Profile: {profileHeading}
                   </h3>
                 </div>
-                {districtDetail?.parent_district_id && (
+                {(jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id) && (
                   <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-blue-200">
-                    Census 2011 Parent #{districtDetail.parent_district_id}
+                    Census 2011 Parent #{jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id}
                   </span>
                 )}
               </div>
 
-              {loadingDetail ? (
-                <div className="py-4 text-center text-xs font-medium text-[#1769AA]">
-                  Loading jurisdictional profile data...
+              {profileError ? (
+                <div className="mt-3 p-3 rounded border border-red-200 bg-red-50 text-xs text-red-700 flex items-center justify-between">
+                  <span>{profileError}</span>
+                  <button
+                    onClick={() => fetchJurisdictionProfile()}
+                    className="inline-flex items-center gap-1 font-bold text-[#C53B3B] hover:underline cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>Retry</span>
+                  </button>
+                </div>
+              ) : loadingProfile ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#1769AA]">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1769AA] border-t-transparent" />
+                  <span className="text-xs font-medium">
+                    Aggregating jurisdictional profile metrics...
+                  </span>
+                </div>
+              ) : jurisdictionProfile ? (
+                <div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Metric 1: Reported Incidents */}
+                    <div className="rounded border border-blue-200/80 bg-white p-3">
+                      <span className="text-[11px] font-semibold uppercase text-slate-500">
+                        Reported Incidents
+                      </span>
+                      <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
+                        {jurisdictionProfile.reported_incidents !== null && jurisdictionProfile.reported_incidents !== undefined
+                          ? jurisdictionProfile.reported_incidents.toLocaleString()
+                          : '—'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {jurisdictionProfile.scope === 'STATE'
+                          ? 'Attributed state proceedings'
+                          : 'Recorded crime proceedings'}
+                      </p>
+                    </div>
+
+                    {/* Metric 2: Population Density */}
+                    <div className="rounded border border-blue-200/80 bg-white p-3">
+                      <span className="text-[11px] font-semibold uppercase text-slate-500">
+                        Population Density
+                      </span>
+                      <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
+                        {jurisdictionProfile.population !== null && jurisdictionProfile.population !== undefined
+                          ? jurisdictionProfile.population.toLocaleString()
+                          : 'Not available'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {jurisdictionProfile.scope === 'STATE'
+                          ? 'Census 2011 state aggregate'
+                          : jurisdictionProfile.parent_district_id
+                          ? 'Census 2011 parent residents'
+                          : jurisdictionProfile.population
+                          ? 'Census 2011 residents'
+                          : 'Baseline unavailable'}
+                      </p>
+                    </div>
+
+                    {/* Metric 3: Crime Rate / 100k */}
+                    <div className="rounded border border-blue-200/80 bg-white p-3">
+                      <span className="text-[11px] font-semibold uppercase text-slate-500">
+                        Crime Rate / 100k
+                      </span>
+                      <p className="mt-1 text-xl font-bold text-[#1769AA]">
+                        {jurisdictionProfile.crime_rate_per_100k !== null && jurisdictionProfile.crime_rate_per_100k !== undefined
+                          ? jurisdictionProfile.crime_rate_per_100k.toFixed(1)
+                          : 'Not available'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {jurisdictionProfile.crime_rate_per_100k !== null
+                          ? 'Normalized incidence density'
+                          : 'Requires valid population'}
+                      </p>
+                    </div>
+
+                    {/* Metric 4: Risk Classification */}
+                    <div className="rounded border border-blue-200/80 bg-white p-3">
+                      <span className="text-[11px] font-semibold uppercase text-slate-500">
+                        Risk Classification
+                      </span>
+                      <div className="mt-1">
+                        {jurisdictionProfile.risk_level === 'CRITICAL' ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold border border-red-200">
+                            <AlertTriangle className="h-3 w-3" />
+                            Critical Risk Hotspot {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          </span>
+                        ) : jurisdictionProfile.risk_level === 'HIGH' ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold border border-amber-200">
+                            <AlertTriangle className="h-3 w-3" />
+                            High Risk Hotspot {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          </span>
+                        ) : jurisdictionProfile.risk_level === 'MODERATE' ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-bold border border-blue-200">
+                            <ShieldAlert className="h-3 w-3" />
+                            Moderate Crime Zone {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          </span>
+                        ) : jurisdictionProfile.risk_level === 'LOW' ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold border border-emerald-200">
+                            Low Incidence Area {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs font-semibold border border-slate-200">
+                            Not available
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {jurisdictionProfile.scope === 'STATE'
+                          ? 'Assessed at district level'
+                          : jurisdictionProfile.risk_level
+                          ? 'Operational posture'
+                          : 'Baseline uncalibrated'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {jurisdictionProfile.notes && (
+                    <div className="mt-3 text-[11px] text-slate-500 italic">
+                      {jurisdictionProfile.notes}
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Reported Incidents
-                    </span>
-                    <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
-                      {selectedDistrictStats
-                        ? selectedDistrictStats.incident_count.toLocaleString()
-                        : '—'}
-                    </p>
-                    <p className="text-[11px] text-slate-500">Recorded crime proceedings</p>
-                  </div>
-
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Population Density
-                    </span>
-                    <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
-                      {districtDetail?.demographics?.total_population
-                        ? districtDetail.demographics.total_population.toLocaleString()
-                        : selectedDistrictStats?.total_population
-                        ? selectedDistrictStats.total_population.toLocaleString()
-                        : '—'}
-                    </p>
-                    <p className="text-[11px] text-slate-500">Census 2011 residents</p>
-                  </div>
-
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Crime Rate / 100k
-                    </span>
-                    <p className="mt-1 text-xl font-bold text-[#1769AA]">
-                      {selectedDistrictStats?.crime_rate_per_100k
-                        ? selectedDistrictStats.crime_rate_per_100k.toFixed(1)
-                        : '—'}
-                    </p>
-                    <p className="text-[11px] text-slate-500">Normalized incidence density</p>
-                  </div>
-
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Risk Classification
-                    </span>
-                    <div className="mt-1">
-                      {selectedDistrictStats?.crime_rate_per_100k &&
-                      selectedDistrictStats.crime_rate_per_100k > 250 ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold">
-                          <AlertTriangle className="h-3 w-3" />
-                          High Risk Hotspot
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-bold">
-                          Monitored Area
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500">Operational posture</p>
-                  </div>
+                <div className="py-6 text-center text-xs text-slate-500">
+                  No profile statistics available for this jurisdiction.
                 </div>
               )}
             </div>

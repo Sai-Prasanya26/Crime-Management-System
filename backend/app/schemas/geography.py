@@ -86,3 +86,23 @@ class DistrictGeographyMappingItem(BaseModel):
 class DistrictGeographyMappingListResponse(BaseModel):
     total: int
     items: List[DistrictGeographyMappingItem]
+
+
+class JurisdictionProfileResponse(BaseModel):
+    scope: str  # "STATE" or "DISTRICT"
+    state_id: int
+    state_name: str
+    district_id: Optional[int] = None
+    district_name: Optional[str] = None
+    parent_district_id: Optional[int] = None
+    geography_mode: str = "current"
+    reported_incidents: Optional[int] = None
+    population: Optional[int] = None
+    crime_rate_per_100k: Optional[float] = None
+    risk_level: Optional[str] = None
+    risk_score: Optional[float] = None
+    risk_label: Optional[str] = None
+    notes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

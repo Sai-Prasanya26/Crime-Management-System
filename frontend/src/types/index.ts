@@ -155,6 +155,23 @@ export interface DistrictGeographyMappingListResponse {
   items: DistrictGeographyMappingItem[];
 }
 
+export interface JurisdictionProfileResponse {
+  scope: 'STATE' | 'DISTRICT';
+  state_id: number;
+  state_name: string;
+  district_id?: number | null;
+  district_name?: string | null;
+  parent_district_id?: number | null;
+  geography_mode: 'current' | 'historical';
+  reported_incidents?: number | null;
+  population?: number | null;
+  crime_rate_per_100k?: number | null;
+  risk_level?: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' | null;
+  risk_score?: number | null;
+  risk_label?: string | null;
+  notes?: string | null;
+}
+
 // ============================================================================
 // Official Government (NCRB) Crime Statistics Types
 // ============================================================================

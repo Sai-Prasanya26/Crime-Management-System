@@ -8,6 +8,7 @@ from backend.app.schemas.geography import (
     DistrictListResponse,
     DistrictDetailResponse,
     DistrictGeographyMappingListResponse,
+    JurisdictionProfileResponse,
 )
 
 router = APIRouter()
@@ -51,6 +52,31 @@ def get_district_details(
     db: Session = Depends(get_db),
 ) -> DistrictDetailResponse:
     return GeographyService.get_district_detail(db, district_id=district_id)
+
+
+@router.get(
+    "/jurisdiction-profile",
+    response_model=JurisdictionProfileResponse,
+    summary="Get Jurisdiction Profile Statistics",
+    description="Retrieve aggregated jurisdiction profile (Reported Incidents, Population, Crime Rate per 100k, Risk Level) for either a State/UT or District.",
+)
+@router.get(
+    "/profile",
+    response_model=JurisdictionProfileResponse,
+    include_in_schema=False,
+)
+def get_jurisdiction_profile(
+    state_id: Optional[int] = Query(None, description="State ID for state overview or district scope validation"),
+    district_id: Optional[int] = Query(None, description="District ID for district profile"),
+    geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic mode ('current' or 'historical')"),
+    db: Session = Depends(get_db),
+) -> JurisdictionProfileResponse:
+    return GeographyService.get_jurisdiction_profile(
+        db,
+        state_id=state_id,
+        district_id=district_id,
+        geography_mode=geography_mode,
+    )
 
 
 @router.get(

@@ -4,6 +4,7 @@ import type {
   DistrictListResponse,
   DistrictDetailResponse,
   DistrictGeographyMappingListResponse,
+  JurisdictionProfileResponse,
 } from '../types';
 
 export const geographyApi = {
@@ -40,6 +41,20 @@ export const geographyApi = {
    */
   getDistrictDetail: async (districtId: number): Promise<DistrictDetailResponse> => {
     const response = await apiClient.get<DistrictDetailResponse>(`/geography/districts/${districtId}`);
+    return response.data;
+  },
+
+  /**
+   * Fetch aggregated jurisdiction profile (incidents, population, rate, risk) for a state or district.
+   */
+  getJurisdictionProfile: async (params: {
+    state_id?: number;
+    district_id?: number;
+    geography_mode?: 'current' | 'historical';
+  }): Promise<JurisdictionProfileResponse> => {
+    const response = await apiClient.get<JurisdictionProfileResponse>('/geography/jurisdiction-profile', {
+      params,
+    });
     return response.data;
   },
 

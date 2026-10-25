@@ -11,6 +11,7 @@ from backend.app.schemas.geography import (
     DistrictDemographicsData,
     DistrictGeographyMappingListResponse,
     DistrictGeographyMappingItem,
+    JurisdictionProfileResponse,
 )
 
 
@@ -63,8 +64,11 @@ class GeographyService:
             )
 
         demo_data = None
-        if district.demographics:
-            d = district.demographics
+        d = district.demographics
+        if not d and district.parent_district and district.parent_district.demographics:
+            d = district.parent_district.demographics
+
+        if d:
             demo_data = DistrictDemographicsData(
                 census_year=d.census_year,
                 total_population=d.total_population,
@@ -86,6 +90,196 @@ class GeographyService:
             parent_district_id=district.parent_district_id,
             demographics=demo_data,
         )
+
+    @staticmethod
+    def get_jurisdiction_profile(
+        db: Session,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+        geography_mode: str = "current",
+    ) -> JurisdictionProfileResponse:
+        from backend.app.models.geography import State
+        from backend.app.models.demographics import DistrictDemographics
+        from backend.app.models.crime import CrimeIncident
+        from backend.app.models.intelligence import CrimeRiskScore
+        from backend.app.repositories.crime_repository import CrimeRepository
+        from sqlalchemy import func, desc
+
+        if district_id is None and state_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either state_id or district_id must be provided for jurisdiction profile.",
+            )
+
+        if district_id is not None:
+            # District Profile
+            district = GeographyRepository.get_district_by_id(db, district_id)
+            if not district:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"District with ID {district_id} not found.",
+                )
+
+            # Validate state consistency if state_id was also passed
+            if state_id is not None and district.state_id != state_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"District '{district.district_name}' (State ID {district.state_id}) does not belong to State ID {state_id}.",
+                )
+
+            state_id_resolved = district.state_id
+            state_name = district.state.state_name if district.state else f"State #{district.state_id}"
+
+            filter_ids = CrimeRepository.resolve_filter_district_ids(
+                db, district_id=district.id, geography_mode=geography_mode
+            )
+
+            # Incidents
+            reported_incidents = (
+                db.query(func.count(CrimeIncident.id))
+                .filter(CrimeIncident.district_id.in_(filter_ids))
+                .scalar()
+                if filter_ids
+                else 0
+            )
+
+            # Population
+            population = None
+            notes = None
+            if district.demographics and district.demographics.total_population:
+                population = district.demographics.total_population
+            elif (
+                district.parent_district
+                and district.parent_district.demographics
+                and district.parent_district.demographics.total_population
+            ):
+                population = district.parent_district.demographics.total_population
+                notes = f"Census 2011 baseline derived from parent jurisdiction #{district.parent_district_id}."
+            elif filter_ids:
+                p_sum = (
+                    db.query(func.sum(DistrictDemographics.total_population))
+                    .filter(DistrictDemographics.district_id.in_(filter_ids))
+                    .scalar()
+                )
+                if p_sum:
+                    population = int(p_sum)
+                    notes = "Census 2011 baseline derived from mapped lineage."
+
+            if population is None:
+                notes = "Census 2011 population baseline unavailable for this administrative jurisdiction."
+
+            # Crime rate per 100k
+            crime_rate = None
+            if population and population > 0 and reported_incidents is not None:
+                crime_rate = round((reported_incidents / population) * 100000.0, 2)
+
+            # Risk classification
+            target_census_id = (
+                district.id
+                if district.is_census_2011
+                else (district.parent_district_id or (filter_ids[0] if filter_ids else None))
+            )
+
+            risk_level = None
+            risk_score = None
+            risk_label = "Not available"
+
+            if target_census_id:
+                latest_risk = (
+                    db.query(CrimeRiskScore)
+                    .filter(CrimeRiskScore.district_id == target_census_id)
+                    .order_by(desc(CrimeRiskScore.period_year), desc(CrimeRiskScore.period_month))
+                    .first()
+                )
+                if latest_risk:
+                    risk_level = latest_risk.risk_level
+                    risk_score = float(latest_risk.overall_risk_score)
+                    if risk_level == "CRITICAL":
+                        risk_label = "Critical Risk Hotspot"
+                    elif risk_level == "HIGH":
+                        risk_label = "High Risk Hotspot"
+                    elif risk_level == "MODERATE":
+                        risk_label = "Moderate Crime Zone"
+                    elif risk_level == "LOW":
+                        risk_label = "Low Incidence Area"
+                    else:
+                        risk_label = f"{risk_level} Risk"
+
+            return JurisdictionProfileResponse(
+                scope="DISTRICT",
+                state_id=state_id_resolved,
+                state_name=state_name,
+                district_id=district.id,
+                district_name=district.district_name,
+                parent_district_id=district.parent_district_id,
+                geography_mode=geography_mode,
+                reported_incidents=reported_incidents,
+                population=population,
+                crime_rate_per_100k=crime_rate,
+                risk_level=risk_level,
+                risk_score=risk_score,
+                risk_label=risk_label,
+                notes=notes,
+            )
+
+        else:
+            # State Overview Profile
+            state = db.query(State).filter(State.id == state_id).first()
+            if not state:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"State with ID {state_id} not found.",
+                )
+
+            filter_ids = CrimeRepository.resolve_filter_district_ids(
+                db, state_id=state.id, geography_mode=geography_mode
+            )
+
+            # Aggregated reported incidents for that state
+            reported_incidents = (
+                db.query(func.count(CrimeIncident.id))
+                .filter(CrimeIncident.district_id.in_(filter_ids))
+                .scalar()
+                if filter_ids
+                else 0
+            )
+
+            # Aggregated population for that state
+            pop_sum = (
+                db.query(func.sum(DistrictDemographics.total_population))
+                .filter(DistrictDemographics.district_id.in_(filter_ids))
+                .scalar()
+                if filter_ids
+                else None
+            )
+            population = int(pop_sum) if pop_sum is not None else None
+
+            # Crime rate per 100k
+            crime_rate = None
+            if population and population > 0 and reported_incidents is not None:
+                crime_rate = round((reported_incidents / population) * 100000.0, 2)
+
+            notes = (
+                f"State-level aggregation across {len(filter_ids or [])} Census 2011 district entities. "
+                "Risk classification is calibrated and assessed at district jurisdiction level."
+            )
+
+            return JurisdictionProfileResponse(
+                scope="STATE",
+                state_id=state.id,
+                state_name=state.state_name,
+                district_id=None,
+                district_name=None,
+                parent_district_id=None,
+                geography_mode=geography_mode,
+                reported_incidents=reported_incidents,
+                population=population,
+                crime_rate_per_100k=crime_rate,
+                risk_level=None,
+                risk_score=None,
+                risk_label="Not available",
+                notes=notes,
+            )
 
     @staticmethod
     def get_district_mappings(
