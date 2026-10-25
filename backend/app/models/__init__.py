@@ -6,6 +6,7 @@ from backend.app.models.resources import ResourceType, ResourceCost, DistrictRes
 from backend.app.models.ml import MLModel, CrimePrediction
 from backend.app.models.intelligence import CrimeRiskScore, ResourceRecommendation, BudgetEstimation
 from backend.app.models.optimization import OptimizationRun, OptimizationAllocation
+from backend.app.models.budget import CostBenchmarkRate, BudgetEstimationRun, BudgetEstimationItem
 from backend.app.models.auth import User, AuditLog
 from backend.app.models.reports import GeneratedReport
 
@@ -29,6 +30,9 @@ __all__ = [
     "BudgetEstimation",
     "OptimizationRun",
     "OptimizationAllocation",
+    "CostBenchmarkRate",
+    "BudgetEstimationRun",
+    "BudgetEstimationItem",
     "User",
     "AuditLog",
     "GeneratedReport",

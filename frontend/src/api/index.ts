@@ -7,4 +7,5 @@ export { riskApi } from './riskApi';
 export { resourceApi } from './resourceApi';
 export { predictionApi } from './predictionApi';
 export { default as optimizationApi } from './optimizationApi';
+export { budgetApi } from './budgetApi';
 

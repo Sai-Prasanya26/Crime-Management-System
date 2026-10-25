@@ -19,6 +19,7 @@ import {
   X,
   BarChart2,
   Scale,
+  Coins,
   Info,
   AlertTriangle,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ import ErrorState from '../components/common/ErrorState';
 import EmptyState from '../components/common/EmptyState';
 import { StatCard } from '../components/common/StatCard';
 import ConstrainedOptimizationView from '../components/optimization/ConstrainedOptimizationView';
+import BudgetCostAnalysisView from '../components/budget/BudgetCostAnalysisView';
 import { geographyApi, resourceApi } from '../api';
 import type {
   StateItem,
@@ -45,6 +47,7 @@ import type {
 type TabType =
   | 'overview'
   | 'ai_optimization'
+  | 'budget_cost_analysis'
   | 'resource_intelligence'
   | 'state_baseline'
   | 'districts'
@@ -440,6 +443,7 @@ export const ResourceOptimizationPage: React.FC = () => {
   const tabs: Array<{ id: TabType; label: string; icon: React.FC<{ className?: string }>; count?: string | number }> = [
     { id: 'overview', label: 'Overview', icon: Sliders },
     { id: 'ai_optimization', label: 'Constrained MILP Optimizer', icon: Scale, count: 'Phase 10' },
+    { id: 'budget_cost_analysis', label: 'Budget & Cost Analysis', icon: Coins, count: 'Phase 11' },
     { id: 'resource_intelligence', label: 'Resource Intelligence', icon: Shield, count: '36 States' },
     { id: 'state_baseline', label: 'State Baseline', icon: Building2, count: '36/36' },
     { id: 'districts', label: 'District Inventory', icon: Layers, count: 640 },
@@ -764,6 +768,15 @@ export const ResourceOptimizationPage: React.FC = () => {
           {/* TAB: CONSTRAINED AI OPTIMIZATION (PHASE 10 MILP) */}
           {activeTab === 'ai_optimization' && (
             <ConstrainedOptimizationView
+              states={states}
+              selectedStateId={selectedStateId}
+              onStateSelect={(id) => setSelectedStateId(id)}
+            />
+          )}
+
+          {/* TAB: BUDGET ESTIMATION & COST ANALYSIS (PHASE 11) */}
+          {activeTab === 'budget_cost_analysis' && (
+            <BudgetCostAnalysisView
               states={states}
               selectedStateId={selectedStateId}
               onStateSelect={(id) => setSelectedStateId(id)}
