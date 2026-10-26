@@ -8,11 +8,9 @@ import {
   LayoutDashboard,
   Calendar,
   Scale,
-  ArrowRight,
-  Activity,
   MapPin,
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/common/StatCard';
 import LoadingState from '../components/common/LoadingState';
@@ -372,133 +370,113 @@ export const DashboardPage: React.FC = () => {
             {/* Case Status & Legal Adjudication Health Panel (5 cols) */}
             <div
               id="cases-section"
-              className="lg:col-span-5 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between h-full"
+              className="lg:col-span-5 min-w-0 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col h-full"
             >
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3.5 min-h-[58px]">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-                      <Scale className="h-4 w-4" />
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3.5 min-h-[58px]">
+                <div className="flex items-center gap-2">
+                  <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                    <Scale className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                      Case Adjudication &amp; Disposition Health
+                    </h3>
+                    <p className="mt-0.5 text-[12px] text-[#5D6878]">
+                      Institutional clearance throughput and active case resolution
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-200">
+                  Live Disposition
+                </span>
+              </div>
+
+              {caseMetrics && (
+                <div className="flex-1 flex flex-col justify-between text-xs gap-3">
+                  {/* Resolution Progress Meter */}
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/70">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-slate-700">Formal Clearance Progress</span>
+                      <span className="font-bold text-[#0B1F3A]">
+                        {caseMetrics.clearancePct.toFixed(1)}% Resolved
+                      </span>
                     </div>
-                    <div>
-                      <h3 className="text-[16px] font-bold text-[#0B1F3A]">
-                        Case Adjudication &amp; Disposition Health
-                      </h3>
-                      <p className="mt-0.5 text-[12px] text-[#5D6878]">
-                        Institutional clearance throughput and active case resolution
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="bg-emerald-600 transition-all duration-300"
+                        style={{ width: `${caseMetrics.clearancePct}%` }}
+                        title={`Resolved: ${caseMetrics.clearancePct.toFixed(1)}%`}
+                      />
+                      <div
+                        className="bg-amber-500 transition-all duration-300"
+                        style={{ width: `${caseMetrics.backlogPct}%` }}
+                        title={`Active Inquiry: ${caseMetrics.backlogPct.toFixed(1)}%`}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px]">
+                      <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-600" />
+                        {caseMetrics.closedCases.toLocaleString()} Closed
+                      </span>
+                      <span className="flex items-center gap-1.5 font-medium text-amber-700">
+                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                        {caseMetrics.openCases.toLocaleString()} In Inquiry ({caseMetrics.backlogPct.toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Operational Throughput Metrics Grid */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100">
+                      <div className="flex items-center gap-1.5 text-emerald-800 font-medium text-[11px] mb-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Disposed Caseload</span>
+                      </div>
+                      <p className="text-lg font-bold text-emerald-950">
+                        {caseMetrics.closedCases.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-emerald-700 mt-0.5">
+                        Final legal closure reached
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100">
+                      <div className="flex items-center gap-1.5 text-amber-800 font-medium text-[11px] mb-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                        <span>Active Inquiries</span>
+                      </div>
+                      <p className="text-lg font-bold text-amber-950">
+                        {caseMetrics.openCases.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-amber-700 mt-0.5">
+                        Under police investigation
                       </p>
                     </div>
                   </div>
-                  <span className="rounded bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-200">
-                    Live Disposition
-                  </span>
-                </div>
 
-                {caseMetrics && (
-                  <div className="space-y-3.5 text-xs">
-                    {/* Resolution Progress Meter */}
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/70">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-slate-700">Formal Clearance Progress</span>
-                        <span className="font-bold text-[#0B1F3A]">
-                          {caseMetrics.clearancePct.toFixed(1)}% Resolved
-                        </span>
-                      </div>
-                      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-                        <div
-                          className="bg-emerald-600 transition-all duration-300"
-                          style={{ width: `${caseMetrics.clearancePct}%` }}
-                          title={`Resolved: ${caseMetrics.clearancePct.toFixed(1)}%`}
-                        />
-                        <div
-                          className="bg-amber-500 transition-all duration-300"
-                          style={{ width: `${caseMetrics.backlogPct}%` }}
-                          title={`Active Inquiry: ${caseMetrics.backlogPct.toFixed(1)}%`}
-                        />
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px]">
-                        <span className="flex items-center gap-1.5 font-medium text-emerald-700">
-                          <span className="inline-block h-2 w-2 rounded-full bg-emerald-600" />
-                          {caseMetrics.closedCases.toLocaleString()} Closed
-                        </span>
-                        <span className="flex items-center gap-1.5 font-medium text-amber-700">
-                          <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-                          {caseMetrics.openCases.toLocaleString()} In Inquiry ({caseMetrics.backlogPct.toFixed(1)}%)
-                        </span>
-                      </div>
+                  {/* Incident Reporting Window */}
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Calendar className="h-4 w-4 text-[#1769AA]" />
+                      <span className="font-medium">Incident Timeline:</span>
                     </div>
-
-                    {/* Operational Throughput Metrics Grid */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100">
-                        <div className="flex items-center gap-1.5 text-emerald-800 font-medium text-[11px] mb-1">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>Disposed Caseload</span>
-                        </div>
-                        <p className="text-lg font-bold text-emerald-950">
-                          {caseMetrics.closedCases.toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-emerald-700 mt-0.5">
-                          Final legal closure reached
-                        </p>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100">
-                        <div className="flex items-center gap-1.5 text-amber-800 font-medium text-[11px] mb-1">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                          <span>Active Inquiries</span>
-                        </div>
-                        <p className="text-lg font-bold text-amber-950">
-                          {caseMetrics.openCases.toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-amber-700 mt-0.5">
-                          Under police investigation
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Incident Reporting Window */}
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Calendar className="h-4 w-4 text-[#1769AA]" />
-                        <span className="font-medium">Incident Timeline:</span>
-                      </div>
-                      <span className="font-semibold text-[#0B1F3A]">
-                        {caseMetrics.earliest} to {caseMetrics.latest}
-                      </span>
-                    </div>
-
-                    {/* Jurisdictional Coverage Scope */}
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <MapPin className="h-4 w-4 text-[#1769AA]" />
-                        <span className="font-medium">Jurisdictional Reach:</span>
-                      </div>
-                      <span className="font-semibold text-[#0B1F3A]">
-                        {caseMetrics.totalDistricts} Districts ({caseMetrics.totalStates} States/UTs)
-                      </span>
-                    </div>
+                    <span className="font-semibold text-[#0B1F3A]">
+                      {caseMetrics.earliest} to {caseMetrics.latest}
+                    </span>
                   </div>
-                )}
-              </div>
 
-              {/* Action Links to In-depth Specialized Workspaces */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <Link
-                  to="/districts"
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-[#1769AA] transition-colors"
-                >
-                  <Activity className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Geographic Map</span>
-                </Link>
-                <Link
-                  to="/analytics"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors"
-                >
-                  <span>Crime Analytics Workspace</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
+                  {/* Jurisdictional Coverage Scope */}
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <MapPin className="h-4 w-4 text-[#1769AA]" />
+                      <span className="font-medium">Jurisdictional Reach:</span>
+                    </div>
+                    <span className="font-semibold text-[#0B1F3A]">
+                      {caseMetrics.totalDistricts} Districts ({caseMetrics.totalStates} States/UTs)
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
