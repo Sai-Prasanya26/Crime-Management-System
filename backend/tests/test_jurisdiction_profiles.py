@@ -170,6 +170,32 @@ class TestJurisdictionProfiles(unittest.TestCase):
         self.assertEqual(data["start_date"], "2023-01-01")
         self.assertEqual(data["end_date"], "2023-06-30")
 
+    def test_jurisdiction_profile_national_scope(self):
+        """Querying profile with scope=national returns all-India baseline metrics."""
+        resp = client.get("/api/v1/geography/jurisdiction-profile?scope=national")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["scope"], "NATIONAL")
+        self.assertIsNone(data["state_id"])
+        self.assertIsNone(data["district_id"])
+        self.assertEqual(data["reported_incidents"], 191679)
+        self.assertEqual(data["population"], 1210854977)
+        self.assertEqual(data["crime_rate_per_100k"], 15.83)
+        self.assertEqual(data["risk_label"], "Not available")
+
+        # Test national scope with date filter
+        resp_2024 = client.get(
+            "/api/v1/geography/jurisdiction-profile?scope=national&start_date=2024-01-01&end_date=2024-12-31"
+        )
+        self.assertEqual(resp_2024.status_code, 200)
+        data_2024 = resp_2024.json()
+        self.assertEqual(data_2024["scope"], "NATIONAL")
+        self.assertLess(data_2024["reported_incidents"], 191679)
+        self.assertGreater(data_2024["reported_incidents"], 0)
+        self.assertEqual(data_2024["population"], 1210854977)
+        expected_rate_2024 = round((data_2024["reported_incidents"] / 1210854977) * 100000.0, 2)
+        self.assertEqual(data_2024["crime_rate_per_100k"], expected_rate_2024)
+
     def test_top_districts_with_date_filter(self):
         """Querying /analytics/top-districts with date filter."""
         resp = client.get(

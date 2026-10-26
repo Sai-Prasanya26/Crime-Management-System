@@ -89,9 +89,9 @@ class DistrictGeographyMappingListResponse(BaseModel):
 
 
 class JurisdictionProfileResponse(BaseModel):
-    scope: str  # "STATE" or "DISTRICT"
-    state_id: int
-    state_name: str
+    scope: str  # "STATE", "DISTRICT", or "NATIONAL"
+    state_id: Optional[int] = None
+    state_name: Optional[str] = None
     district_id: Optional[int] = None
     district_name: Optional[str] = None
     parent_district_id: Optional[int] = None

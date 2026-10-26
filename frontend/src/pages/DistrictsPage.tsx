@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
+import DateRangeFilter from '../components/filters/DateRangeFilter';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
 import { analyticsApi, geographyApi } from '../api';
@@ -37,6 +38,22 @@ export const DistrictsPage: React.FC = () => {
     return dId ? Number(dId) : undefined;
   });
 
+  const [startDate, setStartDate] = useState<string | undefined>(() => {
+    const sDate = searchParams.get('start_date');
+    if (sDate) return sDate;
+    const yr = searchParams.get('year');
+    if (yr && yr !== 'ALL') return `${yr}-01-01`;
+    return undefined;
+  });
+
+  const [endDate, setEndDate] = useState<string | undefined>(() => {
+    const eDate = searchParams.get('end_date');
+    if (eDate) return eDate;
+    const yr = searchParams.get('year');
+    if (yr && yr !== 'ALL') return `${yr}-12-31`;
+    return undefined;
+  });
+
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [districtDetail, setDistrictDetail] = useState<DistrictDetailResponse | null>(null);
@@ -50,6 +67,29 @@ export const DistrictsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Synchronize temporal filters from URL params
+  useEffect(() => {
+    const sDate = searchParams.get('start_date');
+    const eDate = searchParams.get('end_date');
+    const yr = searchParams.get('year');
+
+    if (sDate) {
+      setStartDate(sDate);
+    } else if (yr && yr !== 'ALL') {
+      setStartDate(`${yr}-01-01`);
+    } else {
+      setStartDate(undefined);
+    }
+
+    if (eDate) {
+      setEndDate(eDate);
+    } else if (yr && yr !== 'ALL') {
+      setEndDate(`${yr}-12-31`);
+    } else {
+      setEndDate(undefined);
+    }
+  }, [searchParams]);
 
   // Load States and apply initial state param if present
   useEffect(() => {
@@ -130,20 +170,18 @@ export const DistrictsPage: React.FC = () => {
     loadDetail();
   }, [selectedDistrictId]);
 
-  // Fetch Jurisdiction Profile (State Overview or District Profile)
+  // Fetch Jurisdiction Profile (National, State Overview, or District Profile)
   const fetchJurisdictionProfile = useCallback(async () => {
-    if (!selectedStateId && !selectedDistrictId) {
-      setJurisdictionProfile(null);
-      setProfileError(null);
-      return;
-    }
     setLoadingProfile(true);
     setProfileError(null);
     try {
       const res = await geographyApi.getJurisdictionProfile({
+        scope: !selectedStateId && !selectedDistrictId ? 'national' : undefined,
         state_id: selectedStateId,
         district_id: selectedDistrictId,
         geography_mode: geographyMode,
+        start_date: startDate,
+        end_date: endDate,
       });
       setJurisdictionProfile(res);
     } catch (err: any) {
@@ -155,7 +193,7 @@ export const DistrictsPage: React.FC = () => {
     } finally {
       setLoadingProfile(false);
     }
-  }, [selectedStateId, selectedDistrictId, geographyMode]);
+  }, [selectedStateId, selectedDistrictId, geographyMode, startDate, endDate]);
 
   useEffect(() => {
     fetchJurisdictionProfile();
@@ -175,6 +213,8 @@ export const DistrictsPage: React.FC = () => {
         limit: 15,
         state_id: selectedStateId,
         geography_mode: geographyMode,
+        start_date: startDate,
+        end_date: endDate,
       });
       setTopDistricts(data);
     } catch (err: any) {
@@ -183,7 +223,7 @@ export const DistrictsPage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [metric, selectedStateId, geographyMode]);
+  }, [metric, selectedStateId, geographyMode, startDate, endDate]);
 
   useEffect(() => {
     fetchTopDistricts();
@@ -212,8 +252,20 @@ export const DistrictsPage: React.FC = () => {
     if (selectedStateName) {
       return `${selectedStateName} (State Overview)`;
     }
-    return 'Jurisdiction Profile';
+    return 'All States & UTs (National Overview)';
   }, [selectedDistrictId, selectedDistrictName, selectedStateName, districtDetail, jurisdictionProfile]);
+
+  const activePeriodLabel = useMemo(() => {
+    if (startDate && endDate) {
+      if (startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && startDate.slice(0, 4) === endDate.slice(0, 4)) {
+        return `Period: ${startDate.slice(0, 4)}`;
+      }
+      return `Period: ${startDate} to ${endDate}`;
+    }
+    if (startDate) return `Period: From ${startDate}`;
+    if (endDate) return `Period: Up to ${endDate}`;
+    return 'Period: 2020–2025 (All Years)';
+  }, [startDate, endDate]);
 
   const handleStateChange = (stateId?: number) => {
     setSelectedStateId(stateId);
@@ -248,9 +300,29 @@ export const DistrictsPage: React.FC = () => {
     setSearchParams(nextParams, { replace: true });
   };
 
+  const handleDateChange = (newStart?: string, newEnd?: string) => {
+    setStartDate(newStart);
+    setEndDate(newEnd);
+    const nextParams = new URLSearchParams(searchParams);
+    if (newStart) {
+      nextParams.set('start_date', newStart);
+    } else {
+      nextParams.delete('start_date');
+    }
+    if (newEnd) {
+      nextParams.set('end_date', newEnd);
+    } else {
+      nextParams.delete('end_date');
+    }
+    nextParams.delete('year');
+    setSearchParams(nextParams, { replace: true });
+  };
+
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
     setDistrictDetail(null);
     setJurisdictionProfile(null);
     setProfileError(null);
@@ -259,8 +331,18 @@ export const DistrictsPage: React.FC = () => {
     nextParams.delete('district_id');
     nextParams.delete('state');
     nextParams.delete('district');
+    nextParams.delete('start_date');
+    nextParams.delete('end_date');
+    nextParams.delete('year');
     setSearchParams(nextParams, { replace: true });
   };
+
+  const hasActiveFilters = Boolean(
+    selectedStateId !== undefined ||
+    selectedDistrictId !== undefined ||
+    startDate !== undefined ||
+    endDate !== undefined
+  );
 
   return (
     <DashboardLayout
@@ -270,15 +352,13 @@ export const DistrictsPage: React.FC = () => {
       subtitle="Spatial crime patterns, high-intensity hotspots, and district-level operational telemetry."
       onRefresh={() => {
         fetchTopDistricts(true);
-        if (selectedStateId || selectedDistrictId) {
-          fetchJurisdictionProfile();
-        }
+        fetchJurisdictionProfile();
       }}
       isRefreshing={isRefreshing}
     >
-      {/* State & District Lookup Filter Toolbar */}
+      {/* State, District & Date Lookup Filter Toolbar */}
       <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
             <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
               <Compass className="h-3.5 w-3.5 text-[#1769AA]" />
@@ -318,16 +398,23 @@ export const DistrictsPage: React.FC = () => {
                 ))}
               </select>
             )}
+
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onChange={handleDateChange}
+              disabled={isLoading}
+            />
           </div>
 
-          {selectedStateId && (
+          {hasActiveFilters && (
             <button
               type="button"
               onClick={handleResetFilters}
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Reset Filter</span>
+              <span>Reset Filters</span>
             </button>
           )}
         </div>
@@ -452,32 +539,30 @@ export const DistrictsPage: React.FC = () => {
 
           {/* SECTION 2: Jurisdiction Profile Section */}
           <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs transition-all">
-            <div className="flex items-center justify-between border-b border-blue-200/60 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-blue-200/60 pb-3 gap-2">
               <div className="flex items-center gap-2">
                 <Building className="h-4 w-4 text-[#1769AA]" />
                 <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                  Jurisdiction Profile: {selectedStateId || selectedDistrictId ? profileHeading : 'All Jurisdictions Overview'}
+                  Jurisdiction Profile: {profileHeading}
                 </h3>
               </div>
-              {(jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id) ? (
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-blue-200">
-                  Census 2011 Parent #{jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id}
+                  {activePeriodLabel}
                 </span>
-              ) : (
-                <span className="rounded bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 border border-blue-200">
-                  {selectedDistrictId ? 'District Scope' : selectedStateId ? 'State Scope' : 'National Scope'}
-                </span>
-              )}
+                {(jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id) ? (
+                  <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-blue-200">
+                    Census 2011 Parent #{jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id}
+                  </span>
+                ) : (
+                  <span className="rounded bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 border border-blue-200">
+                    {selectedDistrictId ? 'District Scope' : selectedStateId ? 'State Scope' : 'National Scope'}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {!selectedStateId && !selectedDistrictId ? (
-              <div className="py-5 text-center text-xs text-slate-600">
-                <p className="font-semibold text-slate-700">National Baseline Jurisdiction Monitoring</p>
-                <p className="mt-1 text-slate-500">
-                  Select a State/UT or District from the Jurisdiction Filter above to inspect specific incident volumes, Census 2011 population baselines, per-capita crime rates, and calibrated risk assessments.
-                </p>
-              </div>
-            ) : profileError ? (
+            {profileError ? (
               <div className="mt-3 p-3 rounded border border-red-200 bg-red-50 text-xs text-red-700 flex items-center justify-between">
                 <span>{profileError}</span>
                 <button
@@ -510,7 +595,9 @@ export const DistrictsPage: React.FC = () => {
                         : 'Not available'}
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'STATE'
+                      {jurisdictionProfile.scope === 'NATIONAL'
+                        ? 'Attributed national proceedings'
+                        : jurisdictionProfile.scope === 'STATE'
                         ? 'Attributed state proceedings'
                         : 'Recorded crime proceedings'}
                     </p>
@@ -527,7 +614,9 @@ export const DistrictsPage: React.FC = () => {
                         : 'Not available'}
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'STATE'
+                      {jurisdictionProfile.scope === 'NATIONAL'
+                        ? 'Census 2011 national baseline'
+                        : jurisdictionProfile.scope === 'STATE'
                         ? 'Census 2011 state aggregate'
                         : jurisdictionProfile.parent_district_id
                         ? 'Census 2011 parent residents'
@@ -586,7 +675,7 @@ export const DistrictsPage: React.FC = () => {
                       )}
                     </div>
                     <p className="mt-1 text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'STATE'
+                      {jurisdictionProfile.scope === 'NATIONAL' || jurisdictionProfile.scope === 'STATE'
                         ? 'Assessed at district level'
                         : jurisdictionProfile.risk_level
                         ? 'Operational posture'

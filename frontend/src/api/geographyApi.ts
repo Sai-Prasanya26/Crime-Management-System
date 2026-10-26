@@ -50,6 +50,7 @@ export const geographyApi = {
   getJurisdictionProfile: async (params: {
     state_id?: number;
     district_id?: number;
+    scope?: 'national' | 'state' | 'district' | string;
     geography_mode?: 'current' | 'historical';
     start_date?: string;
     end_date?: string;

@@ -156,9 +156,9 @@ export interface DistrictGeographyMappingListResponse {
 }
 
 export interface JurisdictionProfileResponse {
-  scope: 'STATE' | 'DISTRICT';
-  state_id: number;
-  state_name: string;
+  scope: 'STATE' | 'DISTRICT' | 'NATIONAL' | string;
+  state_id?: number | null;
+  state_name?: string | null;
   district_id?: number | null;
   district_name?: string | null;
   parent_district_id?: number | null;

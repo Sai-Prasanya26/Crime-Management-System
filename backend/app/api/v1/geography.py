@@ -69,6 +69,7 @@ def get_district_details(
 def get_jurisdiction_profile(
     state_id: Optional[int] = Query(None, description="State ID for state overview or district scope validation"),
     district_id: Optional[int] = Query(None, description="District ID for district profile"),
+    scope: Optional[str] = Query(None, description="Explicit jurisdiction scope ('national', 'state', 'district')"),
     geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic mode ('current' or 'historical')"),
     start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
@@ -78,6 +79,7 @@ def get_jurisdiction_profile(
         db,
         state_id=state_id,
         district_id=district_id,
+        scope=scope,
         geography_mode=geography_mode,
         start_date=start_date,
         end_date=end_date,

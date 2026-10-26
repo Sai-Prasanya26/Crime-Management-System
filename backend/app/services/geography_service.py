@@ -97,11 +97,12 @@ class GeographyService:
         db: Session,
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
+        scope: Optional[str] = None,
         geography_mode: str = "current",
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> JurisdictionProfileResponse:
-        from backend.app.models.geography import State
+        from backend.app.models.geography import State, District
         from backend.app.models.demographics import DistrictDemographics
         from backend.app.models.crime import CrimeIncident
         from backend.app.models.intelligence import CrimeRiskScore
@@ -109,9 +110,51 @@ class GeographyService:
         from sqlalchemy import func, desc
 
         if district_id is None and state_id is None:
+            if scope and scope.lower() == "national":
+                inc_query = db.query(func.count(CrimeIncident.id))
+                if start_date is not None:
+                    inc_query = inc_query.filter(CrimeIncident.incident_date >= start_date)
+                if end_date is not None:
+                    inc_query = inc_query.filter(CrimeIncident.incident_date <= end_date)
+                reported_incidents = inc_query.scalar() or 0
+
+                pop_sum = db.query(func.sum(DistrictDemographics.total_population)).scalar()
+                population = int(pop_sum) if pop_sum is not None else None
+
+                crime_rate = None
+                if population and population > 0 and reported_incidents is not None:
+                    crime_rate = round((reported_incidents / population) * 100000.0, 2)
+
+                dist_filter = District.is_census_2011 == True if geography_mode == "historical" else District.is_current_admin == True
+                district_count = db.query(func.count(District.id)).filter(dist_filter).scalar() or 0
+
+                notes = (
+                    f"National-level baseline aggregation across all {district_count} monitored administrative district entities. "
+                    "Risk classification is calibrated and assessed at district jurisdiction level."
+                )
+
+                return JurisdictionProfileResponse(
+                    scope="NATIONAL",
+                    state_id=None,
+                    state_name="All States & UTs (National)",
+                    district_id=None,
+                    district_name=None,
+                    parent_district_id=None,
+                    geography_mode=geography_mode,
+                    reported_incidents=reported_incidents,
+                    population=population,
+                    crime_rate_per_100k=crime_rate,
+                    risk_level=None,
+                    risk_score=None,
+                    risk_label="Not available",
+                    notes=notes,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either state_id or district_id must be provided for jurisdiction profile.",
+                detail="Either state_id, district_id, or scope='national' must be provided for jurisdiction profile.",
             )
 
         if district_id is not None:
