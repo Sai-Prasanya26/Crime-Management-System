@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import date
 from fastapi import HTTPException, status
 from backend.app.repositories.geography_repository import GeographyRepository
 from backend.app.schemas.geography import (
@@ -97,6 +98,8 @@ class GeographyService:
         state_id: Optional[int] = None,
         district_id: Optional[int] = None,
         geography_mode: str = "current",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
     ) -> JurisdictionProfileResponse:
         from backend.app.models.geography import State
         from backend.app.models.demographics import DistrictDemographics
@@ -135,13 +138,12 @@ class GeographyService:
             )
 
             # Incidents
-            reported_incidents = (
-                db.query(func.count(CrimeIncident.id))
-                .filter(CrimeIncident.district_id.in_(filter_ids))
-                .scalar()
-                if filter_ids
-                else 0
-            )
+            inc_query = db.query(func.count(CrimeIncident.id)).filter(CrimeIncident.district_id.in_(filter_ids))
+            if start_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date >= start_date)
+            if end_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date <= end_date)
+            reported_incidents = inc_query.scalar() if filter_ids else 0
 
             # Population
             population = None
@@ -220,6 +222,8 @@ class GeographyService:
                 risk_score=risk_score,
                 risk_label=risk_label,
                 notes=notes,
+                start_date=start_date,
+                end_date=end_date,
             )
 
         else:
@@ -236,13 +240,12 @@ class GeographyService:
             )
 
             # Aggregated reported incidents for that state
-            reported_incidents = (
-                db.query(func.count(CrimeIncident.id))
-                .filter(CrimeIncident.district_id.in_(filter_ids))
-                .scalar()
-                if filter_ids
-                else 0
-            )
+            inc_query = db.query(func.count(CrimeIncident.id)).filter(CrimeIncident.district_id.in_(filter_ids))
+            if start_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date >= start_date)
+            if end_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date <= end_date)
+            reported_incidents = inc_query.scalar() if filter_ids else 0
 
             # Aggregated population for that state
             pop_sum = (
@@ -279,6 +282,8 @@ class GeographyService:
                 risk_score=None,
                 risk_label="Not available",
                 notes=notes,
+                start_date=start_date,
+                end_date=end_date,
             )
 
     @staticmethod

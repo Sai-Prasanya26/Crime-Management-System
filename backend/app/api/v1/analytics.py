@@ -180,8 +180,16 @@ def get_top_districts(
     limit: int = Query(10, ge=1, le=100, description="Number of districts to return"),
     state_id: Optional[int] = Query(None, description="Filter within State ID"),
     geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
+    start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
 ) -> TopDistrictsResponse:
     return CrimeAnalyticsService.get_top_districts(
-        db, metric=metric, limit=limit, state_id=state_id, geography_mode=geography_mode
+        db,
+        metric=metric,
+        limit=limit,
+        state_id=state_id,
+        geography_mode=geography_mode,
+        start_date=start_date,
+        end_date=end_date,
     )

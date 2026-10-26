@@ -441,6 +441,8 @@ class CrimeRepository:
         limit: int = 10,
         state_id: Optional[int] = None,
         geography_mode: str = "current",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
     ) -> List[Dict[str, Any]]:
         query = (
             db.query(
@@ -454,6 +456,11 @@ class CrimeRepository:
             .join(CrimeIncident, District.id == CrimeIncident.district_id)
             .outerjoin(DistrictDemographics, District.id == DistrictDemographics.district_id)
         )
+
+        if start_date is not None:
+            query = query.filter(CrimeIncident.incident_date >= start_date)
+        if end_date is not None:
+            query = query.filter(CrimeIncident.incident_date <= end_date)
 
         filter_ids = CrimeRepository.resolve_filter_district_ids(
             db, state_id=state_id, district_id=None, geography_mode=geography_mode

@@ -106,6 +106,8 @@ export const analyticsApi = {
     limit?: number;
     state_id?: number;
     geography_mode?: 'current' | 'historical';
+    start_date?: string;
+    end_date?: string;
   }): Promise<TopDistrictsResponse> => {
     const response = await apiClient.get<TopDistrictsResponse>('/analytics/top-districts', {
       params,

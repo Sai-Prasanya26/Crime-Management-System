@@ -170,6 +170,8 @@ export interface JurisdictionProfileResponse {
   risk_score?: number | null;
   risk_label?: string | null;
   notes?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 // ============================================================================

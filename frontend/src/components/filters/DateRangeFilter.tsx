@@ -15,7 +15,7 @@ const YEAR_OPTIONS: YearOption[] = [
   { label: '2023', value: '2023', start: '2023-01-01', end: '2023-12-31' },
   { label: '2022', value: '2022', start: '2022-01-01', end: '2022-12-31' },
   { label: '2021', value: '2021', start: '2021-01-01', end: '2021-12-31' },
-  { label: '2020', value: '2020', start: '2020-01-01', end: '2020-01-31' },
+  { label: '2020', value: '2020', start: '2020-01-01', end: '2020-12-31' },
 ];
 
 interface DateRangeFilterProps {
@@ -43,6 +43,10 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
+    if (val === 'ALL') {
+      onChange(undefined, undefined);
+      return;
+    }
     const match = YEAR_OPTIONS.find((opt) => opt.value === val);
     if (match) {
       onChange(match.start, match.end);

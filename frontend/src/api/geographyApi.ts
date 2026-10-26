@@ -51,6 +51,8 @@ export const geographyApi = {
     state_id?: number;
     district_id?: number;
     geography_mode?: 'current' | 'historical';
+    start_date?: string;
+    end_date?: string;
   }): Promise<JurisdictionProfileResponse> => {
     const response = await apiClient.get<JurisdictionProfileResponse>('/geography/jurisdiction-profile', {
       params,

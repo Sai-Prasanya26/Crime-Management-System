@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import date
 from backend.app.database.session import get_db
 from backend.app.services.geography_service import GeographyService
 from backend.app.schemas.geography import (
@@ -69,6 +70,8 @@ def get_jurisdiction_profile(
     state_id: Optional[int] = Query(None, description="State ID for state overview or district scope validation"),
     district_id: Optional[int] = Query(None, description="District ID for district profile"),
     geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic mode ('current' or 'historical')"),
+    start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
 ) -> JurisdictionProfileResponse:
     return GeographyService.get_jurisdiction_profile(
@@ -76,6 +79,8 @@ def get_jurisdiction_profile(
         state_id=state_id,
         district_id=district_id,
         geography_mode=geography_mode,
+        start_date=start_date,
+        end_date=end_date,
     )
 
 

@@ -12,6 +12,8 @@ Validates:
 8. Validation when neither state_id nor district_id provided returns HTTP 400.
 9. Support for both current and historical geography frameworks.
 10. District detail endpoint (/districts/{id}) parent demographics fallback.
+11. Date and Year filtering for State Overview and District Profile.
+12. Date filtering on Top Districts ranking.
 """
 
 import os
@@ -133,6 +135,52 @@ class TestJurisdictionProfiles(unittest.TestCase):
         data = resp.json()
         self.assertIsNotNone(data["demographics"])
         self.assertEqual(data["demographics"]["total_population"], 3943323)
+
+    def test_jurisdiction_profile_with_year_filter(self):
+        """Querying State Overview with 2024 year filter."""
+        resp_all = client.get("/api/v1/geography/jurisdiction-profile?state_id=2&geography_mode=current")
+        self.assertEqual(resp_all.status_code, 200)
+        all_incidents = resp_all.json()["reported_incidents"]
+
+        resp_2024 = client.get(
+            "/api/v1/geography/jurisdiction-profile?state_id=2&geography_mode=current&start_date=2024-01-01&end_date=2024-12-31"
+        )
+        self.assertEqual(resp_2024.status_code, 200)
+        data = resp_2024.json()
+        self.assertLess(data["reported_incidents"], all_incidents)
+        self.assertGreater(data["reported_incidents"], 0)
+        self.assertEqual(data["population"], 49386799)
+        expected_rate = round((data["reported_incidents"] / data["population"]) * 100000.0, 2)
+        self.assertEqual(data["crime_rate_per_100k"], expected_rate)
+        self.assertEqual(data["start_date"], "2024-01-01")
+        self.assertEqual(data["end_date"], "2024-12-31")
+
+    def test_jurisdiction_profile_with_custom_date_range_district(self):
+        """Querying District Profile with a 6-month custom date range."""
+        resp_custom = client.get(
+            "/api/v1/geography/jurisdiction-profile?district_id=644&start_date=2023-01-01&end_date=2023-06-30"
+        )
+        self.assertEqual(resp_custom.status_code, 200)
+        data = resp_custom.json()
+        self.assertLess(data["reported_incidents"], 673)
+        self.assertGreater(data["reported_incidents"], 0)
+        self.assertEqual(data["population"], 3943323)
+        expected_rate = round((data["reported_incidents"] / data["population"]) * 100000.0, 2)
+        self.assertEqual(data["crime_rate_per_100k"], expected_rate)
+        self.assertEqual(data["start_date"], "2023-01-01")
+        self.assertEqual(data["end_date"], "2023-06-30")
+
+    def test_top_districts_with_date_filter(self):
+        """Querying /analytics/top-districts with date filter."""
+        resp = client.get(
+            "/api/v1/analytics/top-districts?state_id=2&start_date=2024-01-01&end_date=2024-12-31&metric=volume&limit=5"
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertGreater(len(data["items"]), 0)
+        for item in data["items"]:
+            self.assertGreater(item["incident_count"], 0)
+            self.assertEqual(item["state_name"], "ANDHRA PRADESH")
 
 
 if __name__ == "__main__":

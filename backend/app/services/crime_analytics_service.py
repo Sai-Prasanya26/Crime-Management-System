@@ -177,9 +177,17 @@ class CrimeAnalyticsService:
         limit: int = 10,
         state_id: Optional[int] = None,
         geography_mode: str = "current",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
     ) -> TopDistrictsResponse:
         rows = CrimeRepository.get_top_districts(
-            db, metric=metric, limit=limit, state_id=state_id, geography_mode=geography_mode
+            db,
+            metric=metric,
+            limit=limit,
+            state_id=state_id,
+            geography_mode=geography_mode,
+            start_date=start_date,
+            end_date=end_date,
         )
         items = [TopDistrictItem(**r) for r in rows]
         return TopDistrictsResponse(metric=metric, items=items)

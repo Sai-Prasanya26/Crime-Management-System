@@ -103,6 +103,8 @@ class JurisdictionProfileResponse(BaseModel):
     risk_score: Optional[float] = None
     risk_label: Optional[str] = None
     notes: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
     model_config = ConfigDict(from_attributes=True)
 
