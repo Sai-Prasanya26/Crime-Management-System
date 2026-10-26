@@ -4,6 +4,7 @@
 - **Project**: Data-Driven Crime Management System with AI-Based Resource Optimization
 - **Repository**: [https://github.com/Sai-Prasanya26/Crime-Management-System](https://github.com/Sai-Prasanya26/Crime-Management-System)
 - **Target Pages**: Dashboard Workspace (`/dashboard`) and Crime Analytics Workspace (`/analytics`)
+- **Commit Hash**: `241ab79`
 - **Date**: October 26, 2026
 
 ---
