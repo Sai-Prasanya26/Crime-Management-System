@@ -40,25 +40,26 @@ import type {
 export const DashboardPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({
-    geography_mode: (searchParams.get('geography_mode') as 'current' | 'historical') || 'current',
+    geography_mode: 'current',
   });
   const [trendInterval, setTrendInterval] = useState<'year' | 'month' | 'day'>('month');
   const [rankingMetric, setRankingMetric] = useState<'volume' | 'rate'>('volume');
 
-  // Sync with URL query parameters (state_id, district_id, year, geography_mode, dimension)
+  // Sync with URL query parameters (state_id, district_id, year, start_date, end_date, dimension)
   useEffect(() => {
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
     const year = searchParams.get('year');
-    const geoMode = searchParams.get('geography_mode') as 'current' | 'historical' | null;
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
 
-    setFilters((prev) => ({
-      ...prev,
-      geography_mode: geoMode || prev.geography_mode || 'current',
-      ...(stateId ? { state_id: Number(stateId) } : {}),
-      ...(districtId ? { district_id: Number(districtId) } : {}),
-      ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
-    }));
+    setFilters({
+      geography_mode: 'current',
+      state_id: stateId ? Number(stateId) : undefined,
+      district_id: districtId ? Number(districtId) : undefined,
+      start_date: startDate || (year && year !== 'ALL' ? `${year}-01-01` : undefined),
+      end_date: endDate || (year && year !== 'ALL' ? `${year}-12-31` : undefined),
+    });
 
     const dimension = searchParams.get('dimension');
     if (dimension) {
@@ -116,7 +117,9 @@ export const DashboardPage: React.FC = () => {
           metric: rankingMetric,
           limit: 10,
           state_id: filters.state_id,
-          geography_mode: filters.geography_mode || 'current',
+          geography_mode: 'current',
+          start_date: filters.start_date,
+          end_date: filters.end_date,
         }),
       ]);
 
@@ -152,7 +155,6 @@ export const DashboardPage: React.FC = () => {
     if (fullscreenParam) {
       newParams.set('fullscreen', fullscreenParam);
     }
-    if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
     if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
     if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
     if (newFilters.start_date) newParams.set('start_date', newFilters.start_date);

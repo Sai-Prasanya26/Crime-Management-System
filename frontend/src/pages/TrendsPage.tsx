@@ -20,7 +20,7 @@ import type { FilterParams, TrendResponse } from '../types';
 export const TrendsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({
-    geography_mode: (searchParams.get('geography_mode') as 'current' | 'historical') || 'current',
+    geography_mode: 'current',
   });
   const [interval, setInterval] = useState<'year' | 'month' | 'day'>('month');
   const [trends, setTrends] = useState<TrendResponse | null>(null);
@@ -28,27 +28,26 @@ export const TrendsPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync filters from URL search params (year, state_id, district_id, geography_mode)
+  // Sync filters from URL search params (year, start_date, end_date, state_id, district_id)
   useEffect(() => {
-    const year = searchParams.get('year');
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
-    const geoMode = searchParams.get('geography_mode') as 'current' | 'historical' | null;
-    if (year || stateId || districtId || geoMode) {
-      setFilters((prev) => ({
-        ...prev,
-        geography_mode: geoMode || prev.geography_mode || 'current',
-        ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
-        ...(stateId ? { state_id: Number(stateId) } : {}),
-        ...(districtId ? { district_id: Number(districtId) } : {}),
-      }));
-    }
+    const year = searchParams.get('year');
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
+
+    setFilters({
+      geography_mode: 'current',
+      state_id: stateId ? Number(stateId) : undefined,
+      district_id: districtId ? Number(districtId) : undefined,
+      start_date: startDate || (year && year !== 'ALL' ? `${year}-01-01` : undefined),
+      end_date: endDate || (year && year !== 'ALL' ? `${year}-12-31` : undefined),
+    });
   }, [searchParams]);
 
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
     const newParams = new URLSearchParams();
-    if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
     if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
     if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
     if (newFilters.start_date) newParams.set('start_date', newFilters.start_date);

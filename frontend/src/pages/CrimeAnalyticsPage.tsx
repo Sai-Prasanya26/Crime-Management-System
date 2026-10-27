@@ -21,29 +21,29 @@ import type {
 export const CrimeAnalyticsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterParams>({
-    geography_mode: (searchParams.get('geography_mode') as 'current' | 'historical') || 'current',
+    geography_mode: 'current',
   });
 
-  // Sync initial filters from URL search parameters (state_id, district_id, year, geography_mode)
+  // Sync initial filters from URL search parameters (state_id, district_id, year, start_date, end_date)
   useEffect(() => {
     const stateId = searchParams.get('state_id');
     const districtId = searchParams.get('district_id');
     const year = searchParams.get('year');
-    const geoMode = searchParams.get('geography_mode') as 'current' | 'historical' | null;
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
 
-    setFilters((prev) => ({
-      ...prev,
-      geography_mode: geoMode || prev.geography_mode || 'current',
-      ...(stateId ? { state_id: Number(stateId) } : {}),
-      ...(districtId ? { district_id: Number(districtId) } : {}),
-      ...(year ? { start_date: `${year}-01-01`, end_date: `${year}-12-31` } : {}),
-    }));
+    setFilters({
+      geography_mode: 'current',
+      state_id: stateId ? Number(stateId) : undefined,
+      district_id: districtId ? Number(districtId) : undefined,
+      start_date: startDate || (year && year !== 'ALL' ? `${year}-01-01` : undefined),
+      end_date: endDate || (year && year !== 'ALL' ? `${year}-12-31` : undefined),
+    });
   }, [searchParams]);
 
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
     const newParams = new URLSearchParams();
-    if (newFilters.geography_mode) newParams.set('geography_mode', newFilters.geography_mode);
     if (newFilters.state_id) newParams.set('state_id', String(newFilters.state_id));
     if (newFilters.district_id) newParams.set('district_id', String(newFilters.district_id));
     if (newFilters.start_date) newParams.set('start_date', newFilters.start_date);
