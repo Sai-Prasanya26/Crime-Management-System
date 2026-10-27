@@ -13,7 +13,6 @@ import {
   ExternalLink,
   Shield,
   Search,
-  Database,
   Layers,
   Sparkles,
   X,
@@ -100,6 +99,16 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
+  // Scope-specific estimated demand state
+  const [stateDemand, setStateDemand] = useState<{
+    districtsCount: number;
+    personnelDemand: number;
+    vehicleDemand: number;
+    investigationDemand: number;
+    surveillanceDemand: number;
+  } | null>(null);
+  const [isStateDemandLoading, setIsStateDemandLoading] = useState<boolean>(false);
+
   // Initial load of states, overview, and coverage
   const loadInitialData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
@@ -126,6 +135,51 @@ export const ResourceOptimizationPage: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // Fetch scope-specific demand when selectedStateId changes
+  useEffect(() => {
+    if (!selectedStateId) {
+      setStateDemand(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsStateDemandLoading(true);
+
+    resourceApi
+      .getAIRecommendations({ state_id: selectedStateId, limit: 100 })
+      .then((res) => {
+        if (!isMounted) return;
+        let pDemand = 0;
+        let vDemand = 0;
+        let iDemand = 0;
+        let sDemand = 0;
+        for (const it of res.items || []) {
+          pDemand += it.required_police_personnel || 0;
+          vDemand += it.required_patrol_vehicles || 0;
+          iDemand += it.required_investigation_teams || 0;
+          sDemand += it.required_surveillance_teams || 0;
+        }
+        setStateDemand({
+          districtsCount: res.total || res.items?.length || 0,
+          personnelDemand: pDemand,
+          vehicleDemand: vDemand,
+          investigationDemand: iDemand,
+          surveillanceDemand: sDemand,
+        });
+      })
+      .catch((err) => {
+        console.error('Error fetching state recommendations:', err);
+        if (isMounted) setStateDemand(null);
+      })
+      .finally(() => {
+        if (isMounted) setIsStateDemandLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedStateId]);
 
   // Load specific tab dataset whenever activeTab, selectedStateId, or statusFilter changes
   const loadTabData = useCallback(async () => {
@@ -439,47 +493,102 @@ export const ResourceOptimizationPage: React.FC = () => {
     return list;
   }, [comparisonData, selectedStateId, query]);
 
-  // Tab configurations
-  const tabs: Array<{ id: TabType; label: string; icon: React.FC<{ className?: string }>; count?: string | number }> = [
+  // Tab configurations: 8 primary modules directly accessible + secondary modules in compact dropdown
+  const primaryTabs: Array<{
+    id: TabType;
+    label: string;
+    icon: React.FC<{ className?: string }>;
+  }> = [
     { id: 'overview', label: 'Overview', icon: Sliders },
-    { id: 'ai_optimization', label: 'Constrained MILP Optimizer', icon: Scale, count: 'Phase 10' },
-    { id: 'budget_cost_analysis', label: 'Budget & Cost Analysis', icon: Coins, count: 'Phase 11' },
-    { id: 'resource_intelligence', label: 'Resource Intelligence', icon: Shield, count: '36 States' },
-    { id: 'state_baseline', label: 'State Baseline', icon: Building2, count: '36/36' },
-    { id: 'districts', label: 'District Inventory', icon: Layers, count: 640 },
+    { id: 'ai_optimization', label: 'Optimizer', icon: Scale },
+    { id: 'budget_cost_analysis', label: 'Budget & Cost Analysis', icon: Coins },
+    { id: 'resource_intelligence', label: 'Resource Intelligence', icon: Shield },
+    { id: 'state_baseline', label: 'State Baseline', icon: Building2 },
+    { id: 'districts', label: 'District Inventory', icon: Layers },
     { id: 'personnel', label: 'Personnel', icon: Users },
     { id: 'vehicles', label: 'Mobility & Fleet', icon: Car },
-    { id: 'investigation', label: 'Investigation', icon: ShieldAlert },
+  ];
+
+  const secondaryTabs: Array<{
+    id: TabType;
+    label: string;
+    icon: React.FC<{ className?: string }>;
+  }> = [
+    { id: 'investigation', label: 'Investigation Squads', icon: ShieldAlert },
     { id: 'surveillance', label: 'Surveillance & CCTV', icon: Eye },
-    { id: 'infrastructure', label: 'Infrastructure', icon: Compass },
+    { id: 'infrastructure', label: 'Infrastructure & Stations', icon: Compass },
     { id: 'gaps', label: 'Resource Gaps', icon: AlertCircle },
     { id: 'recommendations', label: 'AI Recommendations', icon: Sparkles },
   ];
+
+  const selectedState = useMemo(() => {
+    if (!selectedStateId) return undefined;
+    return states.find((s) => s.id === selectedStateId);
+  }, [states, selectedStateId]);
+
+  // Dynamic scope-sensitive demand values (never hardcoded, strictly distinguishing demand from actual assets)
+  const personnelDemandVal = selectedStateId && stateDemand
+    ? stateDemand.personnelDemand
+    : (overview?.total_required_by_type?.['Police Officers'] ?? overview?.gross_required_officers);
+
+  const vehicleDemandVal = selectedStateId && stateDemand
+    ? stateDemand.vehicleDemand
+    : (overview?.total_required_by_type?.['Patrol Vehicles'] ?? overview?.gross_required_vehicles);
+
+  const investigationDemandVal = selectedStateId && stateDemand
+    ? stateDemand.investigationDemand
+    : (overview?.total_required_by_type?.['Investigation Teams'] ?? overview?.gross_required_investigation_teams);
+
+  const surveillanceDemandVal = selectedStateId && stateDemand
+    ? stateDemand.surveillanceDemand
+    : (overview?.total_required_by_type?.['Surveillance Units'] ?? overview?.gross_required_surveillance_units);
+
+  const formattedPersonnelDemand = isStateDemandLoading
+    ? 'Calculating...'
+    : typeof personnelDemandVal === 'number'
+    ? personnelDemandVal.toLocaleString()
+    : 'Unavailable';
+
+  const formattedVehicleDemand = isStateDemandLoading
+    ? 'Calculating...'
+    : typeof vehicleDemandVal === 'number'
+    ? vehicleDemandVal.toLocaleString()
+    : 'Unavailable';
+
+  const formattedInvestigationDemand = isStateDemandLoading
+    ? 'Calculating...'
+    : typeof investigationDemandVal === 'number'
+    ? investigationDemandVal.toLocaleString()
+    : 'Unavailable';
+
+  const formattedSurveillanceDemand = isStateDemandLoading
+    ? 'Calculating...'
+    : typeof surveillanceDemandVal === 'number'
+    ? surveillanceDemandVal.toLocaleString()
+    : 'Unavailable';
 
   return (
     <DashboardLayout
       hideSidebar
       icon={Sliders}
       title="Resource Optimization & Operational Intelligence"
-      subtitle="Authoritative BPR&D/MHA baselines, verified commissionerate disclosures, and explainable AI resource allocation"
+      subtitle="Resource allocation planning, official state baselines, and district demand analysis"
       onRefresh={() => loadInitialData(true)}
       isRefreshing={isRefreshing}
     >
-      {/* Top Filter and Multi-Tab Navigation Toolbar */}
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          {/* Jurisdiction and Status Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 shrink-0">
-              Scope:
-            </span>
+      {/* Top Filter and Navigation Toolbar */}
+      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
+          {/* Scope and Status Filters */}
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
             <select
+              aria-label="Filter by State or Union Territory"
               value={selectedStateId || ''}
               onChange={(e) => {
                 const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                 setSelectedStateId(val);
               }}
-              className="h-9 rounded-lg border border-slate-200 bg-white py-1 px-3 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden cursor-pointer"
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
               <option value="">All States &amp; UTs ({states.length || 36})</option>
               {states.map((s) => (
@@ -491,9 +600,10 @@ export const ResourceOptimizationPage: React.FC = () => {
 
             {['districts', 'personnel', 'vehicles', 'investigation', 'surveillance', 'infrastructure'].includes(activeTab) && (
               <select
+                aria-label="Filter by Inventory Status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 rounded-lg border border-slate-200 bg-white py-1 px-3 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden cursor-pointer"
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="OFFICIAL_DISTRICT">Official Commissionerates (21)</option>
@@ -502,25 +612,26 @@ export const ResourceOptimizationPage: React.FC = () => {
             )}
 
             {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search district or state..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-44 sm:w-56 rounded-lg border border-slate-200 bg-white pl-8 pr-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
+                className="h-10 w-full sm:w-56 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
               />
             </div>
 
             {(selectedStateId || searchQuery || statusFilter !== 'ALL') && (
               <button
+                type="button"
                 onClick={() => {
                   setSelectedStateId(undefined);
                   setSearchQuery('');
                   setStatusFilter('ALL');
                 }}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer shrink-0"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-3 text-[12px] font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] transition-colors cursor-pointer shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Reset</span>
@@ -529,40 +640,59 @@ export const ResourceOptimizationPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100 no-scrollbar">
-          {tabs.map((tab) => {
+        {/* Tab Navigation: Primary Tabs + Secondary Dropdown (No Horizontal Scrollbar) */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#D9E1EA]">
+          {primaryTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
                   isActive
-                    ? 'bg-[#0A192F] text-white font-bold shadow-2xs'
-                    : 'bg-slate-100/80 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+                    ? 'bg-[#0B1F3A] text-white font-semibold shadow-2xs'
+                    : 'bg-[#F4F7FA] text-[#5D6878] border border-[#D9E1EA]/60 hover:bg-[#EAF3FA] hover:text-[#0B1F3A]'
                 }`}
               >
-                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-blue-400' : 'text-slate-500'}`} />
+                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-[#1D7FE2]' : 'text-slate-500'}`} />
                 <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span
-                    className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                )}
               </button>
             );
           })}
+
+          {/* More Modules Dropdown */}
+          <div className="relative inline-block shrink-0">
+            <select
+              aria-label="Additional Resource Modules"
+              value={secondaryTabs.some((t) => t.id === activeTab) ? activeTab : ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setActiveTab(e.target.value as TabType);
+                }
+              }}
+              className={`h-[30px] rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer border ${
+                secondaryTabs.some((t) => t.id === activeTab)
+                  ? 'bg-[#0B1F3A] text-white border-[#0B1F3A] font-semibold shadow-2xs'
+                  : 'bg-[#F4F7FA] text-[#5D6878] border-[#D9E1EA]/60 hover:bg-[#EAF3FA] hover:text-[#0B1F3A]'
+              }`}
+            >
+              <option value="" disabled className="text-slate-500 bg-white">
+                More Modules ▾
+              </option>
+              {secondaryTabs.map((tab) => (
+                <option key={tab.id} value={tab.id} className="text-[#172033] bg-white">
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {isLoading && (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-2xs">
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Connecting to authoritative police resource registries and running optimization calculations..." />
         </div>
       )}
@@ -580,187 +710,131 @@ export const ResourceOptimizationPage: React.FC = () => {
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              {/* Provenance & Methodology Banner */}
-              <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50/80 via-white to-slate-50 p-4 shadow-2xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                        <Shield className="h-3 w-3" />
-                        Comprehensive Operational Intelligence
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Zero Fabrication Standard
-                      </span>
-                    </div>
-                    <h2 className="text-base font-bold text-slate-900">
-                      National Law Enforcement Resource Landscape (Census 2011 &bull; 640 Districts)
-                    </h2>
-                    <p className="text-xs text-slate-600 leading-relaxed max-w-4xl">
-                      Authoritative police strength baselines compiled from <strong>BPR&amp;D Data on Police Organizations (DoPO)</strong>, Ministry of Home Affairs, and verified metropolitan commissionerate disclosures.
-                      Where ground inventories are not officially disclosed by district administrations, counts are strictly maintained as <code>UNRECORDED</code> with <code>gap = NULL</code>, preventing synthetic distortions.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href="https://bprd.nic.in"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-                    >
-                      <span>BPR&amp;D Portal</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                    </a>
-                  </div>
+              {/* Short Resource Landscape Description Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white px-4 py-3 shadow-2xs">
+                <div className="flex items-center gap-2.5 text-xs text-[#5D6878]">
+                  <Shield className="h-4 w-4 shrink-0 text-[#1769AA]" />
+                  <span>
+                    Resource planning based on official state-level disclosures and available district inventories. Missing inventory data is marked as unavailable.
+                  </span>
                 </div>
+                <a
+                  href="https://bprd.nic.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#D9E1EA] bg-white px-2.5 py-1 text-xs font-semibold text-[#0B1F3A] hover:bg-[#F4F7FA] hover:text-[#1769AA] hover:border-[#BAC7D5] transition-all shadow-2xs shrink-0"
+                  title="Open BPR&D Official Portal"
+                >
+                  <span>BPR&amp;D Portal</span>
+                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                </a>
               </div>
 
-              {/* Phase 10: Official Resource Inventory Verification & Discrepancy Reconciliation Banner */}
-              <div className="rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-white to-blue-50/50 p-4 shadow-2xs space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-200">
-                      <Scale className="h-3 w-3" />
-                      Phase 10 Inventory Reconciliation &amp; Audit
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      <CheckCircle2 className="h-3 w-3" />
-                      288 State &bull; 4,510 District Verified Rows
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('ai_optimization')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold text-white bg-indigo-700 hover:bg-indigo-800 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <span>Launch MILP Optimizer</span>
-                    <Sparkles className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  <strong>Discrepancy Audit &amp; Phase 10.1 Inventory Governance:</strong> Physical database auditing confirms exactly <strong>288 verified rows</strong> in <code>state_resources</code> across 36 active States/UTs &times; 8 official BPR&amp;D categories, representing aggregate administrative strength. <code>district_resources</code> contains exactly <strong>4,510 rows</strong> (114 official district disclosures + 4,396 unrecorded rows with strict NULL invariants). In accordance with Phase 10.1 data integrity rules, unrecorded district staffing prevents operational inter-district reallocations (returning <code>INSUFFICIENT_DATA</code>), while hypothetical planning simulations are strictly labeled and segregated with full assumption disclosure.
-                </p>
-              </div>
-
-              {/* KPI Summary Cards */}
+              {/* Four Clean Summary Cards */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                  title="Assessed Districts"
-                  value={overview?.total_assessed_districts || 640}
-                  subtext="Census 2011 nationwide scope"
+                  title="Districts Assessed"
+                  value={selectedStateId && stateDemand ? stateDemand.districtsCount : (overview?.total_assessed_districts || 640)}
+                  subtext={selectedState ? `${selectedState.state_name} scope` : 'Census 2011 nationwide scope'}
                   icon={Layers}
                   color="navy"
                 />
                 <StatCard
-                  title="Official State Baseline"
-                  value={`${coverage?.total_active_states || 36} / 36`}
-                  subtext="100% active States & UTs covered"
+                  title="States/UTs with Official Baselines"
+                  value={selectedStateId ? '1 / 1' : `${coverage?.total_active_states || 36} / 36`}
+                  subtext={selectedStateId ? 'Official BPR&D baseline verified' : '100% active States & UTs covered'}
                   icon={Building2}
                   color="emerald"
                 />
                 <StatCard
-                  title="Police Force Gross Demand"
-                  value={(overview?.gross_required_officers || 164500).toLocaleString()}
-                  subtext="AI tactical personnel requirement"
+                  title="Estimated Personnel Demand"
+                  value={formattedPersonnelDemand}
+                  subtext="Estimated tactical personnel requirement"
                   icon={Users}
                   color="blue"
                 />
                 <StatCard
-                  title="Mobility Fleet Demand"
-                  value={(overview?.gross_required_vehicles || 26800).toLocaleString()}
-                  subtext="Patrol vehicles & PCR vans"
+                  title="Estimated Vehicle Demand"
+                  value={formattedVehicleDemand}
+                  subtext="Estimated patrol & mobility demand"
                   icon={Car}
                   color="amber"
                 />
               </div>
 
-              {/* Functional Domain Requirement Grid */}
-              <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+              {/* Resource Demand Breakdown */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
                 <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-[#0A192F]">
-                    Operational Domain Breakdown &amp; Demand Allocation
+                  <h3 className="text-base font-bold text-[#0B1F3A]">
+                    Resource Demand Breakdown
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Caseload-driven resource requirements across law enforcement divisions
+                  <p className="text-xs text-[#5D6878]">
+                    Estimated operational requirements derived from population, incident forecasts, and risk weighting
+                    {selectedState ? ` for ${selectedState.state_name}` : ' nationwide'}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-bold text-xs uppercase tracking-wider">Police Personnel</span>
-                      <Users className="h-4 w-4 text-blue-600" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-4">
+                    <div className="flex items-center justify-between text-[#0B1F3A]">
+                      <span className="font-bold text-xs uppercase tracking-wider text-[#5D6878]">Police Personnel</span>
+                      <Users className="h-4 w-4 text-[#1769AA]" />
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">
-                      {(overview?.gross_required_officers || 0).toLocaleString()}
+                    <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
+                      {formattedPersonnelDemand}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Target officers aligned with population &amp; forecasted incidents
+                    <p className="mt-1 text-xs text-[#5D6878]">
+                      Estimated officer demand based on population and risk
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-bold text-xs uppercase tracking-wider">Patrol &amp; Mobility</span>
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-4">
+                    <div className="flex items-center justify-between text-[#0B1F3A]">
+                      <span className="font-bold text-xs uppercase tracking-wider text-[#5D6878]">Patrol &amp; Mobility</span>
                       <Car className="h-4 w-4 text-amber-600" />
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">
-                      {(overview?.gross_required_vehicles || 0).toLocaleString()}
+                    <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
+                      {formattedVehicleDemand}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Patrol cruisers, PCR vans, and highway interceptors
+                    <p className="mt-1 text-xs text-[#5D6878]">
+                      Estimated patrol vehicles and emergency response units
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-bold text-xs uppercase tracking-wider">Investigation Squads</span>
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-4">
+                    <div className="flex items-center justify-between text-[#0B1F3A]">
+                      <span className="font-bold text-xs uppercase tracking-wider text-[#5D6878]">Investigation</span>
                       <ShieldAlert className="h-4 w-4 text-purple-600" />
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">
-                      {(overview?.gross_required_investigation_teams || 0).toLocaleString()}
+                    <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
+                      {formattedInvestigationDemand}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Specialized crime, forensic, and cyber investigation teams
+                    <p className="mt-1 text-xs text-[#5D6878]">
+                      Estimated specialized crime and forensic investigation squads
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="font-bold text-xs uppercase tracking-wider">Surveillance &amp; Monitoring</span>
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-4">
+                    <div className="flex items-center justify-between text-[#0B1F3A]">
+                      <span className="font-bold text-xs uppercase tracking-wider text-[#5D6878]">Surveillance &amp; Monitoring</span>
                       <Eye className="h-4 w-4 text-emerald-600" />
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">
-                      {(overview?.gross_required_surveillance_units || 0).toLocaleString()}
+                    <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
+                      {formattedSurveillanceDemand}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Tactical surveillance units, drones, and command control cells
+                    <p className="mt-1 text-xs text-[#5D6878]">
+                      Estimated tactical surveillance teams and control units
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Data Governance & Institutional Integrity Card */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-700 space-y-2">
-                <div className="flex items-start gap-2.5">
-                  <Database className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-slate-900 block">
-                      Strict Data Governance &amp; Null Invariant Principles:
-                    </span>
-                    <ul className="mt-1 list-disc pl-4 space-y-1 text-slate-600 leading-relaxed">
-                      <li>
-                        <strong>Preservation of State Aggregates:</strong> Official police strength in India is governed pursuant to the Seventh Schedule (State List). State/UT aggregations are verified from BPR&amp;D DoPO and Parliamentary disclosures without artificial disaggregation.
-                      </li>
-                      <li>
-                        <strong>Null Gap Invariant:</strong> For jurisdictions without verified administrative disclosures, <code>actual_count = NULL</code> and <code>gap_count = NULL</code>. Gaps are never computed against non-existent numbers.
-                      </li>
-                      <li>
-                        <strong>Verified Disclosures:</strong> 21 metropolitan police departments with official public records (Mumbai, Bengaluru, Hyderabad, Delhi, Kolkata, etc.) display genuine gap counts and institutional document citations.
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+              {/* Data Quality & Governance Note */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-3 text-xs text-[#5D6878] flex items-center gap-2.5">
+                <Info className="h-4 w-4 text-[#1769AA] shrink-0" />
+                <span>
+                  Data availability varies by jurisdiction. Unreported district inventories remain unavailable; state totals are not arbitrarily distributed among districts.
+                </span>
               </div>
             </div>
           )}
@@ -1402,6 +1476,14 @@ export const ResourceOptimizationPage: React.FC = () => {
                   </div>
                   <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
                     {filteredDistrictResources.length} Records Shown
+                  </span>
+                </div>
+
+                {/* Ground Inventory Availability Note */}
+                <div className="rounded-md border border-[#D9E1EA] bg-[#F4F7FA] px-3.5 py-2 text-xs text-[#5D6878] flex items-center gap-2">
+                  <Info className="h-4 w-4 text-[#1769AA] shrink-0" />
+                  <span>
+                    Ground inventories are verified for official commissionerates. For unrecorded districts, actual counts and gaps remain strictly unavailable (<code>NULL</code>) to prevent distorted reallocations.
                   </span>
                 </div>
 
