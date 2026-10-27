@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ExternalLink,
   Shield,
-  Search,
   Layers,
   Sparkles,
   X,
@@ -32,6 +31,7 @@ import BudgetCostAnalysisView from '../components/budget/BudgetCostAnalysisView'
 import { geographyApi, resourceApi } from '../api';
 import type {
   StateItem,
+  DistrictItem,
   StateResourceItem,
   ResourceCoverageResponse,
   ResourceOverview,
@@ -62,8 +62,10 @@ export const ResourceOptimizationPage: React.FC = () => {
   // Navigation & filter state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [states, setStates] = useState<StateItem[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>();
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
+  const [isDistrictsLoading, setIsDistrictsLoading] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   // Loading & error state
@@ -99,7 +101,7 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
-  // Scope-specific estimated demand state
+  // Scope-specific estimated demand state (for state or district scope)
   const [stateDemand, setStateDemand] = useState<{
     districtsCount: number;
     personnelDemand: number;
@@ -108,6 +110,14 @@ export const ResourceOptimizationPage: React.FC = () => {
     surveillanceDemand: number;
   } | null>(null);
   const [isStateDemandLoading, setIsStateDemandLoading] = useState<boolean>(false);
+
+  const [districtDemand, setDistrictDemand] = useState<{
+    personnelDemand: number;
+    vehicleDemand: number;
+    investigationDemand: number;
+    surveillanceDemand: number;
+  } | null>(null);
+  const [isDistrictDemandLoading, setIsDistrictDemandLoading] = useState<boolean>(false);
 
   // Initial load of states, overview, and coverage
   const loadInitialData = useCallback(async (isRefresh = false) => {
@@ -135,6 +145,33 @@ export const ResourceOptimizationPage: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  // Load districts dynamically when selectedStateId changes (or initially for all districts)
+  useEffect(() => {
+    let isMounted = true;
+    setIsDistrictsLoading(true);
+
+    geographyApi
+      .getDistricts(selectedStateId, 'current')
+      .then((res) => {
+        if (!isMounted) return;
+        const sorted = (res.items || []).slice().sort((a, b) =>
+          a.district_name.localeCompare(b.district_name)
+        );
+        setDistricts(sorted);
+      })
+      .catch((err) => {
+        console.error('Failed to load districts:', err);
+        if (isMounted) setDistricts([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsDistrictsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedStateId]);
 
   // Fetch scope-specific demand when selectedStateId changes
   useEffect(() => {
@@ -181,17 +218,68 @@ export const ResourceOptimizationPage: React.FC = () => {
     };
   }, [selectedStateId]);
 
-  // Load specific tab dataset whenever activeTab, selectedStateId, or statusFilter changes
+  // Fetch district-specific demand when selectedDistrictId changes
+  useEffect(() => {
+    if (!selectedDistrictId) {
+      setDistrictDemand(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsDistrictDemandLoading(true);
+
+    resourceApi
+      .getDistrictDetailMulti(selectedDistrictId)
+      .then((items) => {
+        if (!isMounted) return;
+        let pDemand = 0;
+        let vDemand = 0;
+        let iDemand = 0;
+        let sDemand = 0;
+        for (const it of items || []) {
+          const req = it.required_count || 0;
+          if (it.category === 'PERSONNEL' || it.resource_name === 'Police Officers') {
+            pDemand += req;
+          } else if (it.category === 'MOBILITY' || it.resource_name === 'Patrol Vehicles') {
+            vDemand += req;
+          } else if (it.category === 'INVESTIGATION' || it.resource_name === 'Investigation Teams') {
+            iDemand += req;
+          } else if (it.category === 'SURVEILLANCE' || it.resource_name === 'Surveillance Units') {
+            sDemand += req;
+          }
+        }
+        setDistrictDemand({
+          personnelDemand: pDemand,
+          vehicleDemand: vDemand,
+          investigationDemand: iDemand,
+          surveillanceDemand: sDemand,
+        });
+      })
+      .catch((err) => {
+        console.error('Error fetching district demand:', err);
+        if (isMounted) setDistrictDemand(null);
+      })
+      .finally(() => {
+        if (isMounted) setIsDistrictDemandLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDistrictId]);
+
+  // Load specific tab dataset whenever activeTab, selectedStateId, selectedDistrictId, or statusFilter changes
   const loadTabData = useCallback(async () => {
     setIsTabLoading(true);
     try {
       const filterStatus = statusFilter === 'ALL' ? undefined : statusFilter;
+      const effectiveStateId = selectedStateId || districts.find((d) => d.id === selectedDistrictId)?.state_id;
 
       switch (activeTab) {
         case 'resource_intelligence': {
           const [summaryRes, compRes, typesRes] = await Promise.all([
-            resourceApi.getResourceSummary({ state_id: selectedStateId }),
-            resourceApi.getResourceComparison({ state_id: selectedStateId }),
+            resourceApi.getResourceSummary({ state_id: effectiveStateId }),
+            resourceApi.getResourceComparison({ state_id: effectiveStateId }),
             resourceApi.getResourceTypes(),
           ]);
           setResourceSummary(summaryRes);
@@ -201,7 +289,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         }
         case 'state_baseline': {
           const res = await resourceApi.getStateResources({
-            state_id: selectedStateId,
+            state_id: effectiveStateId,
             limit: 100,
           });
           setStateResources(res.items);
@@ -210,6 +298,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'districts': {
           const res = await resourceApi.getDistrictResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -219,6 +308,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'personnel': {
           const res = await resourceApi.getPersonnelResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -228,6 +318,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'vehicles': {
           const res = await resourceApi.getVehicleResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -237,6 +328,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'investigation': {
           const res = await resourceApi.getInvestigationResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -246,6 +338,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'surveillance': {
           const res = await resourceApi.getSurveillanceResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -255,6 +348,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         case 'infrastructure': {
           const res = await resourceApi.getInfrastructureResources({
             state_id: selectedStateId,
+            district_id: selectedDistrictId,
             data_status: filterStatus,
             limit: 100,
           });
@@ -263,7 +357,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         }
         case 'gaps': {
           const res = await resourceApi.getResourceGaps({
-            state_id: selectedStateId,
+            state_id: effectiveStateId,
             limit: 100,
           });
           setGapsList(res.items);
@@ -271,7 +365,7 @@ export const ResourceOptimizationPage: React.FC = () => {
         }
         case 'recommendations': {
           const res = await resourceApi.getAIRecommendations({
-            state_id: selectedStateId,
+            state_id: effectiveStateId,
             limit: 100,
           });
           setRecommendationsList(res.items);
@@ -286,7 +380,7 @@ export const ResourceOptimizationPage: React.FC = () => {
     } finally {
       setIsTabLoading(false);
     }
-  }, [activeTab, selectedStateId, statusFilter]);
+  }, [activeTab, selectedStateId, selectedDistrictId, statusFilter, districts]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -373,87 +467,58 @@ export const ResourceOptimizationPage: React.FC = () => {
     );
   };
 
-  // Filter lists based on search query
-  const query = searchQuery.trim().toLowerCase();
-
+  // Filter lists based on selected district
   const filteredStateResources = useMemo(() => {
-    if (!query) return stateResources;
-    return stateResources.filter(
-      (r) =>
-        r.state_name.toLowerCase().includes(query) ||
-        r.resource_name.toLowerCase().includes(query) ||
-        r.source_publication.toLowerCase().includes(query)
-    );
-  }, [stateResources, query]);
+    return stateResources;
+  }, [stateResources]);
 
   const filteredDistrictResources = useMemo(() => {
-    if (!query) return districtResources;
-    return districtResources.filter(
-      (r) =>
-        r.district_name.toLowerCase().includes(query) ||
-        r.state_name.toLowerCase().includes(query) ||
-        r.resource_name.toLowerCase().includes(query)
-    );
-  }, [districtResources, query]);
+    if (!selectedDistrictId) return districtResources;
+    return districtResources.filter((r) => r.district_id === selectedDistrictId);
+  }, [districtResources, selectedDistrictId]);
 
   const filteredPersonnelList = useMemo(() => {
-    if (!query) return personnelList;
-    return personnelList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [personnelList, query]);
+    if (!selectedDistrictId) return personnelList;
+    return personnelList.filter((r) => r.district_id === selectedDistrictId);
+  }, [personnelList, selectedDistrictId]);
 
   const filteredVehicleList = useMemo(() => {
-    if (!query) return vehicleList;
-    return vehicleList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [vehicleList, query]);
+    if (!selectedDistrictId) return vehicleList;
+    return vehicleList.filter((r) => r.district_id === selectedDistrictId);
+  }, [vehicleList, selectedDistrictId]);
 
   const filteredInvestigationList = useMemo(() => {
-    if (!query) return investigationList;
-    return investigationList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [investigationList, query]);
+    if (!selectedDistrictId) return investigationList;
+    return investigationList.filter((r) => r.district_id === selectedDistrictId);
+  }, [investigationList, selectedDistrictId]);
 
   const filteredSurveillanceList = useMemo(() => {
-    if (!query) return surveillanceList;
-    return surveillanceList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [surveillanceList, query]);
+    if (!selectedDistrictId) return surveillanceList;
+    return surveillanceList.filter((r) => r.district_id === selectedDistrictId);
+  }, [surveillanceList, selectedDistrictId]);
 
   const filteredInfrastructureList = useMemo(() => {
-    if (!query) return infrastructureList;
-    return infrastructureList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [infrastructureList, query]);
+    if (!selectedDistrictId) return infrastructureList;
+    return infrastructureList.filter((r) => r.district_id === selectedDistrictId);
+  }, [infrastructureList, selectedDistrictId]);
 
   const filteredGapsList = useMemo(() => {
-    if (!query) return gapsList;
-    return gapsList.filter(
-      (r) =>
-        r.district_name.toLowerCase().includes(query) ||
-        r.state_name.toLowerCase().includes(query) ||
-        r.resource_name.toLowerCase().includes(query)
-    );
-  }, [gapsList, query]);
+    if (!selectedDistrictId) return gapsList;
+    return gapsList.filter((r) => r.district_id === selectedDistrictId);
+  }, [gapsList, selectedDistrictId]);
 
   const filteredRecommendationsList = useMemo(() => {
-    if (!query) return recommendationsList;
-    return recommendationsList.filter(
-      (r) => r.district_name.toLowerCase().includes(query) || r.state_name.toLowerCase().includes(query)
-    );
-  }, [recommendationsList, query]);
+    if (!selectedDistrictId) return recommendationsList;
+    return recommendationsList.filter((r) => r.district_id === selectedDistrictId);
+  }, [recommendationsList, selectedDistrictId]);
 
   // Phase 7D: Filtered resource summary & crime comparison datasets
   const filteredSummaryStates = useMemo(() => {
     if (!resourceSummary) return [];
     let list = resourceSummary.items;
-    if (selectedStateId) {
-      list = list.filter((s) => s.state_id === selectedStateId);
+    const effectiveStateId = selectedStateId || districts.find((d) => d.id === selectedDistrictId)?.state_id;
+    if (effectiveStateId) {
+      list = list.filter((s) => s.state_id === effectiveStateId);
     }
     if (selectedRefYearFilter !== 'ALL') {
       const yr = parseInt(selectedRefYearFilter, 10);
@@ -471,27 +536,18 @@ export const ResourceOptimizationPage: React.FC = () => {
         }))
         .filter((s) => s.resources.length > 0);
     }
-    if (query) {
-      list = list.filter(
-        (s) =>
-          s.state.toLowerCase().includes(query) ||
-          s.resources.some((r) => r.resource_type.toLowerCase().includes(query))
-      );
-    }
     return list;
-  }, [resourceSummary, selectedStateId, selectedRefYearFilter, selectedResourceTypeFilter, query]);
+  }, [resourceSummary, selectedStateId, selectedDistrictId, districts, selectedRefYearFilter, selectedResourceTypeFilter]);
 
   const filteredComparisonItems = useMemo(() => {
     if (!comparisonData) return [];
     let list = comparisonData.items;
-    if (selectedStateId) {
-      list = list.filter((s) => s.state_id === selectedStateId);
-    }
-    if (query) {
-      list = list.filter((s) => s.state_name.toLowerCase().includes(query));
+    const effectiveStateId = selectedStateId || districts.find((d) => d.id === selectedDistrictId)?.state_id;
+    if (effectiveStateId) {
+      list = list.filter((s) => s.state_id === effectiveStateId);
     }
     return list;
-  }, [comparisonData, selectedStateId, query]);
+  }, [comparisonData, selectedStateId, selectedDistrictId, districts]);
 
   // Tab configurations: 8 primary modules directly accessible + secondary modules in compact dropdown
   const primaryTabs: Array<{
@@ -526,42 +582,57 @@ export const ResourceOptimizationPage: React.FC = () => {
     return states.find((s) => s.id === selectedStateId);
   }, [states, selectedStateId]);
 
+  const selectedDistrict = useMemo(() => {
+    if (!selectedDistrictId) return undefined;
+    return districts.find((d) => d.id === selectedDistrictId);
+  }, [districts, selectedDistrictId]);
+
   // Dynamic scope-sensitive demand values (never hardcoded, strictly distinguishing demand from actual assets)
-  const personnelDemandVal = selectedStateId && stateDemand
+  const personnelDemandVal = selectedDistrictId && districtDemand
+    ? districtDemand.personnelDemand
+    : selectedStateId && stateDemand
     ? stateDemand.personnelDemand
     : (overview?.total_required_by_type?.['Police Officers'] ?? overview?.gross_required_officers);
 
-  const vehicleDemandVal = selectedStateId && stateDemand
+  const vehicleDemandVal = selectedDistrictId && districtDemand
+    ? districtDemand.vehicleDemand
+    : selectedStateId && stateDemand
     ? stateDemand.vehicleDemand
     : (overview?.total_required_by_type?.['Patrol Vehicles'] ?? overview?.gross_required_vehicles);
 
-  const investigationDemandVal = selectedStateId && stateDemand
+  const investigationDemandVal = selectedDistrictId && districtDemand
+    ? districtDemand.investigationDemand
+    : selectedStateId && stateDemand
     ? stateDemand.investigationDemand
     : (overview?.total_required_by_type?.['Investigation Teams'] ?? overview?.gross_required_investigation_teams);
 
-  const surveillanceDemandVal = selectedStateId && stateDemand
+  const surveillanceDemandVal = selectedDistrictId && districtDemand
+    ? districtDemand.surveillanceDemand
+    : selectedStateId && stateDemand
     ? stateDemand.surveillanceDemand
     : (overview?.total_required_by_type?.['Surveillance Units'] ?? overview?.gross_required_surveillance_units);
 
-  const formattedPersonnelDemand = isStateDemandLoading
+  const isDemandLoading = selectedDistrictId ? isDistrictDemandLoading : isStateDemandLoading;
+
+  const formattedPersonnelDemand = isDemandLoading
     ? 'Calculating...'
     : typeof personnelDemandVal === 'number'
     ? personnelDemandVal.toLocaleString()
     : 'Unavailable';
 
-  const formattedVehicleDemand = isStateDemandLoading
+  const formattedVehicleDemand = isDemandLoading
     ? 'Calculating...'
     : typeof vehicleDemandVal === 'number'
     ? vehicleDemandVal.toLocaleString()
     : 'Unavailable';
 
-  const formattedInvestigationDemand = isStateDemandLoading
+  const formattedInvestigationDemand = isDemandLoading
     ? 'Calculating...'
     : typeof investigationDemandVal === 'number'
     ? investigationDemandVal.toLocaleString()
     : 'Unavailable';
 
-  const formattedSurveillanceDemand = isStateDemandLoading
+  const formattedSurveillanceDemand = isDemandLoading
     ? 'Calculating...'
     : typeof surveillanceDemandVal === 'number'
     ? surveillanceDemandVal.toLocaleString()
@@ -587,6 +658,7 @@ export const ResourceOptimizationPage: React.FC = () => {
               onChange={(e) => {
                 const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
                 setSelectedStateId(val);
+                setSelectedDistrictId(undefined);
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
@@ -594,6 +666,33 @@ export const ResourceOptimizationPage: React.FC = () => {
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
+                </option>
+              ))}
+            </select>
+
+            {/* District Dropdown Selector */}
+            <select
+              aria-label="Filter by District"
+              value={selectedDistrictId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                setSelectedDistrictId(val);
+              }}
+              disabled={isDistrictsLoading || districts.length === 0}
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">
+                {isDistrictsLoading
+                  ? 'Loading Districts...'
+                  : districts.length === 0
+                  ? 'No Districts Available'
+                  : selectedStateId
+                  ? `All Districts in State (${districts.length})`
+                  : `All Districts (${districts.length})`}
+              </option>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.district_name}
                 </option>
               ))}
             </select>
@@ -611,24 +710,12 @@ export const ResourceOptimizationPage: React.FC = () => {
               </select>
             )}
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search district or state..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full sm:w-56 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
-              />
-            </div>
-
-            {(selectedStateId || searchQuery || statusFilter !== 'ALL') && (
+            {(selectedStateId || selectedDistrictId || statusFilter !== 'ALL') && (
               <button
                 type="button"
                 onClick={() => {
                   setSelectedStateId(undefined);
-                  setSearchQuery('');
+                  setSelectedDistrictId(undefined);
                   setStatusFilter('ALL');
                 }}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-3 text-[12px] font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] transition-colors cursor-pointer shrink-0"
@@ -734,29 +821,41 @@ export const ResourceOptimizationPage: React.FC = () => {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                   title="Districts Assessed"
-                  value={selectedStateId && stateDemand ? stateDemand.districtsCount : (overview?.total_assessed_districts || 640)}
-                  subtext={selectedState ? `${selectedState.state_name} scope` : 'Census 2011 nationwide scope'}
+                  value={
+                    selectedDistrictId
+                      ? 1
+                      : selectedStateId && stateDemand
+                      ? stateDemand.districtsCount
+                      : (overview?.total_assessed_districts || 640)
+                  }
+                  subtext={
+                    selectedDistrict
+                      ? `${selectedDistrict.district_name}${selectedState ? `, ${selectedState.state_name}` : ` (${selectedDistrict.state_name})`}`
+                      : selectedState
+                      ? `${selectedState.state_name} scope`
+                      : 'Census 2011 nationwide scope'
+                  }
                   icon={Layers}
                   color="navy"
                 />
                 <StatCard
                   title="States/UTs with Official Baselines"
-                  value={selectedStateId ? '1 / 1' : `${coverage?.total_active_states || 36} / 36`}
-                  subtext={selectedStateId ? 'Official BPR&D baseline verified' : '100% active States & UTs covered'}
+                  value={selectedStateId || selectedDistrictId ? '1 / 1' : `${coverage?.total_active_states || 36} / 36`}
+                  subtext={selectedStateId || selectedDistrictId ? 'Official BPR&D baseline verified' : '100% active States & UTs covered'}
                   icon={Building2}
                   color="emerald"
                 />
                 <StatCard
                   title="Estimated Personnel Demand"
                   value={formattedPersonnelDemand}
-                  subtext="Estimated tactical personnel requirement"
+                  subtext={selectedDistrictId ? 'District tactical requirement' : 'Estimated tactical personnel requirement'}
                   icon={Users}
                   color="blue"
                 />
                 <StatCard
                   title="Estimated Vehicle Demand"
                   value={formattedVehicleDemand}
-                  subtext="Estimated patrol & mobility demand"
+                  subtext={selectedDistrictId ? 'District patrol & mobility demand' : 'Estimated patrol & mobility demand'}
                   icon={Car}
                   color="amber"
                 />
@@ -770,7 +869,11 @@ export const ResourceOptimizationPage: React.FC = () => {
                   </h3>
                   <p className="text-xs text-[#5D6878]">
                     Estimated operational requirements derived from population, incident forecasts, and risk weighting
-                    {selectedState ? ` for ${selectedState.state_name}` : ' nationwide'}
+                    {selectedDistrict
+                      ? ` for ${selectedDistrict.district_name}${selectedState ? `, ${selectedState.state_name}` : ` (${selectedDistrict.state_name})`}`
+                      : selectedState
+                      ? ` for ${selectedState.state_name}`
+                      : ' nationwide'}
                   </p>
                 </div>
 
@@ -924,7 +1027,10 @@ export const ResourceOptimizationPage: React.FC = () => {
                       <label className="text-xs text-slate-500 font-medium">State/UT:</label>
                       <select
                         value={selectedStateId || ''}
-                        onChange={(e) => setSelectedStateId(e.target.value ? Number(e.target.value) : undefined)}
+                        onChange={(e) => {
+                          setSelectedStateId(e.target.value ? Number(e.target.value) : undefined);
+                          setSelectedDistrictId(undefined);
+                        }}
                         className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 font-medium focus:border-blue-500 focus:outline-none"
                       >
                         <option value="">All 36 States &amp; UTs</option>
@@ -975,10 +1081,11 @@ export const ResourceOptimizationPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {(selectedStateId || selectedResourceTypeFilter !== 'ALL' || selectedRefYearFilter !== 'ALL') && (
+                  {(selectedStateId || selectedDistrictId || selectedResourceTypeFilter !== 'ALL' || selectedRefYearFilter !== 'ALL') && (
                     <button
                       onClick={() => {
                         setSelectedStateId(undefined);
+                        setSelectedDistrictId(undefined);
                         setSelectedResourceTypeFilter('ALL');
                         setSelectedRefYearFilter('ALL');
                       }}
