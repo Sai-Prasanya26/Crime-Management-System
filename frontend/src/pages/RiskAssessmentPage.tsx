@@ -120,7 +120,7 @@ export const RiskAssessmentPage: React.FC = () => {
       const [overviewData, modelData, statesData, tableData, trendsData] = await Promise.all([
         riskApi.getOverview(selectedPeriod, currentPeriodConfig.version, currentPeriodConfig.scoreType),
         riskApi.getModelInfo(currentPeriodConfig.version),
-        geographyApi.getStates('historical'),
+        geographyApi.getStates('current'),
         riskApi.listRiskScores({
           skip: 0,
           limit: pageSize,
@@ -152,7 +152,7 @@ export const RiskAssessmentPage: React.FC = () => {
   useEffect(() => {
     if (selectedStateId) {
       geographyApi
-        .getDistricts(selectedStateId, 'historical')
+        .getDistricts(selectedStateId, 'current')
         .then((res) => {
           setDistricts(res.items || []);
         })
@@ -650,92 +650,81 @@ export const RiskAssessmentPage: React.FC = () => {
             </div>
           </div>
 
-          {/* SECTION E: FILTER BAR */}
-          <div className="rounded-lg border border-[#DCE2EA] bg-white p-3.5 shadow-2xs">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          {/* SECTION E: FILTER TOOLBAR */}
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
               {/* State Filter */}
-              <div>
-                <label htmlFor="state-filter" className="block text-xs font-semibold text-[#5D6878] mb-1">
-                  State / UT
-                </label>
-                <select
-                  id="state-filter"
-                  value={selectedStateId || ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? Number(e.target.value) : undefined;
-                    setSelectedStateId(val);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full text-xs bg-white text-[#0B1F3A] border border-[#DCE2EA] rounded px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-[#1769AA]"
-                >
-                  <option value="">All States ({states.length})</option>
-                  {states.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.state_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                id="state-filter"
+                aria-label="Filter by State or Union Territory"
+                value={selectedStateId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : undefined;
+                  setSelectedStateId(val);
+                  setSelectedDistrictId(undefined);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">All States &amp; UTs ({states.length || 36})</option>
+                {states.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.state_name}
+                  </option>
+                ))}
+              </select>
 
               {/* District Filter */}
-              <div>
-                <label htmlFor="district-filter" className="block text-xs font-semibold text-[#5D6878] mb-1">
-                  District
-                </label>
-                <select
-                  id="district-filter"
-                  value={selectedDistrictId || ''}
-                  disabled={!selectedStateId}
-                  onChange={(e) => {
-                    const val = e.target.value ? Number(e.target.value) : undefined;
-                    setSelectedDistrictId(val);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full text-xs bg-white text-[#0B1F3A] border border-[#DCE2EA] rounded px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400"
-                >
-                  <option value="">All Districts ({districts.length})</option>
-                  {districts.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.district_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                id="district-filter"
+                aria-label="Filter by District"
+                value={selectedDistrictId || ''}
+                disabled={!selectedStateId}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : undefined;
+                  setSelectedDistrictId(val);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <option value="">{selectedStateId ? `All Districts (${districts.length})` : 'Select State First'}</option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.district_name}
+                  </option>
+                ))}
+              </select>
 
               {/* Risk Level Filter */}
-              <div>
-                <label htmlFor="risk-level-filter" className="block text-xs font-semibold text-[#5D6878] mb-1">
-                  Risk Category
-                </label>
-                <select
-                  id="risk-level-filter"
-                  value={selectedRiskLevel || ''}
-                  onChange={(e) => {
-                    setSelectedRiskLevel(e.target.value || undefined);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full text-xs bg-white text-[#0B1F3A] border border-[#DCE2EA] rounded px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-[#1769AA]"
-                >
-                  <option value="">All Categories</option>
-                  <option value="CRITICAL">Critical (≥ 65)</option>
-                  <option value="HIGH">High (50 – 64.99)</option>
-                  <option value="MODERATE">Moderate (35 – 49.99)</option>
-                  <option value="LOW">Low (&lt; 35)</option>
-                </select>
-              </div>
-
-              {/* Reset Action */}
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="w-full text-xs font-medium text-[#1769AA] bg-[#EAF3FA] hover:bg-[#D5E8F7] border border-[#1769AA]/30 rounded px-3 py-1.5 flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Reset Filters
-                </button>
-              </div>
+              <select
+                id="risk-level-filter"
+                aria-label="Filter by Risk Category"
+                value={selectedRiskLevel || ''}
+                onChange={(e) => {
+                  setSelectedRiskLevel(e.target.value || undefined);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">All Risk Categories</option>
+                <option value="CRITICAL">Critical (≥ 65)</option>
+                <option value="HIGH">High (50 – 64.99)</option>
+                <option value="MODERATE">Moderate (35 – 49.99)</option>
+                <option value="LOW">Low (&lt; 35)</option>
+              </select>
             </div>
+
+            {/* Reset Action */}
+            {(selectedStateId || selectedDistrictId || selectedRiskLevel) && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            )}
           </div>
 
           {/* SECTION F: DISTRICT RISK TABLE */}

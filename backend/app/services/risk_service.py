@@ -31,7 +31,7 @@ from backend.app.schemas.common import StandardListResponse
 
 logger = logging.getLogger(__name__)
 
-CALCULATION_VERSION = "risk-v1.0"
+CALCULATION_VERSION = "risk-v2.0"
 CALCULATION_VERSION_V2 = "risk-v2.0"
 
 # Legacy v1.0 weights

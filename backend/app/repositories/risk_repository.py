@@ -311,8 +311,8 @@ class RiskRepository:
             SELECT r.id,
                    r.district_id,
                    d.district_name,
-                   d.state_id,
-                   s.state_name,
+                   COALESCE(cs.id, s.id) AS state_id,
+                   COALESCE(cs.state_name, s.state_name) AS state_name,
                    r.period_year,
                    r.period_month,
                    r.overall_risk_score,
@@ -334,6 +334,13 @@ class RiskRepository:
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
             JOIN states s ON d.state_id = s.id
+            LEFT JOIN (
+                SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
+                FROM district_geography_mapping dgm
+                JOIN districts cd ON dgm.current_district_id = cd.id
+                JOIN states st ON cd.state_id = st.id
+                WHERE st.id IN (36, 37)
+            ) cs ON r.district_id = cs.historical_district_id
             WHERE {where_str}
             ORDER BY r.overall_risk_score DESC, d.district_name ASC
             LIMIT 10
@@ -425,13 +432,16 @@ class RiskRepository:
             where_clauses.append("r.score_type = :st")
             params["st"] = score_type
 
-        if state_id is not None:
-            where_clauses.append("d.state_id = :sid")
-            params["sid"] = state_id
-
-        if district_id is not None:
-            where_clauses.append("r.district_id = :did")
-            params["did"] = district_id
+        if district_id is not None or state_id is not None:
+            from backend.app.repositories.crime_repository import CrimeRepository
+            filter_district_ids = CrimeRepository.resolve_filter_district_ids(
+                db, state_id=state_id, district_id=district_id, geography_mode="current"
+            )
+            if filter_district_ids is not None:
+                if len(filter_district_ids) == 0:
+                    return [], 0
+                where_clauses.append("r.district_id IN :dids")
+                params["dids"] = tuple(filter_district_ids)
 
         if risk_level is not None:
             where_clauses.append("r.risk_level = :rl")
@@ -454,8 +464,8 @@ class RiskRepository:
             SELECT r.id,
                    r.district_id,
                    d.district_name,
-                   d.state_id,
-                   s.state_name,
+                   COALESCE(cs.id, s.id) AS state_id,
+                   COALESCE(cs.state_name, s.state_name) AS state_name,
                    r.period_year,
                    r.period_month,
                    r.overall_risk_score,
@@ -477,6 +487,13 @@ class RiskRepository:
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
             JOIN states s ON d.state_id = s.id
+            LEFT JOIN (
+                SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
+                FROM district_geography_mapping dgm
+                JOIN districts cd ON dgm.current_district_id = cd.id
+                JOIN states st ON cd.state_id = st.id
+                WHERE st.id IN (36, 37)
+            ) cs ON r.district_id = cs.historical_district_id
             WHERE {where_str}
             ORDER BY r.overall_risk_score DESC, d.district_name ASC
             LIMIT :limit OFFSET :skip
@@ -530,13 +547,19 @@ class RiskRepository:
         score_type: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Retrieves complete explainable risk assessment profile for a specific district."""
+        from backend.app.repositories.crime_repository import CrimeRepository
+        filter_district_ids = CrimeRepository.resolve_filter_district_ids(
+            db, district_id=district_id, geography_mode="current"
+        )
+        resolved_id = filter_district_ids[0] if filter_district_ids else district_id
+
         where_clauses = [
             "r.district_id = :did",
             "r.period_year = :py",
             "r.period_month = :pm",
         ]
         params: Dict[str, Any] = {
-            "did": district_id,
+            "did": resolved_id,
             "py": period_year,
             "pm": period_month,
         }
@@ -554,8 +577,8 @@ class RiskRepository:
             SELECT r.id,
                    r.district_id,
                    d.district_name,
-                   d.state_id,
-                   s.state_name,
+                   COALESCE(cs.id, s.id) AS state_id,
+                   COALESCE(cs.state_name, s.state_name) AS state_name,
                    dd.total_population,
                    r.period_year,
                    r.period_month,
@@ -579,6 +602,13 @@ class RiskRepository:
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
             JOIN states s ON d.state_id = s.id
+            LEFT JOIN (
+                SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
+                FROM district_geography_mapping dgm
+                JOIN districts cd ON dgm.current_district_id = cd.id
+                JOIN states st ON cd.state_id = st.id
+                WHERE st.id IN (36, 37)
+            ) cs ON r.district_id = cs.historical_district_id
             LEFT JOIN district_demographics dd ON d.id = dd.district_id AND dd.census_year = 2011
             LEFT JOIN ml_models m ON r.model_id = m.id
             WHERE {where_str}
@@ -651,13 +681,16 @@ class RiskRepository:
         where_clauses = []
         params: Dict[str, Any] = {"lim": limit_periods}
 
-        if district_id is not None:
-            where_clauses.append("r.district_id = :did")
-            params["did"] = district_id
-
-        if state_id is not None:
-            where_clauses.append("d.state_id = :sid")
-            params["sid"] = state_id
+        if district_id is not None or state_id is not None:
+            from backend.app.repositories.crime_repository import CrimeRepository
+            filter_district_ids = CrimeRepository.resolve_filter_district_ids(
+                db, state_id=state_id, district_id=district_id, geography_mode="current"
+            )
+            if filter_district_ids is not None:
+                if len(filter_district_ids) == 0:
+                    return []
+                where_clauses.append("r.district_id IN :dids")
+                params["dids"] = tuple(filter_district_ids)
 
         where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 

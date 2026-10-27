@@ -318,6 +318,88 @@ class TestExplainableRiskScoring(unittest.TestCase):
                 f"Historical crime incidents count modified! Expected 191679, found {incident_count}",
             )
 
+    def test_15_all_36_active_jurisdictions(self):
+        """15. Jurisdiction Integrity: Confirms exactly 36 active States & UTs (28 states, 8 UTs)."""
+        resp = client.get("/api/v1/geography/states?view=current", headers=self.admin_headers)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        states = data.get("items", [])
+        self.assertEqual(len(states), 36, f"Expected 36 active States/UTs, found {len(states)}")
+
+        # Verify Telangana (36) and Ladakh (37) exist and are active
+        state_ids = {s["id"] for s in states}
+        self.assertIn(36, state_ids, "Telangana (state_id=36) missing from active jurisdictions!")
+        self.assertIn(37, state_ids, "Ladakh (state_id=37) missing from active jurisdictions!")
+
+        # Verify Daman & Diu (9) is inactive
+        self.assertNotIn(9, state_ids, "Merged Daman and Diu (state_id=9) should not be an active jurisdiction!")
+
+    def test_16_state_filter_telangana_and_ladakh(self):
+        """16. State Filtering: Resolves Telangana (36), Ladakh (37), and AP (2) with modern state metadata."""
+        # Telangana (36) -> 10 historical districts
+        tel_resp = client.get("/api/v1/risk/districts?state_id=36&assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(tel_resp.status_code, 200)
+        tel_data = tel_resp.json()
+        self.assertEqual(tel_data["total"], 10)
+        for item in tel_data["items"]:
+            self.assertEqual(item["state_id"], 36)
+            self.assertEqual(item["state_name"], "TELANGANA")
+
+        # Ladakh (37) -> 2 historical districts (Kargil, Leh)
+        lad_resp = client.get("/api/v1/risk/districts?state_id=37&assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(lad_resp.status_code, 200)
+        lad_data = lad_resp.json()
+        self.assertEqual(lad_data["total"], 2)
+        for item in lad_data["items"]:
+            self.assertEqual(item["state_id"], 37)
+            self.assertEqual(item["state_name"], "LADAKH")
+
+        # Andhra Pradesh (2) -> 13 historical districts
+        ap_resp = client.get("/api/v1/risk/districts?state_id=2&assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(ap_resp.status_code, 200)
+        ap_data = ap_resp.json()
+        self.assertEqual(ap_data["total"], 13)
+        for item in ap_data["items"]:
+            self.assertEqual(item["state_id"], 2)
+            self.assertEqual(item["state_name"], "ANDHRA PRADESH")
+
+    def test_17_district_detail_modern_and_historical_id(self):
+        """17. District Detail Dual-Resolution: Both modern (644) and historical (9) resolve to Hyderabad profile."""
+        # Modern ID 644
+        resp_modern = client.get("/api/v1/risk/districts/644?assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(resp_modern.status_code, 200)
+        data_modern = resp_modern.json()
+        self.assertEqual(data_modern["district_id"], 9)
+        self.assertEqual(data_modern["district_name"], "Hyderabad")
+        self.assertEqual(data_modern["state_id"], 36)
+        self.assertEqual(data_modern["state_name"], "TELANGANA")
+
+        # Historical ID 9
+        resp_hist = client.get("/api/v1/risk/districts/9?assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(resp_hist.status_code, 200)
+        data_hist = resp_hist.json()
+        self.assertEqual(data_hist["district_id"], 9)
+        self.assertEqual(data_hist["district_name"], "Hyderabad")
+        self.assertEqual(data_hist["state_id"], 36)
+        self.assertEqual(data_hist["state_name"], "TELANGANA")
+
+    def test_18_honest_empty_state_handling(self):
+        """18. Honest Empty State: Filtering by non-existent or unassessed geography returns empty list cleanly."""
+        resp = client.get("/api/v1/risk/districts?state_id=9999&assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["total"], 0)
+        self.assertEqual(len(data["items"]), 0)
+
+    def test_19_risk_trends_with_modern_states(self):
+        """19. Longitudinal Trends for Modern States: Telangana (36) trends return multi-period trajectory."""
+        resp = client.get("/api/v1/risk/trends?state_id=36", headers=self.admin_headers)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        trends = data.get("trends", [])
+        self.assertGreater(len(trends), 0)
+        self.assertGreater(trends[0]["mean_risk_score"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
