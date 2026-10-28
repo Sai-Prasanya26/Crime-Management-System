@@ -524,71 +524,48 @@ export const DistrictsPage: React.FC = () => {
                 </span>
               </div>
             ) : jurisdictionProfile ? (
-              <div>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* Metric 1: Reported Incidents */}
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Reported Incidents
+              <div className="mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Metric 1: Total Crime Incidents */}
+                  <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Total Crime Incidents
                     </span>
-                    <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
+                    <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
                       {jurisdictionProfile.reported_incidents !== null && jurisdictionProfile.reported_incidents !== undefined
                         ? jurisdictionProfile.reported_incidents.toLocaleString()
                         : 'Not available'}
                     </p>
-                    <p className="text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'NATIONAL'
-                        ? 'Attributed national proceedings'
-                        : jurisdictionProfile.scope === 'STATE'
-                        ? 'Attributed state proceedings'
-                        : 'Recorded crime proceedings'}
-                    </p>
                   </div>
 
-                  {/* Metric 2: Population Density */}
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Population Density
+                  {/* Metric 2: Total Population */}
+                  <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Total Population
                     </span>
-                    <p className="mt-1 text-xl font-bold text-[#0B1F3A]">
+                    <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
                       {jurisdictionProfile.population !== null && jurisdictionProfile.population !== undefined
                         ? jurisdictionProfile.population.toLocaleString()
                         : 'Not available'}
                     </p>
-                    <p className="text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'NATIONAL'
-                        ? 'Census 2011 national baseline'
-                        : jurisdictionProfile.scope === 'STATE'
-                        ? 'Census 2011 state aggregate'
-                        : jurisdictionProfile.parent_district_id
-                        ? 'Census 2011 parent residents'
-                        : jurisdictionProfile.population
-                        ? 'Census 2011 residents'
-                        : 'Baseline unavailable'}
-                    </p>
                   </div>
 
-                  {/* Metric 3: Crime Rate / 100k */}
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Crime Rate / 100k
+                  {/* Metric 3: Crime Rate per 100,000 People */}
+                  <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Crime Rate per 100,000 People
                     </span>
-                    <p className="mt-1 text-xl font-bold text-[#1769AA]">
+                    <p className="mt-1 text-xl font-bold font-mono text-[#1769AA]">
                       {jurisdictionProfile.crime_rate_per_100k !== null && jurisdictionProfile.crime_rate_per_100k !== undefined
                         ? jurisdictionProfile.crime_rate_per_100k.toFixed(1)
                         : 'Not available'}
                     </p>
-                    <p className="text-[11px] text-slate-500">
-                      {jurisdictionProfile.crime_rate_per_100k !== null
-                        ? 'Normalized incidence density'
-                        : 'Requires valid population'}
-                    </p>
                   </div>
 
-                  {/* Metric 4: Risk Classification */}
-                  <div className="rounded border border-blue-200/80 bg-white p-3">
-                    <span className="text-[11px] font-semibold uppercase text-slate-500">
-                      Risk Classification
+                  {/* Metric 4: Risk Level */}
+                  <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Risk Level
                     </span>
                     <div className="mt-1">
                       {jurisdictionProfile.risk_level === 'CRITICAL' ? (
@@ -616,21 +593,8 @@ export const DistrictsPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      {jurisdictionProfile.scope === 'NATIONAL' || jurisdictionProfile.scope === 'STATE'
-                        ? 'Assessed at district level'
-                        : jurisdictionProfile.risk_level
-                        ? 'Operational posture'
-                        : 'Baseline uncalibrated'}
-                    </p>
                   </div>
                 </div>
-
-                {jurisdictionProfile.notes && (
-                  <div className="mt-3 text-[11px] text-slate-500 italic">
-                    {jurisdictionProfile.notes}
-                  </div>
-                )}
               </div>
             ) : (
               <div className="py-6 text-center text-xs text-slate-500">
