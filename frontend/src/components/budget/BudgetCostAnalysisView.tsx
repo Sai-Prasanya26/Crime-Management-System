@@ -13,9 +13,7 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  HelpCircle,
   Search,
-  DollarSign,
   Scale,
   Sparkles,
 } from 'lucide-react';
@@ -73,7 +71,8 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Format currency in INR
-  const formatINR = useCallback((val: number, inCrores = false) => {
+  const formatINR = useCallback((val: number | null | undefined, inCrores = false) => {
+    if (val === null || val === undefined || isNaN(val)) return '—';
     if (inCrores) {
       const cr = val / 10000000;
       return `₹${cr.toFixed(2)} Cr`;
@@ -86,7 +85,8 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
   }, []);
 
   // Format Lakhs
-  const formatLakhs = useCallback((val: number) => {
+  const formatLakhs = useCallback((val: number | null | undefined) => {
+    if (val === null || val === undefined || isNaN(val)) return '—';
     const lk = val / 100000;
     return `₹${lk.toFixed(2)} L`;
   }, []);
@@ -217,105 +217,87 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
   }
 
   return (
-    <div className="space-y-5">
-      {/* 1. Header & Provenance Status Banner */}
-      <div className="rounded-lg border border-slate-200 bg-gradient-to-r from-blue-50/70 via-white to-slate-50 p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-200">
-                <Coins className="h-3 w-3" />
-                Phase 11: Budget Estimation &amp; Cost Analysis
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-200">
-                <HelpCircle className="h-3 w-3" />
-                Provenanced Assumptions &amp; Benchmarks
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                <Scale className="h-3 w-3" />
-                Currency: INR (₹)
-              </span>
-            </div>
-            <h1 className="text-lg font-bold text-slate-900">
-              Police Resource Fiscal Planning &amp; Operational Cost Analysis
-            </h1>
-            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
-              Provides transparent, formulaic fiscal analysis connecting constrained optimization runs to recurring operational O&amp;M and one-time capital procurement. Distinguishes verified expenditures from assumption-based estimates.
-            </p>
-          </div>
+    <div className="space-y-4">
+      {/* 1. Main Filter and Action Toolbar */}
+      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+        <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
+            {/* Optimization Run Selector */}
+            <select
+              aria-label="Optimization Run"
+              value={selectedOptRunId}
+              onChange={(e) => setSelectedOptRunId(e.target.value)}
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+            >
+              <option value="">Select Optimization Run ({optRuns.length})</option>
+              {optRuns.map((r) => (
+                <option key={r.run_id} value={r.run_id}>
+                  {r.scenario_name} ({r.allocation_mode})
+                </option>
+              ))}
+            </select>
 
-          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+            {/* Year Selector */}
+            <select
+              aria-label="Year"
+              value={periodYear}
+              onChange={(e) => setPeriodYear(parseInt(e.target.value, 10))}
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+            >
+              <option value={2026}>2026</option>
+              <option value={2027}>2027</option>
+            </select>
+
+            {/* Month Selector */}
+            <select
+              aria-label="Month"
+              value={periodMonth}
+              onChange={(e) => setPeriodMonth(parseInt(e.target.value, 10))}
+              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+
+            {/* View Mode Toggle */}
             <button
+              type="button"
               onClick={() => setIsAnnualView(!isAnnualView)}
-              className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer transition-colors"
+              className="h-10 inline-flex items-center justify-center px-3 rounded border border-[#D9E1EA] bg-white text-[12px] font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] shadow-2xs cursor-pointer transition-colors shrink-0"
             >
-              View: <span className="text-blue-700">{isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}</span>
+              <span>View:</span>
+              <span className="ml-1 font-semibold text-[#1769AA]">
+                {isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}
+              </span>
             </button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Run Cost Estimation Button */}
             <button
-              onClick={() => loadInitialData()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer transition-colors"
+              type="button"
+              onClick={handleExecuteEstimation}
+              disabled={isEstimating || !selectedOptRunId}
+              className="h-10 inline-flex items-center justify-center gap-1.5 rounded bg-[#1769AA] hover:bg-[#125386] px-4 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
-              <span>Refresh</span>
+              <Play className="h-3.5 w-3.5" />
+              <span>{isEstimating ? 'Estimating...' : 'Run Cost Estimation'}</span>
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => loadInitialData()}
+              title="Refresh Data"
+              className="h-10 inline-flex items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-3 text-xs font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] shadow-2xs transition-colors cursor-pointer shrink-0"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
-        </div>
-
-        {/* Estimation Controls Bar */}
-        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="space-y-0.5">
-              <label className="text-[11px] font-bold text-slate-700">Optimization Run</label>
-              <select
-                value={selectedOptRunId}
-                onChange={(e) => setSelectedOptRunId(e.target.value)}
-                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden"
-              >
-                <option value="">-- Select Optimization Scenario --</option>
-                {optRuns.map((r) => (
-                  <option key={r.run_id} value={r.run_id}>
-                    {r.scenario_name} ({r.allocation_mode}) - {r.solver_status}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-0.5">
-              <label className="text-[11px] font-bold text-slate-700">Year</label>
-              <select
-                value={periodYear}
-                onChange={(e) => setPeriodYear(parseInt(e.target.value))}
-                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-800"
-              >
-                <option value={2026}>2026</option>
-                <option value={2027}>2027</option>
-              </select>
-            </div>
-
-            <div className="space-y-0.5">
-              <label className="text-[11px] font-bold text-slate-700">Month</label>
-              <select
-                value={periodMonth}
-                onChange={(e) => setPeriodMonth(parseInt(e.target.value))}
-                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-800"
-              >
-                {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {new Date(2026, i, 1).toLocaleString('default', { month: 'short' })}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button
-            onClick={handleExecuteEstimation}
-            disabled={isEstimating || !selectedOptRunId}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-          >
-            <Play className="h-3.5 w-3.5" />
-            <span>{isEstimating ? 'Calculating Cost Projections...' : 'Run Cost Estimation'}</span>
-          </button>
         </div>
       </div>
 
@@ -324,43 +306,30 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
 
       {/* 2. Simulation Disclaimer Banner (if active run is simulation) */}
       {activeRun?.estimation_mode === 'SIMULATION_ESTIMATE' && (
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 shadow-2xs space-y-2">
-          <div className="flex items-start gap-2.5">
-            <Sparkles className="h-5 w-5 text-purple-700 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-200 text-purple-900 uppercase tracking-wide">
-                  Hypothetical Planning Simulation
-                </span>
-                <span className="text-xs font-bold text-purple-950">
-                  Run ID: {activeRun.run_id} (Optimization: {activeRun.optimization_run_id})
-                </span>
-              </div>
-              <p className="text-xs text-purple-900 leading-relaxed">
-                SIMULATION DISCLAIMER: This budget estimation is calculated from a hypothetical constrained optimization model. Figures reflect projected standard costs under simulated staffing allocations and do not constitute sanctioned municipal expenditures or government budget allocations.
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border border-purple-200 bg-purple-50/70 px-4 py-2.5 text-xs text-purple-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded bg-purple-100 text-purple-800 px-2 py-0.5 text-[10px] font-bold border border-purple-200 uppercase tracking-wide shrink-0">
+              <Sparkles className="h-3 w-3 text-purple-600" />
+              Hypothetical Simulation
+            </span>
+            <span className="text-slate-600">
+              Figures reflect standard projected costs under simulated allocations and do not represent sanctioned public expenditures.
+            </span>
           </div>
+          <span className="font-mono text-[11px] font-semibold text-purple-800 shrink-0">
+            Run: {activeRun.run_id}
+          </span>
         </div>
       )}
 
       {/* 3. Insufficient Data Notice (if active run halted due to unrecorded district baselines) */}
       {activeRun?.estimation_mode === 'INSUFFICIENT_DATA' && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-2xs space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-amber-900">
-                Operational Cost Estimation Halted: INSUFFICIENT_DATA
-              </h3>
-              <p className="text-xs text-amber-800 leading-relaxed">
-                {activeRun.explanation_summary ||
-                  'Operational budget estimation cannot proceed because district actual resource inventories are UNRECORDED. In accordance with zero-fabrication standards, financial figures cannot be synthesized for unrecorded districts.'}
-              </p>
-              <div className="text-[11px] text-amber-700 font-medium">
-                To explore theoretical capacity costs, execute the optimization run under <strong>Hypothetical Simulation</strong> mode.
-              </div>
-            </div>
+        <div className="flex items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>
+              Cost estimation is unavailable because verified resource inventory data is missing for the selected scope. You can run a hypothetical simulation to explore estimated costs.
+            </span>
           </div>
         </div>
       )}
@@ -401,34 +370,35 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
             title="Shortfall Resolution Total"
             value={formatINR(activeRun.total_shortfall_resolution_cost, true)}
             subtext="Capital purchases + incremental O&M"
-            icon={DollarSign}
+            icon={Coins}
             color="emerald"
           />
         </div>
       )}
 
       {/* 5. Tab Navigation */}
-      <div className="flex border-b border-slate-200 bg-white px-2 rounded-t-lg shadow-2xs">
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]">
         {[
-          { key: 'scenarios', label: 'Scenario Comparison & Delta', icon: Scale },
-          { key: 'categories', label: 'Category & Component Breakdown', icon: Layers },
-          { key: 'districts', label: 'District Line-Item Calculations', icon: Building2 },
-          { key: 'benchmarks', label: 'Benchmark Rates & Provenance', icon: FileText },
-          { key: 'runs', label: 'Estimation History', icon: RotateCcw },
+          { key: 'scenarios', label: 'Scenario Comparison', icon: Scale },
+          { key: 'categories', label: 'Cost Breakdown', icon: Layers },
+          { key: 'districts', label: 'District Costs', icon: Building2 },
+          { key: 'benchmarks', label: 'Cost Benchmarks', icon: FileText },
+          { key: 'runs', label: 'History', icon: RotateCcw },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
+              type="button"
               onClick={() => setActiveTab(tab.key as CostTabType)}
-              className={`flex items-center gap-1.5 border-b-2 py-3 px-4 text-xs font-semibold transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
                 isActive
-                  ? 'border-blue-600 text-blue-700 bg-blue-50/50'
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                  ? 'bg-[#0B1F3A] text-white font-semibold shadow-2xs'
+                  : 'bg-white text-[#5D6878] border border-[#D9E1EA]/60 hover:bg-[#EAF3FA] hover:text-[#0B1F3A]'
               }`}
             >
-              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-[#1D7FE2]' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -436,33 +406,25 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
       </div>
 
       {/* 6. TAB CONTENT */}
-      <div className="bg-white rounded-b-lg border border-t-0 border-slate-200 p-4 shadow-2xs">
-
+      <div className="bg-white rounded-lg border border-[#D9E1EA] p-4 shadow-2xs">
         {/* ================================================================= */}
-        {/* TAB 1: SCENARIO COMPARISON & DELTA COST                           */}
+        {/* TAB 1: SCENARIO COMPARISON                                        */}
         {/* ================================================================= */}
         {activeTab === 'scenarios' && (
           <div className="space-y-4">
             {/* Scenario Selection Header */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+            <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-3">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <h3 className="text-xs font-bold text-slate-800">
-                    Comparative Fiscal Scenario Analysis
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Compare incremental costs (ΔCost = Cost(scenario) - Cost(baseline)) and distinguish reallocation from new procurement.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="space-y-0.5">
-                    <label className="text-[10px] font-bold text-slate-600">Baseline Scenario</label>
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-[#5D6878] shrink-0">Baseline:</label>
                     <select
+                      aria-label="Baseline Scenario"
                       value={baselineOptRunId}
                       onChange={(e) => setBaselineOptRunId(e.target.value)}
-                      className="h-7 rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                      className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                     >
+                      <option value="">Select Baseline Scenario</option>
                       {optRuns.map((r) => (
                         <option key={`base-${r.run_id}`} value={r.run_id}>
                           {r.scenario_name} ({r.allocation_mode})
@@ -471,13 +433,15 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                     </select>
                   </div>
 
-                  <div className="space-y-0.5">
-                    <label className="text-[10px] font-bold text-slate-600">Comparison Scenario</label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-[#5D6878] shrink-0">Comparison:</label>
                     <select
+                      aria-label="Comparison Scenario"
                       value={scenarioOptRunId}
                       onChange={(e) => setScenarioOptRunId(e.target.value)}
-                      className="h-7 rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
+                      className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                     >
+                      <option value="">Select Comparison Scenario</option>
                       {optRuns.map((r) => (
                         <option key={`scen-${r.run_id}`} value={r.run_id}>
                           {r.scenario_name} ({r.allocation_mode})
@@ -485,151 +449,153 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                       ))}
                     </select>
                   </div>
-
-                  <button
-                    onClick={handleCompareScenarios}
-                    disabled={isComparing || !baselineOptRunId || !scenarioOptRunId}
-                    className="self-end inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 cursor-pointer disabled:opacity-50"
-                  >
-                    <Scale className="h-3 w-3" />
-                    <span>{isComparing ? 'Comparing...' : 'Compare Scenarios'}</span>
-                  </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCompareScenarios}
+                  disabled={isComparing || !baselineOptRunId || !scenarioOptRunId}
+                  className="h-10 inline-flex items-center justify-center gap-1.5 rounded bg-[#1769AA] hover:bg-[#125386] px-4 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <Scale className="h-3.5 w-3.5" />
+                  <span>{isComparing ? 'Comparing...' : 'Compare Scenarios'}</span>
+                </button>
               </div>
             </div>
 
-            {/* Comparison Results Card */}
+            {/* Comparison Results Card or Compact Empty State */}
             {scenarioComparison ? (
-              <div className="rounded-lg border border-indigo-200 bg-indigo-50/30 p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D9E1EA] pb-3">
                   <div>
-                    <h4 className="text-sm font-bold text-indigo-950">
-                      Scenario Comparison: {scenarioComparison.scenario_name}
+                    <h4 className="text-sm font-bold text-[#0B1F3A]">
+                      {scenarioComparison.scenario_name}
                     </h4>
-                    <p className="text-xs text-indigo-800">
-                      Baseline: {scenarioComparison.baseline_run_id} vs Scenario: {scenarioComparison.scenario_run_id}
+                    <p className="text-xs text-[#5D6878]">
+                      Baseline: <span className="font-mono text-[#172033]">{scenarioComparison.baseline_run_id}</span> vs Comparison: <span className="font-mono text-[#172033]">{scenarioComparison.scenario_run_id}</span>
                     </p>
                   </div>
                   {scenarioComparison.is_simulation && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-200 text-purple-900 uppercase">
-                      Simulation Modeling
+                    <span className="inline-flex items-center gap-1 rounded bg-purple-100 text-purple-800 px-2.5 py-0.5 text-[10px] font-bold border border-purple-200 uppercase tracking-wide shrink-0">
+                      <Sparkles className="h-3 w-3 text-purple-600" />
+                      Hypothetical Simulation
                     </span>
                   )}
                 </div>
 
                 {/* Side-by-side metric tiles */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="rounded border border-slate-200 bg-white p-3 space-y-1">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">Baseline Recurring (Annual)</span>
-                    <div className="text-base font-extrabold text-slate-900">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Baseline Recurring</span>
+                    <div className="text-lg font-bold text-[#0B1F3A]">
                       {formatINR(scenarioComparison.baseline_recurring_annual, true)}
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[11px] text-[#5D6878]">
                       {formatINR(scenarioComparison.baseline_recurring_monthly)} / month
                     </span>
                   </div>
 
-                  <div className="rounded border border-slate-200 bg-white p-3 space-y-1">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">Scenario Recurring (Annual)</span>
-                    <div className="text-base font-extrabold text-indigo-950">
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Scenario Recurring</span>
+                    <div className="text-lg font-bold text-[#1769AA]">
                       {formatINR(scenarioComparison.scenario_recurring_annual, true)}
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[11px] text-[#5D6878]">
                       {formatINR(scenarioComparison.scenario_recurring_monthly)} / month
                     </span>
                   </div>
 
-                  <div className="rounded border border-slate-200 bg-white p-3 space-y-1">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">Incremental Delta (ΔCost)</span>
-                    <div className={`text-base font-extrabold ${scenarioComparison.incremental_recurring_annual > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                      {formatINR(scenarioComparison.incremental_recurring_annual, true)}
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Cost Difference (ΔCost)</span>
+                    <div className={`text-lg font-bold ${scenarioComparison.incremental_recurring_annual > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {scenarioComparison.incremental_recurring_annual > 0
+                        ? `+${formatINR(scenarioComparison.incremental_recurring_annual, true)}`
+                        : formatINR(scenarioComparison.incremental_recurring_annual, true)}
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[11px] text-[#5D6878]">
                       Δ {formatINR(scenarioComparison.net_delta_monthly)} / month
                     </span>
                   </div>
 
-                  <div className="rounded border border-slate-200 bg-white p-3 space-y-1">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">Capital Procurement</span>
-                    <div className="text-base font-extrabold text-blue-900">
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Capital Procurement</span>
+                    <div className="text-lg font-bold text-[#0B1F3A]">
                       {formatINR(scenarioComparison.capital_procurement_cost, true)}
                     </div>
-                    <span className="text-[10px] text-slate-500">
-                      {scenarioComparison.units_newly_procured} new units required
+                    <span className="text-[11px] text-[#5D6878]">
+                      {scenarioComparison.units_newly_procured.toLocaleString()} units newly procured
                     </span>
                   </div>
                 </div>
 
-                {/* Reallocation vs Procurement Breakdown */}
-                <div className="rounded border border-indigo-200 bg-white p-3 space-y-2">
-                  <h5 className="text-xs font-bold text-indigo-900">
-                    Resource Operational Strategy: Reallocation vs. New Procurement
+                {/* Reallocation vs Procurement Strategy */}
+                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-2.5">
+                  <h5 className="text-xs font-bold text-[#0B1F3A]">
+                    Operational Strategy: Reallocation vs. New Procurement
                   </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-700">
-                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200 space-y-1">
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        Reallocated from Standing Reserves: {scenarioComparison.units_reallocated.toLocaleString()} units
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-[#172033]">
+                    <div className="p-3 rounded-md bg-[#F4F7FA] border border-[#D9E1EA] space-y-1">
+                      <div className="font-semibold text-[#0B1F3A] flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Reallocated from Reserves: {scenarioComparison.units_reallocated.toLocaleString()} units</span>
                       </div>
-                      <p className="text-[11px] text-slate-600">
-                        Operational reallocations within the standing pool incur zero capital procurement outlay. Only standard recurring operating allowances apply.
+                      <p className="text-[11px] text-[#5D6878] pl-5.5">
+                        Internal pool reallocations incur zero capital acquisition expenditure. Only recurring standard operational allowances apply.
                       </p>
                     </div>
 
-                    <div className="p-2.5 rounded bg-slate-50 border border-slate-200 space-y-1">
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                        Shortfall Requiring New Procurement: {scenarioComparison.units_newly_procured.toLocaleString()} units
+                    <div className="p-3 rounded-md bg-[#F4F7FA] border border-[#D9E1EA] space-y-1">
+                      <div className="font-semibold text-[#0B1F3A] flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>New Capital Procurement: {scenarioComparison.units_newly_procured.toLocaleString()} units</span>
                       </div>
-                      <p className="text-[11px] text-slate-600">
-                        Total capital budget needed to meet reserve floor shortfalls: {formatINR(scenarioComparison.capital_procurement_cost, true)}.
+                      <p className="text-[11px] text-[#5D6878] pl-5.5">
+                        One-time capital outlay required to resolve reserve floor shortfalls: {formatINR(scenarioComparison.capital_procurement_cost, true)}.
                       </p>
                     </div>
                   </div>
 
                   {/* Assumptions List */}
-                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-1">
-                    <div className="font-bold text-slate-700">Comparative Calculation Notes:</div>
-                    <ul className="list-disc pl-5 space-y-0.5">
-                      {scenarioComparison.assumptions.map((a, i) => (
-                        <li key={i}>{a}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {scenarioComparison.assumptions && scenarioComparison.assumptions.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100 text-[11px] text-[#5D6878] space-y-1">
+                      <div className="font-semibold text-[#172033]">Calculation Notes:</div>
+                      <ul className="list-disc pl-5 space-y-0.5">
+                        {scenarioComparison.assumptions.map((a, i) => (
+                          <li key={i}>{a}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center border border-dashed border-slate-200 rounded-lg">
-                <Scale className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                <h4 className="text-xs font-bold text-slate-700">No Scenario Comparison Loaded</h4>
-                <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1">
-                  Select a baseline optimization run and an alternative scenario run above and click &quot;Compare Scenarios&quot; to inspect net delta costs.
-                </p>
+              <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-8 text-center text-xs text-[#5D6878]">
+                Select two scenarios to compare their estimated costs.
               </div>
             )}
           </div>
         )}
 
         {/* ================================================================= */}
-        {/* TAB 2: CATEGORY & COMPONENT BREAKDOWN                             */}
+        {/* TAB 2: COST BREAKDOWN                                             */}
         {/* ================================================================= */}
         {activeTab === 'categories' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
               <div>
-                <h3 className="text-xs font-bold text-slate-800">
+                <h3 className="text-xs font-bold text-[#0B1F3A]">
                   Resource Category Cost Schedule
                 </h3>
-                <p className="text-[11px] text-slate-500">
-                  Standardized unit benchmarks categorized by functional operational domain.
+                <p className="text-[11px] text-[#5D6878]">
+                  Standard unit benchmarks categorized by functional operational domain.
                 </p>
               </div>
-              <div className="text-xs text-slate-500">
-                Displaying: <strong className="text-blue-700">{isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}</strong>
+              <div className="text-xs text-[#5D6878]">
+                Viewing: <strong className="text-[#1769AA]">{isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}</strong>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {overview &&
                 Object.entries(overview.category_breakdown).map(([category, costs]) => {
                   const getCategoryIcon = (cat: string) => {
@@ -649,40 +615,39 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                     }
                   };
                   const Icon = getCategoryIcon(category);
-
                   const recurring = isAnnualView ? costs.annual_recurring : costs.monthly_recurring;
                   const capital = costs.one_time_capital;
 
                   return (
                     <div
                       key={category}
-                      className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2 hover:border-blue-300 transition-colors"
+                      className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs space-y-2 hover:border-[#BAC7D5] transition-colors"
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-md bg-blue-50 text-blue-700">
+                          <div className="p-1.5 rounded-md bg-[#F4F7FA] text-[#1769AA]">
                             <Icon className="h-4 w-4" />
                           </div>
-                          <span className="text-xs font-bold text-slate-800">{category}</span>
+                          <span className="text-xs font-bold text-[#0B1F3A]">{category}</span>
                         </div>
                       </div>
 
                       <div className="space-y-1.5 pt-1">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">
+                          <span className="text-[#5D6878]">
                             {isAnnualView ? 'Annual Operating (O&M):' : 'Monthly Recurring:'}
                           </span>
-                          <span className="font-bold text-slate-900">{formatINR(recurring)}</span>
+                          <span className="font-bold text-[#172033]">{formatINR(recurring)}</span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">One-Time Capital Outlay:</span>
-                          <span className="font-bold text-blue-900">{formatINR(capital)}</span>
+                          <span className="text-[#5D6878]">One-Time Capital Outlay:</span>
+                          <span className="font-bold text-[#1769AA]">{formatINR(capital)}</span>
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-                          <span className="text-slate-400">Total Asset Commitment:</span>
-                          <span className="font-extrabold text-slate-800">
+                          <span className="text-[#5D6878]">Total Category Commitment:</span>
+                          <span className="font-bold text-[#0B1F3A]">
                             {formatINR(recurring + capital)}
                           </span>
                         </div>
@@ -695,27 +660,28 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 3: DISTRICT LINE-ITEM CALCULATIONS                            */}
+        {/* TAB 3: DISTRICT COSTS                                             */}
         {/* ================================================================= */}
         {activeTab === 'districts' && (
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
-                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     placeholder="Search district name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 w-56 rounded-md border border-slate-300 bg-white pl-8 pr-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden"
+                    className="h-10 w-56 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
                   />
                 </div>
 
                 <select
+                  aria-label="Filter by Quality Tier"
                   value={selectedQualityTier}
                   onChange={(e) => setSelectedQualityTier(e.target.value)}
-                  className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700"
+                  className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
                   <option value="ALL">All Quality Tiers</option>
                   <option value="OFFICIAL_DOCUMENTED">Official Documented</option>
@@ -725,9 +691,10 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
 
                 {states.length > 0 && onStateSelect && (
                   <select
+                    aria-label="Filter by State"
                     value={selectedStateId || ''}
                     onChange={(e) => onStateSelect(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                    className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700"
+                    className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                   >
                     <option value="">All States / UTs</option>
                     {states.map((s) => (
@@ -739,15 +706,15 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                 )}
               </div>
 
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-[#5D6878]">
                 Showing <strong>{filteredDistrictItems.length}</strong> district cost records
               </div>
             </div>
 
             {filteredDistrictItems.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
+                <table className="w-full min-w-[760px] text-left text-xs border-collapse">
+                  <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                     <tr>
                       <th className="py-2.5 px-3">District</th>
                       <th className="py-2.5 px-2 text-right">Baseline Qty</th>
@@ -761,36 +728,36 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                       <th className="py-2.5 px-2 text-center">Quality Tier</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                  <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
                     {filteredDistrictItems.map((item, idx) => {
                       const costVal = isAnnualView ? item.recommended_annual_cost : item.recommended_annual_cost / 12;
                       const deltaVal = isAnnualView ? item.net_delta_annual_cost : item.net_delta_annual_cost / 12;
 
                       return (
-                        <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
-                          <td className="py-2 px-3 font-semibold text-slate-900">
+                        <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
                             <div>{item.district_name || `District #${item.district_id}`}</div>
-                            <span className="text-[10px] text-slate-400 font-normal">{item.state_name}</span>
+                            <span className="text-[10px] text-[#5D6878] font-normal">{item.state_name}</span>
                           </td>
-                          <td className="py-2 px-2 text-right text-slate-600">
+                          <td className="py-2 px-2 text-right text-[#5D6878]">
                             {item.baseline_units !== null && item.baseline_units !== undefined ? item.baseline_units.toLocaleString() : (
-                              <span className="text-amber-600 font-medium">Unrecorded</span>
+                              <span className="text-amber-700 font-medium">Unrecorded</span>
                             )}
                           </td>
-                          <td className="py-2 px-2 text-right font-bold text-blue-900">
+                          <td className="py-2 px-2 text-right font-bold text-[#0B1F3A]">
                             {item.recommended_units.toLocaleString()}
                           </td>
-                          <td className="py-2 px-2 text-right font-semibold text-slate-700">
+                          <td className="py-2 px-2 text-right font-semibold text-[#172033]">
                             {item.new_procurement_units > 0 ? (
-                              <span className="text-blue-700 font-bold">+{item.new_procurement_units}</span>
+                              <span className="text-[#1769AA] font-bold">+{item.new_procurement_units}</span>
                             ) : (
                               '0'
                             )}
                           </td>
-                          <td className="py-2 px-3 text-right font-bold text-slate-900">
+                          <td className="py-2 px-3 text-right font-bold text-[#172033]">
                             {formatLakhs(costVal)}
                           </td>
-                          <td className="py-2 px-3 text-right font-semibold text-slate-700">
+                          <td className="py-2 px-3 text-right font-semibold text-[#5D6878]">
                             {item.procurement_cost > 0 ? formatLakhs(item.procurement_cost) : '₹0'}
                           </td>
                           <td className="py-2 px-3 text-right font-bold">
@@ -800,12 +767,12 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                           </td>
                           <td className="py-2 px-2 text-center">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
                                 item.data_quality_tier === 'OFFICIAL_DOCUMENTED'
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                   : item.data_quality_tier === 'ESTIMATED_BENCHMARK'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-amber-100 text-amber-800'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
                               }`}
                             >
                               {item.data_quality_tier === 'OFFICIAL_DOCUMENTED'
@@ -828,83 +795,83 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 4: BENCHMARK RATES & PROVENANCE REGISTRY                      */}
+        {/* TAB 4: COST BENCHMARKS                                            */}
         {/* ================================================================= */}
         {activeTab === 'benchmarks' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
               <div>
-                <h3 className="text-xs font-bold text-slate-800">
+                <h3 className="text-xs font-bold text-[#0B1F3A]">
                   Government Cost Benchmarks &amp; Provenance Registry
                 </h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-[#5D6878]">
                   Official standards derived from 7th CPC Pay Matrices, BPR&amp;D Mobility indices, and GeM public procurement rate contracts.
                 </p>
               </div>
-              <span className="text-xs font-bold text-slate-600">
+              <span className="text-xs font-bold text-[#5D6878]">
                 {benchmarks.length} Active Benchmarks
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+            <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
+              <table className="w-full min-w-[850px] text-left text-xs border-collapse">
+                <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                   <tr>
                     <th className="py-2.5 px-3">Resource Asset</th>
                     <th className="py-2.5 px-2">Cost Type</th>
                     <th className="py-2.5 px-2">Component</th>
-                    <th className="py-2.5 px-3 text-right">Standard Rate (INR)</th>
+                    <th className="py-2.5 px-3 text-right">Standard Rate</th>
                     <th className="py-2.5 px-3">Source &amp; Publication</th>
                     <th className="py-2.5 px-2 text-center">Quality Tier</th>
                     <th className="py-2.5 px-4">Formula &amp; Assumptions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
+                <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
                   {benchmarks.map((b) => (
                     <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-2 px-3 font-semibold text-slate-900">
+                      <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
                         <div>{b.resource_name || `Resource #${b.resource_type_id}`}</div>
-                        <span className="text-[10px] text-slate-400 font-normal">{b.category}</span>
+                        <span className="text-[10px] text-[#5D6878] font-normal">{b.category}</span>
                       </td>
-                      <td className="py-2 px-2 text-slate-700 font-medium">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <td className="py-2 px-2 font-medium">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                           b.cost_type === 'ONE_TIME_CAPITAL'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                            : 'bg-blue-50 text-blue-800 border-blue-200'
                         }`}>
                           {b.cost_type === 'ONE_TIME_CAPITAL' ? 'Capital' : 'Recurring'}
                         </span>
                       </td>
-                      <td className="py-2 px-2 font-medium text-slate-700">
+                      <td className="py-2 px-2 font-medium text-[#172033]">
                         {b.cost_component}
                       </td>
-                      <td className="py-2 px-3 text-right font-extrabold text-slate-900">
+                      <td className="py-2 px-3 text-right font-bold text-[#0B1F3A]">
                         {formatINR(b.unit_cost_inr)}
-                        <span className="block text-[10px] text-slate-400 font-normal">
+                        <span className="block text-[10px] text-[#5D6878] font-normal">
                           {b.cost_type === 'RECURRING_MONTHLY' ? '/ month' : b.cost_type === 'RECURRING_ANNUAL' ? '/ year' : 'one-time'}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-slate-700">
-                        <div className="font-semibold text-slate-900">{b.source_name}</div>
-                        <span className="text-[10px] text-slate-500 block">{b.source_publication} ({b.reference_year})</span>
+                      <td className="py-2 px-3 text-[#172033]">
+                        <div className="font-semibold text-[#0B1F3A]">{b.source_name}</div>
+                        <span className="text-[10px] text-[#5D6878] block">{b.source_publication} ({b.reference_year})</span>
                       </td>
                       <td className="py-2 px-2 text-center">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
                             b.data_quality_tier === 'OFFICIAL_DOCUMENTED'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : b.data_quality_tier === 'ESTIMATED_BENCHMARK'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200'
                           }`}
                         >
-                          {b.data_quality_tier}
+                          {b.data_quality_tier === 'OFFICIAL_DOCUMENTED' ? 'Official' : b.data_quality_tier === 'ESTIMATED_BENCHMARK' ? 'Benchmark' : 'Assumed'}
                         </span>
                       </td>
-                      <td className="py-2 px-4 text-slate-600 text-[11px] max-w-xs">
-                        <div className="font-mono text-[10px] text-slate-700">{b.formula_expression}</div>
+                      <td className="py-2 px-4 text-[#5D6878] text-[11px] max-w-xs">
+                        <div className="font-mono text-[10px] text-[#172033]">{b.formula_expression}</div>
                         {b.assumptions_notes && (
-                          <div className="text-[10px] text-slate-500 mt-0.5 italic">{b.assumptions_notes}</div>
+                          <div className="text-[10px] text-[#5D6878] mt-0.5 italic">{b.assumptions_notes}</div>
                         )}
                       </td>
                     </tr>
@@ -916,18 +883,23 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 5: ESTIMATION RUN HISTORY                                     */}
+        {/* TAB 5: HISTORY                                                    */}
         {/* ================================================================= */}
         {activeTab === 'runs' && (
           <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-800">
-              Audit History of Cost Estimation Runs
-            </h3>
+            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
+              <h3 className="text-xs font-bold text-[#0B1F3A]">
+                Cost Estimation Audit History
+              </h3>
+              <span className="text-xs text-[#5D6878]">
+                {overview?.recent_runs?.length || 0} Runs Recorded
+              </span>
+            </div>
 
             {overview?.recent_runs && overview.recent_runs.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
+                <table className="w-full min-w-[760px] text-left text-xs border-collapse">
+                  <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                     <tr>
                       <th className="py-2.5 px-3">Run ID</th>
                       <th className="py-2.5 px-2">Mode</th>
@@ -939,28 +911,32 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                       <th className="py-2.5 px-2 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                  <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
                     {overview.recent_runs.map((r) => (
                       <tr key={r.run_id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-2 px-3 font-mono font-bold text-blue-900">
+                        <td className="py-2 px-3 font-mono font-bold text-[#1769AA]">
                           {r.run_id}
                           {r.optimization_run_id && (
-                            <span className="block text-[10px] font-normal text-slate-400">
+                            <span className="block text-[10px] font-normal text-[#5D6878]">
                               Opt: {r.optimization_run_id}
                             </span>
                           )}
                         </td>
                         <td className="py-2 px-2">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                               r.estimation_mode === 'SIMULATION_ESTIMATE'
-                                ? 'bg-purple-100 text-purple-800'
+                                ? 'bg-purple-50 text-purple-800 border-purple-200'
                                 : r.estimation_mode === 'INSUFFICIENT_DATA'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-blue-50 text-blue-800 border-blue-200'
                             }`}
                           >
-                            {r.estimation_mode}
+                            {r.estimation_mode === 'SIMULATION_ESTIMATE'
+                              ? 'Simulation'
+                              : r.estimation_mode === 'INSUFFICIENT_DATA'
+                              ? 'Insufficient Data'
+                              : 'Official'}
                           </span>
                         </td>
                         <td className="py-2 px-2 font-semibold">
@@ -968,26 +944,27 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                             {r.status}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-right font-extrabold text-slate-900">
+                        <td className="py-2 px-3 text-right font-bold text-[#0B1F3A]">
                           {formatINR(r.total_scenario_recurring_annual, true)}
                         </td>
-                        <td className="py-2 px-3 text-right font-bold text-slate-700">
+                        <td className="py-2 px-3 text-right font-bold text-[#5D6878]">
                           {formatINR(r.incremental_recurring_cost, true)}
                         </td>
-                        <td className="py-2 px-3 text-right font-semibold text-slate-700">
+                        <td className="py-2 px-3 text-right font-semibold text-[#5D6878]">
                           {formatINR(r.total_one_time_procurement_cost, true)}
                         </td>
-                        <td className="py-2 px-3 text-slate-500 text-[11px]">
+                        <td className="py-2 px-3 text-[#5D6878] text-[11px]">
                           {r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A'}
                         </td>
                         <td className="py-2 px-2 text-center">
                           <button
+                            type="button"
                             onClick={async () => {
                               const d = await budgetApi.getRunById(r.run_id);
                               setActiveRun(d);
                               setActiveTab('districts');
                             }}
-                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer transition-colors"
+                            className="px-2.5 py-1 rounded border border-[#D9E1EA] bg-white hover:bg-[#F4F7FA] text-[#172033] text-[11px] font-semibold cursor-pointer transition-colors shadow-2xs"
                           >
                             Inspect
                           </button>
@@ -1002,11 +979,9 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
             )}
           </div>
         )}
-
       </div>
     </div>
   );
 };
 
 export default BudgetCostAnalysisView;
-

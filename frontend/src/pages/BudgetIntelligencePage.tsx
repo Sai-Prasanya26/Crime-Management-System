@@ -38,12 +38,12 @@ export const BudgetIntelligencePage: React.FC = () => {
       hideSidebar
       icon={BadgeDollarSign}
       title="Budget & Cost Analysis"
-      subtitle="Data-driven fiscal planning connecting constrained optimization to recurring operational O&M and one-time capital procurement"
+      subtitle="Estimated operational costs and budget planning"
       onRefresh={() => fetchStates(true)}
       isRefreshing={isRefreshing}
     >
       {isLoading && (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-2xs">
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
           <LoadingState message="Initializing fiscal intelligence and cost engine..." />
         </div>
       )}
