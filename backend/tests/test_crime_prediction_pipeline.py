@@ -346,9 +346,19 @@ class TestCrimePredictionPipeline(unittest.TestCase):
         self.assertEqual(d2["data_type"], "HISTORICAL_ACTUAL")
         self.assertIsNotNone(d2["actual_count"])
 
-        # 3. Unavailable Month (Jun 2026 for District 1)
-        resp3 = client.get(
+        # 3. Past Forecast Month (Jun 2026 for District 1)
+        resp3_past = client.get(
             "/api/v1/predictions/district-month?district_id=1&year=2026&month=6",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp3_past.status_code, 200)
+        d3_past = resp3_past.json()
+        self.assertTrue(d3_past["is_available"])
+        self.assertEqual(d3_past["data_type"], "FORECAST")
+
+        # 3b. Unavailable Month beyond 12M Horizon (Nov 2027 for District 1)
+        resp3 = client.get(
+            "/api/v1/predictions/district-month?district_id=1&year=2027&month=11",
             headers=self.admin_headers,
         )
         self.assertEqual(resp3.status_code, 200)

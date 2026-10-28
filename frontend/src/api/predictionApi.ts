@@ -124,6 +124,8 @@ export interface DistrictMonthPrediction {
   display_value?: number | null;
   predicted_count?: number | null;
   actual_count?: number | null;
+  prediction_interval_lower?: number | null;
+  prediction_interval_upper?: number | null;
   has_baseline: boolean;
   baseline_year?: number | null;
   baseline_month?: number | null;

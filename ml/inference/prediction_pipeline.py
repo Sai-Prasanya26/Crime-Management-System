@@ -135,7 +135,7 @@ def build_district_states(panel_df: pd.DataFrame) -> Dict[int, Dict[str, Any]]:
 def generate_fresh_future_forecasts(
     panel_df: pd.DataFrame,
     forecast_origin_date: str = "2026-10-01",
-    forward_months: int = 3,
+    forward_months: int = 12,
     calibrate_intervals: bool = True,
 ) -> List[Dict[str, Any]]:
     """
@@ -309,7 +309,7 @@ def generate_fresh_future_forecasts(
 
 def generate_forward_multistep_forecasts(
     panel_df: pd.DataFrame,
-    months_ahead: int = 3,
+    months_ahead: int = 12,
 ) -> List[Dict[str, Any]]:
     """Backward-compatible helper generating forward operational forecasts."""
     return generate_fresh_future_forecasts(panel_df, forward_months=months_ahead)
@@ -321,15 +321,15 @@ def populate_predictions(
     include_2025: bool = True,
     include_past_forecasts: bool = True,
     include_forward: bool = True,
-    forward_months: int = 3,
+    forward_months: int = 12,
     forecast_origin_date: str = "2026-10-01",
     calibrate_intervals: bool = True,
 ) -> Dict[str, Any]:
     """
     Populates or updates `crime_predictions` ensuring:
     - 2025 out-of-sample evaluation records classified as HISTORICAL_EVALUATION
-    - Jan–Mar 2026 records preserved and classified as PAST_FORECAST
-    - Fresh forward forecasts (Nov 2026 onward) classified as CURRENT_FUTURE_FORECAST
+    - Jan–Oct 2026 records preserved and classified as PAST_FORECAST
+    - Fresh forward forecasts (Nov 2026 to Oct 2027) classified as CURRENT_FUTURE_FORECAST
     - Calibrated prediction intervals populated (lower clamped >= 0.0)
     - Backward-compatible confidence_lower and confidence_upper populated
     - Transactional rollback on error
@@ -372,16 +372,15 @@ def populate_predictions(
                 "is_latest": 1,
             })
 
-    # 2. Past Forecasts (Jan–Mar 2026, 1,920 records)
+    # 2. Past Forecasts (Jan–Oct 2026, 6,400 records)
     if include_past_forecasts:
-        # Re-derive Jan-Mar 2026 past forecasts
+        # Re-derive Jan-Oct 2026 past forecasts
         district_states = build_district_states(panel_df)
         d_ids_ordered = sorted(district_states.keys())
         model = get_production_model()
         past_periods = [
-            (2026, 1, "2026-01-01", 1),
-            (2026, 2, "2026-02-01", 2),
-            (2026, 3, "2026-03-01", 3),
+            (2026, m, f"2026-{m:02d}-01", m)
+            for m in range(1, 11)
         ]
         for yr, mo, p_str, h_step in past_periods:
             rows = []
@@ -403,7 +402,7 @@ def populate_predictions(
                     "state_id": int(st["state_id"]),
                     "year": yr,
                     "month": mo,
-                    "quarter": 1,
+                    "quarter": (mo - 1) // 3 + 1,
                     "year_index": 6,
                     "sin_month": round(float(np.sin(2 * np.pi * mo / 12)), 6),
                     "cos_month": round(float(np.cos(2 * np.pi * mo / 12)), 6),
@@ -449,7 +448,7 @@ def populate_predictions(
                     "is_latest": 0,
                 })
 
-    # 3. Fresh Operational Forward Forecasts (Nov 2026 to Jan 2027)
+    # 3. Fresh Operational Forward Forecasts (Nov 2026 to Oct 2027, 7,680 records)
     if include_forward:
         f_forward = generate_fresh_future_forecasts(
             panel_df,

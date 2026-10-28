@@ -122,6 +122,126 @@
           "RMSE": 2.2761,
           "WAPE_percent": 34.41
         }
+      },
+      "step_7": {
+        "horizon_month": 7,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.7021,
+          "RMSE": 2.2425,
+          "WAPE_percent": 33.77,
+          "R2": 0.6413
+        },
+        "seasonal_naive": {
+          "MAE": 2.2906,
+          "RMSE": 3.0562,
+          "WAPE_percent": 45.44
+        },
+        "moving_average_3": {
+          "MAE": 1.7249,
+          "RMSE": 2.2913,
+          "WAPE_percent": 34.22
+        }
+      },
+      "step_8": {
+        "horizon_month": 8,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.7471,
+          "RMSE": 2.3009,
+          "WAPE_percent": 36.21,
+          "R2": 0.6483
+        },
+        "seasonal_naive": {
+          "MAE": 2.2969,
+          "RMSE": 3.113,
+          "WAPE_percent": 47.6
+        },
+        "moving_average_3": {
+          "MAE": 1.7553,
+          "RMSE": 2.3265,
+          "WAPE_percent": 36.38
+        }
+      },
+      "step_9": {
+        "horizon_month": 9,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.6922,
+          "RMSE": 2.2159,
+          "WAPE_percent": 36.39,
+          "R2": 0.6455
+        },
+        "seasonal_naive": {
+          "MAE": 2.4156,
+          "RMSE": 3.1275,
+          "WAPE_percent": 51.95
+        },
+        "moving_average_3": {
+          "MAE": 1.7,
+          "RMSE": 2.225,
+          "WAPE_percent": 36.56
+        }
+      },
+      "step_10": {
+        "horizon_month": 10,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.6888,
+          "RMSE": 2.152,
+          "WAPE_percent": 35.98,
+          "R2": 0.6213
+        },
+        "seasonal_naive": {
+          "MAE": 2.3047,
+          "RMSE": 3.0344,
+          "WAPE_percent": 49.1
+        },
+        "moving_average_3": {
+          "MAE": 1.7105,
+          "RMSE": 2.1809,
+          "WAPE_percent": 36.44
+        }
+      },
+      "step_11": {
+        "horizon_month": 11,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.6967,
+          "RMSE": 2.2326,
+          "WAPE_percent": 39.5,
+          "R2": 0.5753
+        },
+        "seasonal_naive": {
+          "MAE": 2.3031,
+          "RMSE": 3.0481,
+          "WAPE_percent": 53.62
+        },
+        "moving_average_3": {
+          "MAE": 1.7415,
+          "RMSE": 2.2905,
+          "WAPE_percent": 40.54
+        }
+      },
+      "step_12": {
+        "horizon_month": 12,
+        "observations": 640,
+        "hgbr": {
+          "MAE": 1.7234,
+          "RMSE": 2.2645,
+          "WAPE_percent": 36.14,
+          "R2": 0.6228
+        },
+        "seasonal_naive": {
+          "MAE": 2.3016,
+          "RMSE": 3.0303,
+          "WAPE_percent": 48.26
+        },
+        "moving_average_3": {
+          "MAE": 1.7216,
+          "RMSE": 2.2639,
+          "WAPE_percent": 36.1
+        }
       }
     },
     "aggregate_horizons": {
@@ -187,6 +307,27 @@
           "WAPE_percent": 38.56
         },
         "hgbr_improvement_vs_seasonal_naive_pct": 26.68
+      },
+      "12_month": {
+        "horizon_steps": 12,
+        "total_observations": 7680,
+        "hgbr": {
+          "MAE": 1.6624,
+          "RMSE": 2.1709,
+          "WAPE_percent": 36.18,
+          "R2": 0.6287
+        },
+        "seasonal_naive": {
+          "MAE": 2.2616,
+          "RMSE": 3.0157,
+          "WAPE_percent": 49.23
+        },
+        "moving_average_3": {
+          "MAE": 1.7293,
+          "RMSE": 2.2727,
+          "WAPE_percent": 37.71
+        },
+        "hgbr_improvement_vs_seasonal_naive_pct": 26.49
       }
     }
   },
@@ -198,31 +339,43 @@
     "method": "Split Conformal Prediction (Inductive)",
     "nominal_coverage_default": 0.8,
     "horizon_quantiles_80": {
-      "1": 2.45,
+      "1": 2.44,
       "2": 2.36,
-      "3": 2.47,
+      "3": 2.46,
       "4": 2.47,
       "5": 2.56,
-      "6": 2.57
+      "6": 2.57,
+      "7": 2.71,
+      "8": 2.79,
+      "9": 2.67,
+      "10": 2.55,
+      "11": 2.47,
+      "12": 2.63
     },
     "horizon_quantiles_90": {
-      "1": 3.23,
-      "2": 3.09,
-      "3": 3.4,
-      "4": 3.41,
-      "5": 3.26,
-      "6": 3.59
+      "1": 3.22,
+      "2": 3.07,
+      "3": 3.38,
+      "4": 3.4,
+      "5": 3.25,
+      "6": 3.57,
+      "7": 3.62,
+      "8": 3.63,
+      "9": 3.42,
+      "10": 3.4,
+      "11": 3.27,
+      "12": 3.53
     },
     "test_empirical_metrics": {
       "overall_80": {
         "nominal": 0.8,
-        "empirical_coverage_pct": 79.48,
-        "avg_width": 4.68
+        "empirical_coverage_pct": 79.74,
+        "avg_width": 5.08
       },
       "overall_90": {
         "nominal": 0.9,
-        "empirical_coverage_pct": 89.43,
-        "avg_width": 6.05
+        "empirical_coverage_pct": 89.15,
+        "avg_width": 6.81
       },
       "by_horizon_80": {
         "h1": {
@@ -230,7 +383,7 @@
           "avg_width": 4.73
         },
         "h2": {
-          "coverage_pct": 77.5,
+          "coverage_pct": 77.34,
           "avg_width": 4.57
         },
         "h3": {
@@ -246,12 +399,36 @@
           "avg_width": 4.94
         },
         "h6": {
-          "coverage_pct": 80.47,
+          "coverage_pct": 80.31,
           "avg_width": 4.96
+        },
+        "h7": {
+          "coverage_pct": 81.41,
+          "avg_width": 5.24
+        },
+        "h8": {
+          "coverage_pct": 80.94,
+          "avg_width": 5.41
+        },
+        "h9": {
+          "coverage_pct": 81.56,
+          "avg_width": 5.21
+        },
+        "h10": {
+          "coverage_pct": 78.91,
+          "avg_width": 4.99
+        },
+        "h11": {
+          "coverage_pct": 76.88,
+          "avg_width": 4.84
+        },
+        "h12": {
+          "coverage_pct": 79.84,
+          "avg_width": 5.15
         }
       }
     }
   },
-  "metadata_version": "v1.1.0",
-  "last_updated": "2026-10-24T19:38:00+05:30"
+  "metadata_version": "v1.2.0",
+  "last_updated": "2026-10-28T21:05:00+05:30"
 }

@@ -134,7 +134,7 @@ class TrainTriggerResponse(BaseModel):
 
 
 class GenerateTriggerRequest(BaseModel):
-    forward_months: int = Field(3, ge=1, le=6, description="Forecast horizon steps in calendar months (1 to 6)")
+    forward_months: int = Field(12, ge=1, le=12, description="Forecast horizon steps in calendar months (1 to 12)")
     forecast_origin_date: Optional[str] = Field("2026-10-01", description="Cutoff date for forecast origin")
     calibrate_intervals: bool = Field(True, description="Whether to compute calibrated prediction intervals")
     include_2025: bool = Field(True, description="Whether to include historical 2025 evaluation records")
@@ -169,6 +169,8 @@ class DistrictMonthPredictionResponse(BaseModel):
     display_value: Optional[float] = None
     predicted_count: Optional[float] = None
     actual_count: Optional[int] = None
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
     has_baseline: bool
     baseline_year: Optional[int] = None
     baseline_month: Optional[int] = None

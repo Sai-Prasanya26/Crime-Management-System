@@ -42,8 +42,8 @@ class PredictionService:
             latest_period=data["latest_period"],
             periods_count=data["periods_count"],
             historical_periods_count=data.get("historical_periods_count", 12),
-            past_forecast_periods_count=data.get("past_forecast_periods_count", 3),
-            current_forecast_periods_count=data.get("current_forecast_periods_count", 3),
+            past_forecast_periods_count=data.get("past_forecast_periods_count", 10),
+            current_forecast_periods_count=data.get("current_forecast_periods_count", 12),
             current_forecast_start=data.get("current_forecast_start"),
             current_forecast_end=data.get("current_forecast_end"),
             forecast_origin_date=data.get("forecast_origin_date"),
@@ -302,7 +302,7 @@ class PredictionService:
     @staticmethod
     def trigger_generate(
         db: Session,
-        forward_months: int = 3,
+        forward_months: int = 12,
         forecast_origin_date: str = "2026-10-01",
         calibrate_intervals: bool = True,
         include_2025: bool = True,

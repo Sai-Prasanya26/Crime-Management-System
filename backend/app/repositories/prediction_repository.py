@@ -145,8 +145,8 @@ class PredictionRepository:
             "latest_period": str(stats.max_date) if stats.max_date else "N/A",
             "periods_count": stats.periods_count or 0,
             "historical_periods_count": periods_by_status.get("HISTORICAL_EVALUATION", 12),
-            "past_forecast_periods_count": periods_by_status.get("PAST_FORECAST", 3),
-            "current_forecast_periods_count": periods_by_status.get("CURRENT_FUTURE_FORECAST", 3),
+            "past_forecast_periods_count": periods_by_status.get("PAST_FORECAST", 10),
+            "current_forecast_periods_count": periods_by_status.get("CURRENT_FUTURE_FORECAST", 12),
             "current_forecast_start": curr_range[0],
             "current_forecast_end": curr_range[1],
             "forecast_origin_date": forecast_origin,
@@ -528,6 +528,8 @@ class PredictionRepository:
                 "display_value": None,
                 "predicted_count": None,
                 "actual_count": None,
+                "prediction_interval_lower": None,
+                "prediction_interval_upper": None,
                 "has_baseline": False,
                 "baseline_year": None,
                 "baseline_month": None,
@@ -586,6 +588,8 @@ class PredictionRepository:
                 "display_value": None,
                 "predicted_count": None,
                 "actual_count": None,
+                "prediction_interval_lower": None,
+                "prediction_interval_upper": None,
                 "has_baseline": True,
                 "baseline_year": None,
                 "baseline_month": None,
@@ -596,7 +600,7 @@ class PredictionRepository:
                 "percentage_change": None,
                 "crime_level": "Unavailable",
                 "comparison_rule": comparison_rule,
-                "explanation": f"Forecast is unavailable for {period_display}. The forecasting pipeline currently supports active 3-month forecast horizons (Nov 2026 – Jan 2027) and historical records (2020–2025).",
+                "explanation": f"Forecast is unavailable for {period_display}. The forecasting pipeline currently supports an active 12-month forward forecast horizon (Nov 2026 – Oct 2027), retrospective past forecasts (Jan–Oct 2026), and historical records (2020–2025).",
                 "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
                 "message": f"Forecast unavailable for {period_display}.",
             }
@@ -680,8 +684,10 @@ class PredictionRepository:
 
         if is_forecast:
             change_txt = f"{abs(num_change):.2f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.2f} incidents"
+            pred_status = pred_row[1] if pred_row else "CURRENT_FUTURE_FORECAST"
+            forecast_type_str = "Retrospective past forecast" if pred_status == "PAST_FORECAST" else "Forward operational forecast"
             explanation = (
-                f"For {month_name}, {dname}{jurisdiction_note} is projected to record approximately {display_val:.2f} incidents. "
+                f"{forecast_type_str} for {month_name}: {dname}{jurisdiction_note} is projected to record approximately {display_val:.2f} incidents. "
                 f"This estimated crime level is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
                 f"representing an expected change of {change_txt}."
             )
@@ -711,6 +717,8 @@ class PredictionRepository:
             "display_value": display_val,
             "predicted_count": pred_val,
             "actual_count": act_val,
+            "prediction_interval_lower": float(pred_row[2]) if (pred_row and pred_row[2] is not None) else None,
+            "prediction_interval_upper": float(pred_row[3]) if (pred_row and pred_row[3] is not None) else None,
             "has_baseline": True,
             "baseline_year": base_year,
             "baseline_month": month,

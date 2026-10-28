@@ -192,13 +192,15 @@ export const PredictionsPage: React.FC = () => {
   const chartPoints = useMemo(() => {
     return (actualVsPred?.comparison_points || []).map((pt) => {
       const p = pt.period.substring(0, 7);
-      const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined;
-      const isCurrentFuture = pt.forecast_status === 'CURRENT_FUTURE_FORECAST';
+      // Strictly historical actual records up to 2025-12 (missing actuals in 2026+ remain undefined, never 0)
+      const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined && p <= '2025-12';
+      // Model predictions for 2026 onwards (past forecasts and forward operational forecasts)
+      const isModelPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined && p >= '2026-01';
 
       return {
         period: p,
         actual: isHistoricalActual ? pt.actual_count : undefined,
-        current_future: isCurrentFuture ? pt.predicted_count : undefined,
+        current_future: isModelPrediction ? pt.predicted_count : undefined,
       };
     });
   }, [actualVsPred]);
@@ -316,11 +318,19 @@ export const PredictionsPage: React.FC = () => {
                     className="h-10 w-full sm:w-auto sm:min-w-[140px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                   >
                     <option value="">Select Month</option>
-                    {MONTH_NAMES.map((name, idx) => (
-                      <option key={idx + 1} value={idx + 1}>
-                        {name}
-                      </option>
-                    ))}
+                    {MONTH_NAMES.map((name, idx) => {
+                      const monthNum = idx + 1;
+                      const isBeyondHorizon = selectedYear === 2027 && monthNum > 10;
+                      return (
+                        <option
+                          key={monthNum}
+                          value={monthNum}
+                          disabled={isBeyondHorizon}
+                        >
+                          {name}{isBeyondHorizon ? ' (Beyond 12M Horizon)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 )}
 
@@ -417,12 +427,21 @@ export const PredictionsPage: React.FC = () => {
                     <span className="text-xs font-medium text-[#5D6878]">
                       {predictionResult.is_historical ? 'Confirmed Crime Incidents' : 'Estimated Crime Incidents'}
                     </span>
-                    <div className="mt-1">
+                    <div className="mt-1 flex items-baseline gap-2 flex-wrap">
                       <span className="text-3xl font-bold font-mono text-[#1769AA]">
                         {predictionResult.display_value !== undefined && predictionResult.display_value !== null
                           ? predictionResult.display_value.toFixed(2)
                           : '—'}
                       </span>
+                      {predictionResult.is_forecast &&
+                        predictionResult.prediction_interval_lower !== null &&
+                        predictionResult.prediction_interval_lower !== undefined &&
+                        predictionResult.prediction_interval_upper !== null &&
+                        predictionResult.prediction_interval_upper !== undefined && (
+                          <span className="text-xs font-medium text-slate-500">
+                            (80% Interval: [{predictionResult.prediction_interval_lower.toFixed(2)} – {predictionResult.prediction_interval_upper.toFixed(2)}])
+                          </span>
+                        )}
                     </div>
                   </div>
 

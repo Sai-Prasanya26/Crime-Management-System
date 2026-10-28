@@ -86,15 +86,15 @@ class TestCrimeForecastingReliability(unittest.TestCase):
             self.assertEqual(status_map["HISTORICAL_EVALUATION"][1], "2025-01-01")
             self.assertEqual(status_map["HISTORICAL_EVALUATION"][2], "2025-12-01")
 
-            # Past forecast: 1,920 records across Jan-Mar 2026
-            self.assertEqual(status_map["PAST_FORECAST"][0], 1920)
+            # Past forecast: 6,400 records across Jan-Oct 2026
+            self.assertEqual(status_map["PAST_FORECAST"][0], 6400)
             self.assertEqual(status_map["PAST_FORECAST"][1], "2026-01-01")
-            self.assertEqual(status_map["PAST_FORECAST"][2], "2026-03-01")
+            self.assertEqual(status_map["PAST_FORECAST"][2], "2026-10-01")
 
-            # Current future forecast: 1,920 records across Nov 2026-Jan 2027
-            self.assertEqual(status_map["CURRENT_FUTURE_FORECAST"][0], 1920)
+            # Current future forecast: 7,680 records across Nov 2026-Oct 2027
+            self.assertEqual(status_map["CURRENT_FUTURE_FORECAST"][0], 7680)
             self.assertEqual(status_map["CURRENT_FUTURE_FORECAST"][1], "2026-11-01")
-            self.assertEqual(status_map["CURRENT_FUTURE_FORECAST"][2], "2027-01-01")
+            self.assertEqual(status_map["CURRENT_FUTURE_FORECAST"][2], "2027-10-01")
 
     def test_02_forecast_origin_and_target_dates(self):
         """2. Verify forecast origin policy (2026-10-01) and target dates (2026-11-01+)."""
@@ -106,16 +106,13 @@ class TestCrimeForecastingReliability(unittest.TestCase):
                 ORDER BY horizon_step
             """)).fetchall()
 
-            self.assertEqual(len(future_meta), 3)
+            self.assertEqual(len(future_meta), 12)
             self.assertEqual(str(future_meta[0][0]), "2026-10-01")
             self.assertEqual(future_meta[0][1], 1)
             self.assertEqual(str(future_meta[0][2]), "2026-11-01")
 
-            self.assertEqual(future_meta[1][1], 2)
-            self.assertEqual(str(future_meta[1][2]), "2026-12-01")
-
-            self.assertEqual(future_meta[2][1], 3)
-            self.assertEqual(str(future_meta[2][2]), "2027-01-01")
+            self.assertEqual(future_meta[11][1], 12)
+            self.assertEqual(str(future_meta[11][2]), "2027-10-01")
 
     def test_03_recursive_multistep_feature_updates(self):
         """3. Verify recursive multi-step forecasting updates lag features iteratively."""
@@ -224,22 +221,22 @@ class TestCrimeForecastingReliability(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["total"], 1920)
+        self.assertEqual(data["total"], 7680)
         for item in data["items"]:
             self.assertEqual(item["forecast_status"], "CURRENT_FUTURE_FORECAST")
-            self.assertIn(item["forecast_period"], ["2026-11-01", "2026-12-01", "2027-01-01"])
+            self.assertTrue(item["forecast_period"] >= "2026-11-01" and item["forecast_period"] <= "2027-10-01")
 
     def test_11_api_overview_freshness_metadata(self):
         """11. Verify GET /predictions/overview returns freshness breakdown and current horizon."""
         resp = client.get("/api/v1/predictions/overview", headers=self.admin_headers)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["total_predictions"], 11520)
+        self.assertEqual(data["total_predictions"], 21760)
         self.assertEqual(data["historical_periods_count"], 12)
-        self.assertEqual(data["past_forecast_periods_count"], 3)
-        self.assertEqual(data["current_forecast_periods_count"], 3)
+        self.assertEqual(data["past_forecast_periods_count"], 10)
+        self.assertEqual(data["current_forecast_periods_count"], 12)
         self.assertEqual(data["current_forecast_start"], "2026-11-01")
-        self.assertEqual(data["current_forecast_end"], "2027-01-01")
+        self.assertEqual(data["current_forecast_end"], "2027-10-01")
         self.assertEqual(data["forecast_origin_date"], "2026-10-01")
         self.assertIn("Split Conformal", data["calibration_method"])
 
@@ -248,10 +245,10 @@ class TestCrimeForecastingReliability(unittest.TestCase):
         # Officer -> 403 Forbidden
         self.assertEqual(client.post("/api/v1/predictions/generate", headers=self.officer_headers).status_code, 403)
 
-        # Invalid forward_months (>6) -> 422 Unprocessable Entity
+        # Invalid forward_months (>12) -> 422 Unprocessable Entity
         resp_invalid = client.post(
             "/api/v1/predictions/generate",
-            json={"forward_months": 12},
+            json={"forward_months": 24},
             headers=self.analyst_headers,
         )
         self.assertEqual(resp_invalid.status_code, 422)
