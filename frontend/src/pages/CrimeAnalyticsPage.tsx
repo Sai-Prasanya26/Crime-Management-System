@@ -153,7 +153,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
             types={types}
           />
 
-          {/* SECTION 2: Longitudinal Offense Trajectory & Period Comparison (Monthly/Yearly with Annual YoY Dynamics) */}
+          {/* SECTION 2: Longitudinal Offense Trajectory & Period Comparison (Monthly Trajectory & Yearly Comparison) */}
           <TemporalAnalysisSection
             monthlyTrends={monthlyTrends}
             yearlyTrends={yearlyTrends}
