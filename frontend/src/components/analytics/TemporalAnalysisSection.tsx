@@ -38,10 +38,6 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
   const minCount = counts.length > 0 ? Math.min(...counts) : 0;
   const avgCount = counts.length > 0 ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : 0;
 
-  // Identify peak and lowest period items
-  const peakItem = activeTrendData.find((d) => d.incident_count === maxCount);
-  const minItem = activeTrendData.find((d) => d.incident_count === minCount);
-
   return (
     <div className={`space-y-4 transition-opacity ${isLoading ? 'opacity-70' : 'opacity-100'}`}>
       {/* Section Header */}
@@ -103,24 +99,24 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
           {/* Metric summary pills */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
             <div className="rounded bg-[#F8FAFC] border border-slate-200/70 p-2.5">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#5D6878] block truncate">
-                Average / Period
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] block">
+                Average
               </span>
               <span className="text-[15px] font-bold font-mono text-[#0B1F3A] block">
                 {avgCount.toLocaleString()}
               </span>
             </div>
             <div className="rounded bg-rose-50/50 border border-rose-200/60 p-2.5">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-rose-700 block truncate">
-                Peak Period ({peakItem?.period || 'Peak'})
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 block">
+                Peak
               </span>
               <span className="text-[15px] font-bold font-mono text-rose-700 block">
                 {maxCount.toLocaleString()}
               </span>
             </div>
             <div className="rounded bg-emerald-50/50 border border-emerald-200/60 p-2.5">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-emerald-800 block truncate">
-                Lowest Period ({minItem?.period || 'Lowest'})
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800 block">
+                Lowest
               </span>
               <span className="text-[15px] font-bold font-mono text-emerald-800 block">
                 {minCount.toLocaleString()}
@@ -209,11 +205,6 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
               )}
             </ResponsiveContainer>
           </div>
-        </div>
-
-        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-[#5D6878]">
-          <span>Continuous temporal index synchronized with verified NCRB baseline</span>
-          <span className="font-semibold text-[#0B1F3A]">Confidence Level: 95%</span>
         </div>
       </div>
     </div>

@@ -53,6 +53,7 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
   types,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [displayCount, setDisplayCount] = useState<number>(8);
   const [showAllTypes, setShowAllTypes] = useState(false);
 
   // Filter types by selected category if active
@@ -64,7 +65,7 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
 
   // Sort descending by incident count
   const sortedTypes = [...filteredTypes].sort((a, b) => b.incident_count - a.incident_count);
-  const displayedTypes = showAllTypes ? sortedTypes : sortedTypes.slice(0, 8);
+  const displayedTypes = showAllTypes ? sortedTypes : sortedTypes.slice(0, displayCount);
 
   const maxTypeCount = sortedTypes.length > 0 ? sortedTypes[0].incident_count : 1;
 
@@ -124,7 +125,7 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
                       : 'border-[#D9E1EA] bg-white hover:border-[#BAC7D5] hover:bg-slate-50/60'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`rounded p-1 ${style.bg} ${style.text} border ${style.border}`}>
                         <Icon className="h-3.5 w-3.5" />
@@ -133,31 +134,22 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
                         {cat.category_name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono font-semibold text-[#5D6878]">
-                        {cat.severity_weight.toFixed(1)}x Severity
+                    <div className="flex items-center gap-1.5 font-mono text-[12px]">
+                      <span className="font-bold text-[#0B1F3A]">
+                        {cat.incident_count.toLocaleString()}
                       </span>
-                      <span className={`text-[12px] font-bold font-mono ${style.text}`}>
-                        {cat.percentage.toFixed(1)}%
+                      <span className="text-[#5D6878]">
+                        ({cat.percentage.toFixed(1)}%)
                       </span>
                     </div>
                   </div>
 
                   {/* Horizontal Volume Bar */}
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden my-2">
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-2.5">
                     <div
                       className={`h-full rounded-full ${style.bar} transition-all duration-500`}
                       style={{ width: `${Math.min(cat.percentage, 100)}%` }}
                     />
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-[#5D6878]">
-                    <span>
-                      {cat.incident_count.toLocaleString()} reported incidents
-                    </span>
-                    <span className="font-medium text-[#1769AA]">
-                      {isSelected ? 'Filtering Offenses ▾' : 'Click to filter offenses'}
-                    </span>
                   </div>
                 </div>
               );
@@ -169,20 +161,33 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
         <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
-              <div>
-                <h3 className="text-[14px] font-bold text-[#0B1F3A] flex items-center gap-2">
-                  <BarChart2 className="h-4 w-4 text-[#1769AA]" />
-                  <span>
-                    Top Crime Types Ranking {selectedCategory ? `(${selectedCategory})` : ''}
-                  </span>
+              <div className="flex items-center gap-2">
+                <BarChart2 className="h-4 w-4 text-[#1769AA]" />
+                <h3 className="text-[14px] font-bold text-[#0B1F3A]">
+                  Top Crime Types Ranking{selectedCategory ? ` (${selectedCategory})` : ''}
                 </h3>
-                <p className="text-[11px] text-[#5D6878] mt-0.5">
-                  Ranked by reported incident frequency and legal severity tier
-                </p>
               </div>
-              <span className="text-[11px] font-semibold text-[#1769AA] bg-[#EAF3FA] px-2.5 py-0.5 rounded border border-[#BAC7D5]/40 self-start sm:self-auto">
-                Showing {displayedTypes.length} of {sortedTypes.length} Types
-              </span>
+
+              {/* Top 5, Top 8, Top 12, Top 21 controls */}
+              <div className="flex items-center gap-1 rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[11px] self-start sm:self-auto">
+                {[5, 8, 12, 21].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => {
+                      setDisplayCount(count);
+                      setShowAllTypes(false);
+                    }}
+                    className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
+                      !showAllTypes && displayCount === count
+                        ? 'bg-white text-[#0B1F3A] shadow-2xs font-semibold'
+                        : 'text-[#5D6878] hover:text-[#0B1F3A]'
+                    }`}
+                  >
+                    Top {count}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* List of Ranked Bars */}
@@ -233,18 +238,15 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
             </div>
           </div>
 
-          {/* Toggle All 21 Types button */}
-          {sortedTypes.length > 8 && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] text-[#5D6878]">
-                {showAllTypes ? 'Viewing complete statutory inventory' : `Showing top 8 of ${sortedTypes.length} crime types`}
-              </span>
+          {/* View All toggle */}
+          {sortedTypes.length > displayCount && (
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setShowAllTypes((prev) => !prev)}
                 className="text-[12px] font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors cursor-pointer"
               >
-                {showAllTypes ? 'Show Top 8 Only' : `View All ${sortedTypes.length} Types →`}
+                {showAllTypes ? `Show Top ${displayCount} Only` : 'View All'}
               </button>
             </div>
           )}

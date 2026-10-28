@@ -121,7 +121,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
   return (
     <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
       {/* Table Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
           <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
             <FileSpreadsheet className="h-4 w-4" />
@@ -129,12 +129,6 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
           <h3 className="text-[16px] font-bold text-[#0B1F3A]">
             Crime Detail Analysis
           </h3>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
-            {filteredAndSortedItems.length} of {items.length} Offenses
-          </span>
         </div>
       </div>
 
@@ -147,7 +141,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by offense name, legal code (OFF-xx), or category..."
+            placeholder="Search by crime type, code, or category..."
             className="w-full rounded-md border border-[#D9E1EA] bg-[#F8FAFC] py-2 pl-9 pr-3 text-xs text-[#0B1F3A] placeholder-slate-400 focus:border-[#1769AA] focus:bg-white focus:outline-hidden"
           />
           {searchTerm && (
@@ -169,7 +163,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="rounded-md border border-[#D9E1EA] bg-white px-2.5 py-2 text-xs text-[#0B1F3A] focus:border-[#1769AA] focus:outline-hidden"
           >
-            <option value="ALL">All Statutory Categories</option>
+            <option value="ALL">All Categories</option>
             {availableCategories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -183,11 +177,11 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
             onChange={(e) => setSelectedSeverity(e.target.value)}
             className="rounded-md border border-[#D9E1EA] bg-white px-2.5 py-2 text-xs text-[#0B1F3A] focus:border-[#1769AA] focus:outline-hidden"
           >
-            <option value="ALL">All Severity Tiers</option>
-            <option value="CRITICAL">Critical Tier</option>
-            <option value="HIGH">High Tier</option>
-            <option value="MEDIUM">Medium Tier</option>
-            <option value="LOW">Low Tier</option>
+            <option value="ALL">All Severities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
           </select>
         </div>
       </div>
@@ -206,7 +200,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
                 className="py-2.5 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
-                  <span>Crime Classification / Type</span>
+                  <span>Crime Type</span>
                   {renderSortIndicator('crime_name')}
                 </div>
               </th>
@@ -216,7 +210,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
                 className="py-2.5 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
-                  <span>Category Domain</span>
+                  <span>Category</span>
                   {renderSortIndicator('category_name')}
                 </div>
               </th>
@@ -226,7 +220,7 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
                 className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 <div className="flex items-center">
-                  <span>Severity Tier</span>
+                  <span>Severity</span>
                   {renderSortIndicator('severity_level')}
                 </div>
               </th>

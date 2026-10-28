@@ -121,7 +121,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
       {/* Loading State */}
       {isLoading && !overview && (
         <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
-          <LoadingState message="Aggregating statutory offense analytics, categories, and longitudinal data..." />
+          <LoadingState message="Loading crime analytics..." />
         </div>
       )}
 
