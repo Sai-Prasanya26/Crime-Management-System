@@ -331,75 +331,73 @@ export const RiskAssessmentPage: React.FC = () => {
           </div>
 
           {/* SECTION B: FILTER TOOLBAR */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
-              {/* State / UT Selector */}
-              <select
-                id="state-filter"
-                aria-label="Filter by State or Union Territory"
-                value={selectedStateId || ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  setSelectedStateId(val);
-                  setSelectedDistrictId(undefined);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-              >
-                <option value="">All States &amp; UTs ({states.length || 36})</option>
-                {states.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.state_name}
-                  </option>
-                ))}
-              </select>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+            {/* State / UT Selector */}
+            <select
+              id="state-filter"
+              aria-label="Filter by State or Union Territory"
+              value={selectedStateId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : undefined;
+                setSelectedStateId(val);
+                setSelectedDistrictId(undefined);
+                setCurrentPage(1);
+              }}
+              className="h-[42px] w-full sm:w-[240px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+            >
+              <option value="">All States &amp; UTs ({states.length || 36})</option>
+              {states.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.state_name}
+                </option>
+              ))}
+            </select>
 
-              {/* District Selector */}
-              <select
-                id="district-filter"
-                aria-label="Filter by District"
-                value={selectedDistrictId || ''}
-                disabled={!selectedStateId}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  setSelectedDistrictId(val);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
-              >
-                <option value="">{selectedStateId ? `All Districts (${districts.length})` : 'Select State First'}</option>
-                {districts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.district_name}
-                  </option>
-                ))}
-              </select>
+            {/* District Selector */}
+            <select
+              id="district-filter"
+              aria-label="Filter by District"
+              value={selectedDistrictId || ''}
+              disabled={!selectedStateId}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : undefined;
+                setSelectedDistrictId(val);
+                setCurrentPage(1);
+              }}
+              className="h-[42px] w-full sm:w-[220px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <option value="">{selectedStateId ? `All Districts (${districts.length})` : 'Select State First'}</option>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.district_name}
+                </option>
+              ))}
+            </select>
 
-              {/* Risk Level Selector */}
-              <select
-                id="risk-level-filter"
-                aria-label="Filter by Risk Category"
-                value={selectedRiskLevel || ''}
-                onChange={(e) => {
-                  setSelectedRiskLevel(e.target.value || undefined);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-              >
-                <option value="">All Risk Categories</option>
-                <option value="CRITICAL">Critical (≥ 65)</option>
-                <option value="HIGH">High (50 – 64.99)</option>
-                <option value="MODERATE">Moderate (35 – 49.99)</option>
-                <option value="LOW">Low (&lt; 35)</option>
-              </select>
-            </div>
+            {/* Risk Level Selector */}
+            <select
+              id="risk-level-filter"
+              aria-label="Filter by Risk Category"
+              value={selectedRiskLevel || ''}
+              onChange={(e) => {
+                setSelectedRiskLevel(e.target.value || undefined);
+                setCurrentPage(1);
+              }}
+              className="h-[42px] w-full sm:w-[200px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+            >
+              <option value="">All Risk Categories</option>
+              <option value="CRITICAL">Critical (≥ 65)</option>
+              <option value="HIGH">High (50 – 64.99)</option>
+              <option value="MODERATE">Moderate (35 – 49.99)</option>
+              <option value="LOW">Low (&lt; 35)</option>
+            </select>
 
             {/* Reset Action */}
             {(selectedStateId !== undefined || selectedDistrictId !== undefined || selectedRiskLevel !== undefined) && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3.5 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Reset Filters</span>
@@ -409,7 +407,7 @@ export const RiskAssessmentPage: React.FC = () => {
 
           {/* SECTION C: DISTRICT RISK TABLE */}
           <div className="rounded-lg border border-[#DCE2EA] bg-white shadow-2xs overflow-hidden">
-            <div className="p-3.5 border-b border-[#DCE2EA] flex items-center justify-between">
+            <div className="py-3 px-4 border-b border-[#DCE2EA] flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-[#0B1F3A]">District Risk Evaluation Register</h3>
                 <p className="text-[11px] text-[#5D6878]">
@@ -431,36 +429,42 @@ export const RiskAssessmentPage: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full table-fixed text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-[#DCE2EA] text-[#5D6878] font-semibold">
-                      <th className="py-2.5 px-3 text-center w-14">Rank</th>
-                      <th className="py-2.5 px-3">District</th>
-                      <th className="py-2.5 px-3">State / UT</th>
-                      <th className="py-2.5 px-3 text-center w-28">Risk Score</th>
-                      <th className="py-2.5 px-3 w-32">Risk Level</th>
+                      <th className="w-[6%] py-3 px-4 text-center align-middle">Rank</th>
+                      <th className="w-[25%] py-3 px-4 text-left align-middle">District</th>
+                      <th className="w-[27%] py-3 px-4 text-left align-middle">State / UT</th>
+                      <th className="w-[15%] py-3 px-4 text-center align-middle">Risk Score</th>
+                      <th className="w-[15%] py-3 px-4 text-left align-middle">Risk Level</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#DCE2EA]">
                     {riskList.items.map((item, idx) => {
                       const rank = (currentPage - 1) * pageSize + idx + 1;
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-mono text-[#5D6878]">
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 text-center align-middle font-mono text-[#5D6878]">
                             #{rank}
                           </td>
-                          <td className="py-2.5 px-3 font-semibold text-[#0B1F3A]">
+                          <td
+                            className="py-3 px-4 text-left align-middle font-semibold text-[#0B1F3A] truncate"
+                            title={item.district_name || `District #${item.district_id}`}
+                          >
                             {item.district_name || `District #${item.district_id}`}
                           </td>
-                          <td className="py-2.5 px-3 text-[#5D6878]">
+                          <td
+                            className="py-3 px-4 text-left align-middle text-[#5D6878] truncate"
+                            title={item.state_name || `State #${item.state_id}`}
+                          >
                             {item.state_name || `State #${item.state_id}`}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-bold font-mono text-[#0B1F3A]">
+                          <td className="py-3 px-4 text-center align-middle font-bold font-mono text-[#0B1F3A]">
                             {item.overall_risk_score !== undefined && item.overall_risk_score !== null
                               ? item.overall_risk_score.toFixed(1)
                               : 'N/A'}
                           </td>
-                          <td className="py-2.5 px-3">
+                          <td className="py-3 px-4 text-left align-middle">
                             {getRiskBadge(item.risk_level)}
                           </td>
                         </tr>
@@ -473,7 +477,7 @@ export const RiskAssessmentPage: React.FC = () => {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="p-3 border-t border-[#DCE2EA] flex items-center justify-between text-xs text-[#5D6878]">
+              <div className="py-2.5 px-4 border-t border-[#DCE2EA] flex items-center justify-between text-xs text-[#5D6878]">
                 <span>
                   Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
                 </span>
