@@ -436,103 +436,45 @@ export const DistrictsPage: React.FC = () => {
 
       {!isLoading && !error && topDistricts && (
         <div className="space-y-4">
-          {/* SECTION 1: Tactical Geographic Overview (Map) & Crime Hotspots Matrix */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            {/* Tactical Geographic Crime Distribution Panel */}
-            <div className="lg:col-span-8 rounded-lg border border-[#D9E1EA] bg-white overflow-hidden shadow-2xs flex flex-col justify-between">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                      Tactical Geographic Crime Distribution
-                    </h3>
-                    <p className="text-[12px] text-[#5D6878]">
-                      Spatial incident density across {geographyMode === 'historical' ? '640 Census 2011 districts' : '789 administrative districts'}
-                    </p>
-                  </div>
+          {/* SECTION 1: Tactical Geographic Overview (Expanded Panel) */}
+          <div className="w-full rounded-lg border border-[#D9E1EA] bg-white overflow-hidden shadow-2xs flex flex-col justify-between">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                  <Layers className="h-4 w-4" />
                 </div>
-                <span className="rounded bg-[#EAF3FA] px-2.5 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-[#D9E1EA]">
-                  Active GIS Layer
-                </span>
-              </div>
-
-              {/* GIS Photographic Visualization */}
-              <div className="relative h-[240px] sm:h-[280px] bg-[#0B1F3A] overflow-hidden">
-                <img
-                  src="/images/geographic-intelligence.jpg"
-                  alt="Geographic Crime Map"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/85 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[11px]">
-                  <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10">
-                    Spatial Coordinate Grid &bull; Boundary Analysis
-                  </span>
-                  <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[#1D7FE2]">
-                    {geographyMode === 'historical' ? '640 Monitored Jurisdictions' : '789 Monitored Jurisdictions'}
-                  </span>
+                <div>
+                  <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                    Tactical Geographic Crime Distribution
+                  </h3>
+                  <p className="text-[12px] text-[#5D6878]">
+                    Spatial incident density across {geographyMode === 'historical' ? '640 Census 2011 districts' : '789 administrative districts'}
+                  </p>
                 </div>
               </div>
+              <span className="rounded bg-[#EAF3FA] px-2.5 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-[#D9E1EA]">
+                Active GIS Layer
+              </span>
             </div>
 
-            {/* Crime Hotspot Matrix */}
-            <div className="lg:col-span-4 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <div className="rounded p-1.5 bg-amber-50 text-[#C98512]">
-                    <ShieldAlert className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-[15px] font-bold text-[#0B1F3A]">
-                      Crime Hotspot Matrix
-                    </h4>
-                    <p className="text-[11px] text-[#5D6878]">
-                      Incidence density classification
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3.5 space-y-2.5 text-[12px]">
-                  <div className="flex items-center justify-between p-2 rounded bg-red-50/80 border border-red-200">
-                    <div>
-                      <span className="font-bold text-[#C53B3B] block">HIGH INTENSITY HOTSPOTS</span>
-                      <span className="text-[11px] text-[#5D6878]">Rate &gt; 250 per 100k</span>
-                    </div>
-                    <span className="rounded bg-[#C53B3B] px-2 py-0.5 text-[11px] font-bold text-white">
-                      HIGH
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 rounded bg-amber-50/80 border border-amber-200">
-                    <div>
-                      <span className="font-bold text-[#C98512] block">MODERATE CRIME ZONES</span>
-                      <span className="text-[11px] text-[#5D6878]">Rate 150–250 per 100k</span>
-                    </div>
-                    <span className="rounded bg-[#C98512] px-2 py-0.5 text-[11px] font-bold text-white">
-                      MODERATE
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 rounded bg-emerald-50/80 border border-emerald-200">
-                    <div>
-                      <span className="font-bold text-[#16845B] block">LOW INCIDENCE AREAS</span>
-                      <span className="text-[11px] text-[#5D6878]">Rate &lt; 150 per 100k</span>
-                    </div>
-                    <span className="rounded bg-[#16845B] px-2 py-0.5 text-[11px] font-bold text-white">
-                      LOW
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#D9E1EA] text-[11px] text-[#5D6878]">
-                Census 2011 population baseline applied to calculate per-capita exposure.
+            {/* GIS Photographic Visualization */}
+            <div className="relative h-[260px] sm:h-[300px] bg-[#0B1F3A] overflow-hidden">
+              <img
+                src="/images/geographic-intelligence.jpg"
+                alt="Geographic Crime Map"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/85 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[11px]">
+                <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10">
+                  Spatial Coordinate Grid &bull; Boundary Analysis
+                </span>
+                <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[#1D7FE2]">
+                  {geographyMode === 'historical' ? '640 Monitored Jurisdictions' : '789 Monitored Jurisdictions'}
+                </span>
               </div>
             </div>
           </div>
