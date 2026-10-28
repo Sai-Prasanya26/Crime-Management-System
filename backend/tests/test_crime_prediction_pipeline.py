@@ -358,24 +358,36 @@ class TestCrimePredictionPipeline(unittest.TestCase):
         self.assertEqual(d3["crime_level"], "Unavailable")
         self.assertIn("unavailable", d3["message"].lower())
 
-        # 4. District with Insufficient Baseline (District 674)
+        # 4. Reorganized Child District with Parent Resolution (District 674 -> Parent 22)
         resp4 = client.get(
             "/api/v1/predictions/district-month?district_id=674&year=2026&month=11",
             headers=self.admin_headers,
         )
         self.assertEqual(resp4.status_code, 200)
         d4 = resp4.json()
-        self.assertFalse(d4["is_available"])
-        self.assertFalse(d4["has_baseline"])
-        self.assertEqual(d4["crime_level"], "Insufficient Baseline")
-        self.assertIn("insufficient", d4["message"].lower())
+        self.assertTrue(d4["is_available"])
+        self.assertTrue(d4["is_derived_from_parent"])
+        self.assertEqual(d4["parent_district_id"], 22)
+        self.assertIsNotNone(d4["predicted_count"])
 
-        # 5. Non-existent District -> 404
+        # 5. District with Truly Insufficient Baseline (District 725 Aravalli - unmapped parent)
         resp5 = client.get(
+            "/api/v1/predictions/district-month?district_id=725&year=2026&month=11",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp5.status_code, 200)
+        d5 = resp5.json()
+        self.assertFalse(d5["is_available"])
+        self.assertFalse(d5["has_baseline"])
+        self.assertEqual(d5["crime_level"], "Insufficient Baseline")
+        self.assertIn("insufficient", d5["message"].lower())
+
+        # 6. Non-existent District -> 404
+        resp6 = client.get(
             "/api/v1/predictions/district-month?district_id=99999&year=2026&month=11",
             headers=self.admin_headers,
         )
-        self.assertEqual(resp5.status_code, 404)
+        self.assertEqual(resp6.status_code, 404)
 
 
 if __name__ == "__main__":

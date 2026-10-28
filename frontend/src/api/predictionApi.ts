@@ -111,6 +111,9 @@ export interface DistrictMonthPrediction {
   district_name: string;
   state_id: number;
   state_name: string;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
   year: number;
   month: number;
   period: string;

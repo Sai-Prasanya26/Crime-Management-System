@@ -156,6 +156,9 @@ class DistrictMonthPredictionResponse(BaseModel):
     district_name: str
     state_id: int
     state_name: str
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: Optional[bool] = False
     year: int
     month: int
     period: str

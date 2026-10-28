@@ -199,7 +199,13 @@ class PredictionRepository:
         if state_id is not None:
             query = query.filter(District.state_id == state_id)
         if district_id is not None:
-            query = query.filter(CrimePrediction.district_id == district_id)
+            dist_obj = db.query(District).filter(District.id == district_id).first()
+            eff_did = (
+                dist_obj.parent_district_id
+                if (dist_obj and not dist_obj.is_census_2011 and dist_obj.parent_district_id)
+                else district_id
+            )
+            query = query.filter(CrimePrediction.district_id == eff_did)
         if forecast_period is not None:
             query = query.filter(CrimePrediction.prediction_date == forecast_period)
         if forecast_status is not None:
@@ -329,6 +335,12 @@ class PredictionRepository:
         active_model = PredictionRepository.get_active_model(db)
         model_id = active_model.id if active_model else 1
 
+        eff_did = district_id
+        if district_id:
+            d_obj = db.query(District).filter(District.id == district_id).first()
+            if d_obj and not d_obj.is_census_2011 and d_obj.parent_district_id:
+                eff_did = d_obj.parent_district_id
+
         # 1. Fetch actual incident totals by month for 2024-2025
         actual_query = """
             SELECT 
@@ -338,9 +350,9 @@ class PredictionRepository:
             WHERE incident_date >= '2024-01-01'
         """
         params: Dict[str, Any] = {"mid": model_id}
-        if district_id:
+        if eff_did:
             actual_query += " AND district_id = :did"
-            params["did"] = district_id
+            params["did"] = eff_did
         actual_query += " GROUP BY period ORDER BY period ASC"
 
         actual_rows = db.execute(text(actual_query), params).fetchall()
@@ -357,7 +369,7 @@ class PredictionRepository:
             FROM crime_predictions
             WHERE model_id = :mid
         """
-        if district_id:
+        if eff_did:
             pred_query += " AND district_id = :did"
         pred_query += " GROUP BY period ORDER BY period ASC"
 
@@ -450,9 +462,17 @@ class PredictionRepository:
         """
         Retrieves forecast or historical incident count for a specific district and month,
         evaluating comparative baseline metrics and crime-level classification.
+        Supports automatic resolution to Census 2011 parent jurisdiction for reorganized districts.
         """
         district = (
-            db.query(District.id, District.district_name, State.id.label("state_id"), State.state_name)
+            db.query(
+                District.id,
+                District.district_name,
+                District.parent_district_id,
+                District.is_census_2011,
+                State.id.label("state_id"),
+                State.state_name,
+            )
             .join(State, District.state_id == State.id)
             .filter(District.id == district_id)
             .first()
@@ -464,10 +484,22 @@ class PredictionRepository:
         period_str = f"{year}-{month:02d}-01"
         period_display = f"{year}-{month:02d}"
 
+        # Resolve Census 2011 effective district if this is a reorganized child district
+        eff_did = district.id
+        parent_district_name = None
+        is_derived_from_parent = False
+
+        if not district.is_census_2011 and district.parent_district_id:
+            parent_dist = db.query(District).filter(District.id == district.parent_district_id).first()
+            if parent_dist:
+                eff_did = parent_dist.id
+                parent_district_name = parent_dist.district_name
+                is_derived_from_parent = True
+
         # 1. Check baseline incident history for this district
         total_dist_incidents = db.execute(
             text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
-            {"did": did},
+            {"did": eff_did},
         ).scalar() or 0
 
         has_baseline = total_dist_incidents > 0
@@ -483,6 +515,9 @@ class PredictionRepository:
                 "district_name": dname,
                 "state_id": sid,
                 "state_name": sname,
+                "parent_district_id": district.parent_district_id,
+                "parent_district_name": parent_district_name,
+                "is_derived_from_parent": is_derived_from_parent,
                 "year": year,
                 "month": month,
                 "period": period_display,
@@ -503,7 +538,7 @@ class PredictionRepository:
                 "percentage_change": None,
                 "crime_level": "Insufficient Baseline",
                 "comparison_rule": comparison_rule,
-                "explanation": f"District '{dname}' does not have historical time-series incident records in the database to establish a predictive baseline.",
+                "explanation": f"District '{dname}' does not have historical time-series incident records or a mapped Census 2011 parent jurisdiction in the database to establish a predictive baseline.",
                 "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
                 "message": "Insufficient historical baseline data for this district.",
             }
@@ -515,7 +550,7 @@ class PredictionRepository:
                 FROM crime_predictions
                 WHERE district_id = :did AND prediction_date = :pdate
             """),
-            {"did": did, "pdate": period_str},
+            {"did": eff_did, "pdate": period_str},
         ).fetchone()
 
         # 3. Check if historical actuals exist for this month
@@ -526,7 +561,7 @@ class PredictionRepository:
                   AND incident_date >= :pdate
                   AND incident_date <= LAST_DAY(:pdate)
             """),
-            {"did": did, "pdate": period_str},
+            {"did": eff_did, "pdate": period_str},
         ).scalar()
 
         is_historical = year <= 2025 and actual_cnt is not None
@@ -538,6 +573,9 @@ class PredictionRepository:
                 "district_name": dname,
                 "state_id": sid,
                 "state_name": sname,
+                "parent_district_id": district.parent_district_id,
+                "parent_district_name": parent_district_name,
+                "is_derived_from_parent": is_derived_from_parent,
                 "year": year,
                 "month": month,
                 "period": period_display,
@@ -593,7 +631,7 @@ class PredictionRepository:
                   AND incident_date >= :bstart
                   AND incident_date <= LAST_DAY(:bstart)
             """),
-            {"did": did, "bstart": base_period_str},
+            {"did": eff_did, "bstart": base_period_str},
         ).scalar() or 0
 
         baseline_val = float(base_cnt)
@@ -606,7 +644,7 @@ class PredictionRepository:
                     SELECT COUNT(*) / 6.0 FROM crime_incidents
                     WHERE district_id = :did AND MONTH(incident_date) = :m
                 """),
-                {"did": did, "m": month},
+                {"did": eff_did, "m": month},
             ).scalar() or 0.0
             if seasonal_avg > 0.0:
                 baseline_val = round(float(seasonal_avg), 2)
@@ -638,18 +676,19 @@ class PredictionRepository:
         # 7. Human-readable explanation
         month_name = date(year, month, 1).strftime("%B %Y")
         base_label = baseline_desc
+        jurisdiction_note = f" (analytics resolve to Census 2011 baseline '{parent_district_name}')" if is_derived_from_parent and parent_district_name else ""
 
         if is_forecast:
             change_txt = f"{abs(num_change):.2f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.2f} incidents"
             explanation = (
-                f"For {month_name}, {dname} is projected to record approximately {display_val:.2f} incidents. "
+                f"For {month_name}, {dname}{jurisdiction_note} is projected to record approximately {display_val:.2f} incidents. "
                 f"This estimated crime level is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
                 f"representing an expected change of {change_txt}."
             )
         else:
             change_txt = f"{abs(num_change):.0f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.0f} incidents"
             explanation = (
-                f"In {month_name}, {dname} recorded {act_val} confirmed incidents. "
+                f"In {month_name}, {dname}{jurisdiction_note} recorded {act_val} confirmed incidents. "
                 f"This incident volume is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
                 f"representing a difference of {change_txt}."
             )
@@ -659,6 +698,9 @@ class PredictionRepository:
             "district_name": dname,
             "state_id": sid,
             "state_name": sname,
+            "parent_district_id": district.parent_district_id,
+            "parent_district_name": parent_district_name,
+            "is_derived_from_parent": is_derived_from_parent,
             "year": year,
             "month": month,
             "period": period_display,

@@ -46,6 +46,22 @@ const MONTH_NAMES = [
   'December',
 ];
 
+const getMonthStatus = (month: number, year: number) => {
+  if (year === 2027) {
+    if (month === 1) return { isSupported: true, label: 'January (Active Forecast)', tag: 'Active Forecast' };
+    return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Outside Horizon)`, tag: 'Outside Horizon' };
+  }
+  if (year === 2026) {
+    if (month >= 11) return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Active Forecast)`, tag: 'Active Forecast' };
+    if (month <= 3) return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Past Forecast)`, tag: 'Past Forecast' };
+    return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Outside Horizon)`, tag: 'Outside Horizon' };
+  }
+  if (year >= 2020 && year <= 2025) {
+    return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Historical Record)`, tag: 'Historical' };
+  }
+  return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Unsupported)`, tag: 'Unsupported' };
+};
+
 export const PredictionsPage: React.FC = () => {
   // Geographic and temporal controls
   const [states, setStates] = useState<StateItem[]>([]);
@@ -147,6 +163,31 @@ export const PredictionsPage: React.FC = () => {
       setSelectedDistrictId(undefined);
     }
   };
+
+  // When year changes, automatically adapt month if outside valid range
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    if (year === 2027 && selectedMonth !== 1) {
+      setSelectedMonth(1);
+    } else if (year === 2026 && selectedMonth > 3 && selectedMonth < 11) {
+      setSelectedMonth(11);
+    }
+  };
+
+  // Month options partitioned by validity in selected year
+  const monthOptions = useMemo(() => {
+    return MONTH_NAMES.map((name, idx) => {
+      const mNum = idx + 1;
+      const status = getMonthStatus(mNum, selectedYear);
+      return {
+        month: mNum,
+        name,
+        label: status.label,
+        isSupported: status.isSupported,
+        tag: status.tag,
+      };
+    });
+  }, [selectedYear]);
 
   // When district changes, refresh chart for the newly chosen district
   const handleDistrictChange = async (districtId: number | undefined) => {
@@ -311,11 +352,26 @@ export const PredictionsPage: React.FC = () => {
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
-                  {MONTH_NAMES.map((mName, idx) => (
-                    <option key={idx + 1} value={idx + 1}>
-                      {mName}
-                    </option>
-                  ))}
+                  <optgroup label="Supported Forecasts & Records">
+                    {monthOptions
+                      .filter((m) => m.isSupported)
+                      .map((m) => (
+                        <option key={m.month} value={m.month}>
+                          {m.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                  {monthOptions.some((m) => !m.isSupported) && (
+                    <optgroup label="Outside Forecast Horizon (Unavailable)">
+                      {monthOptions
+                        .filter((m) => !m.isSupported)
+                        .map((m) => (
+                          <option key={m.month} value={m.month}>
+                            {m.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -327,7 +383,7 @@ export const PredictionsPage: React.FC = () => {
                 <select
                   aria-label="Year"
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  onChange={(e) => handleYearChange(Number(e.target.value))}
                   className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
                   <option value={2027}>2027 (Forecast)</option>
@@ -364,6 +420,16 @@ export const PredictionsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Compact Horizon Indicator Note */}
+            <div className="mt-2.5 flex items-center justify-between text-[11px] text-[#5D6878] border-t border-slate-100 pt-2">
+              <span>
+                Active forecast horizon:{' '}
+                <strong className="text-emerald-700 font-semibold">Nov 2026 – Jan 2027</strong> • Past forecasts:{' '}
+                <strong className="text-slate-700 font-semibold">Jan – Mar 2026</strong> • Historical records:{' '}
+                <strong className="text-[#1769AA] font-semibold">2020 – 2025</strong>
+              </span>
+            </div>
+
             {predictError && (
               <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
@@ -393,7 +459,7 @@ export const PredictionsPage: React.FC = () => {
                   </span>
                 </div>
                 {predictionResult.is_available && (
-                  <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {predictionResult.is_historical ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 text-xs font-medium">
                         Historical actual record
@@ -401,6 +467,14 @@ export const PredictionsPage: React.FC = () => {
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium">
                         Statistical forecast
+                      </span>
+                    )}
+                    {predictionResult.is_derived_from_parent && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 text-xs font-medium"
+                        title={`Analytics resolve to Census 2011 baseline parent: ${predictionResult.parent_district_name || 'parent jurisdiction'}`}
+                      >
+                        Census 2011 baseline ({predictionResult.parent_district_name})
                       </span>
                     )}
                   </div>
