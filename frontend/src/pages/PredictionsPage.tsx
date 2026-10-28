@@ -9,6 +9,7 @@ import {
   Minus,
   AlertCircle,
   MapPin,
+  RotateCcw,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -46,30 +47,14 @@ const MONTH_NAMES = [
   'December',
 ];
 
-const getMonthStatus = (month: number, year: number) => {
-  if (year === 2027) {
-    if (month === 1) return { isSupported: true, label: 'January (Active Forecast)', tag: 'Active Forecast' };
-    return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Outside Horizon)`, tag: 'Outside Horizon' };
-  }
-  if (year === 2026) {
-    if (month >= 11) return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Active Forecast)`, tag: 'Active Forecast' };
-    if (month <= 3) return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Past Forecast)`, tag: 'Past Forecast' };
-    return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Outside Horizon)`, tag: 'Outside Horizon' };
-  }
-  if (year >= 2020 && year <= 2025) {
-    return { isSupported: true, label: `${MONTH_NAMES[month - 1]} (Historical Record)`, tag: 'Historical' };
-  }
-  return { isSupported: false, label: `${MONTH_NAMES[month - 1]} (Unsupported)`, tag: 'Unsupported' };
-};
-
 export const PredictionsPage: React.FC = () => {
-  // Geographic and temporal controls
+  // Geographic and temporal controls - initialized with NO default state, district, year, or month
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
-  const [selectedMonth, setSelectedMonth] = useState<number>(11);
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
 
   // Prediction result and state
   const [predictionResult, setPredictionResult] = useState<DistrictMonthPrediction | null>(null);
@@ -83,7 +68,7 @@ export const PredictionsPage: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  // Initial load: Fetch states and initialize with first state and district
+  // Initial load: Fetch states only, do NOT auto-select state or district
   const loadInitialData = useCallback(async () => {
     setIsInitialLoading(true);
     setPageError(null);
@@ -92,27 +77,14 @@ export const PredictionsPage: React.FC = () => {
       const stateList = statesRes.items || [];
       setStates(stateList);
 
-      if (stateList.length > 0) {
-        const firstState = stateList[0];
-        setSelectedStateId(firstState.id);
-
-        const distRes = await geographyApi.getDistricts(firstState.id, 'current');
-        const distList = distRes.items || [];
-        setDistricts(distList);
-
-        if (distList.length > 0) {
-          const firstDistrict = distList[0];
-          setSelectedDistrictId(firstDistrict.id);
-
-          // Fetch initial chart and prediction in parallel
-          const [chartData, predData] = await Promise.all([
-            predictionApi.getActualVsPredicted(firstDistrict.id),
-            predictionApi.getDistrictMonthPrediction(firstDistrict.id, 2026, 11),
-          ]);
-          setActualVsPred(chartData);
-          setPredictionResult(predData);
-        }
-      }
+      // Do NOT select any state, district, year, or month by default
+      setSelectedStateId(undefined);
+      setDistricts([]);
+      setSelectedDistrictId(undefined);
+      setSelectedYear(undefined);
+      setSelectedMonth(undefined);
+      setActualVsPred(null);
+      setPredictionResult(null);
     } catch (err: any) {
       setPageError(err?.message || 'Failed to initialize crime predictions.');
     } finally {
@@ -124,16 +96,18 @@ export const PredictionsPage: React.FC = () => {
     loadInitialData();
   }, [loadInitialData]);
 
-  // When State / UT changes, load districts and update district selection
+  // When State / UT changes, clear dependent district, year, month, and results
   const handleStateChange = async (stateId: number | undefined) => {
     setSelectedStateId(stateId);
+    setSelectedDistrictId(undefined);
+    setSelectedYear(undefined);
+    setSelectedMonth(undefined);
+    setDistricts([]);
+    setActualVsPred(null);
+    setPredictionResult(null);
     setPredictError(null);
 
     if (!stateId) {
-      setDistricts([]);
-      setSelectedDistrictId(undefined);
-      setActualVsPred(null);
-      setPredictionResult(null);
       return;
     }
 
@@ -141,73 +115,59 @@ export const PredictionsPage: React.FC = () => {
       const res = await geographyApi.getDistricts(stateId, 'current');
       const items = res.items || [];
       setDistricts(items);
-
-      if (items.length > 0) {
-        const newDistrictId = items[0].id;
-        setSelectedDistrictId(newDistrictId);
-
-        // Update chart and prediction for the new district
-        const [chartData, predData] = await Promise.all([
-          predictionApi.getActualVsPredicted(newDistrictId),
-          predictionApi.getDistrictMonthPrediction(newDistrictId, selectedYear, selectedMonth),
-        ]);
-        setActualVsPred(chartData);
-        setPredictionResult(predData);
-      } else {
-        setSelectedDistrictId(undefined);
-        setActualVsPred(null);
-        setPredictionResult(null);
-      }
     } catch {
       setDistricts([]);
-      setSelectedDistrictId(undefined);
     }
   };
 
-  // When year changes, automatically adapt month if outside valid range
-  const handleYearChange = (year: number) => {
-    setSelectedYear(year);
-    if (year === 2027 && selectedMonth !== 1) {
-      setSelectedMonth(1);
-    } else if (year === 2026 && selectedMonth > 3 && selectedMonth < 11) {
-      setSelectedMonth(11);
-    }
-  };
-
-  // Month options partitioned by validity in selected year
-  const monthOptions = useMemo(() => {
-    return MONTH_NAMES.map((name, idx) => {
-      const mNum = idx + 1;
-      const status = getMonthStatus(mNum, selectedYear);
-      return {
-        month: mNum,
-        name,
-        label: status.label,
-        isSupported: status.isSupported,
-        tag: status.tag,
-      };
-    });
-  }, [selectedYear]);
-
-  // When district changes, refresh chart for the newly chosen district
-  const handleDistrictChange = async (districtId: number | undefined) => {
+  // When District changes, clear dependent year, month, and results
+  const handleDistrictChange = (districtId: number | undefined) => {
     setSelectedDistrictId(districtId);
+    setSelectedYear(undefined);
+    setSelectedMonth(undefined);
     setPredictError(null);
-
-    if (districtId) {
-      try {
-        const chartData = await predictionApi.getActualVsPredicted(districtId);
-        setActualVsPred(chartData);
-      } catch {
-        // Keep existing or gracefully handle
-      }
-    }
+    setPredictionResult(null);
+    setActualVsPred(null);
   };
+
+  // When Year changes, clear dependent month and result
+  const handleYearChange = (year: number | undefined) => {
+    setSelectedYear(year);
+    setSelectedMonth(undefined);
+    setPredictError(null);
+    setPredictionResult(null);
+  };
+
+  // When Month changes, clear previous prediction until Predict is clicked
+  const handleMonthChange = (month: number | undefined) => {
+    setSelectedMonth(month);
+    setPredictError(null);
+    setPredictionResult(null);
+  };
+
+  // Reset Filters handler: restores initial unselected state
+  const handleResetFilters = () => {
+    setSelectedStateId(undefined);
+    setSelectedDistrictId(undefined);
+    setSelectedYear(undefined);
+    setSelectedMonth(undefined);
+    setDistricts([]);
+    setPredictionResult(null);
+    setActualVsPred(null);
+    setPredictError(null);
+  };
+
+  const hasActiveFilters = Boolean(
+    selectedStateId !== undefined ||
+    selectedDistrictId !== undefined ||
+    selectedYear !== undefined ||
+    selectedMonth !== undefined
+  );
 
   // Run prediction when user clicks "Predict Crime"
   const handlePredictCrime = async () => {
-    if (!selectedDistrictId) {
-      setPredictError('Please select a district to predict crime.');
+    if (!selectedDistrictId || !selectedYear || !selectedMonth) {
+      setPredictError('Please select state, district, year, and month to predict crime.');
       return;
     }
 
@@ -274,14 +234,16 @@ export const PredictionsPage: React.FC = () => {
 
       {!isInitialLoading && !pageError && (
         <div className="space-y-4">
-          {/* SECTION 1: COMPACT SELECTION CONTROLS */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-              {/* State / UT Selector */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  State / UT
-                </label>
+          {/* SECTION 1: PROGRESSIVE SELECTION CONTROLS */}
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+            <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+                <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
+                  <Sparkles className="h-3.5 w-3.5 text-[#1769AA]" />
+                  <span>Forecast Filter:</span>
+                </div>
+
+                {/* 1. State / UT Selector */}
                 <select
                   aria-label="State or Union Territory"
                   value={selectedStateId || ''}
@@ -289,124 +251,114 @@ export const PredictionsPage: React.FC = () => {
                     const val = e.target.value ? Number(e.target.value) : undefined;
                     handleStateChange(val);
                   }}
-                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  className="h-10 w-full sm:w-auto sm:min-w-[190px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
-                  <option value="">Select State / UT ({states.length || 36})</option>
+                  <option value="">Select State / UT</option>
                   {states.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.state_name}
                     </option>
                   ))}
                 </select>
+
+                {/* 2. District Selector (Revealed after State is selected) */}
+                {Boolean(selectedStateId) && (
+                  <select
+                    aria-label="District"
+                    value={selectedDistrictId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : undefined;
+                      handleDistrictChange(val);
+                    }}
+                    className="h-10 w-full sm:w-auto sm:min-w-[170px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select District</option>
+                    {districts.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.district_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 3. Year Selector (Revealed after District is selected) */}
+                {Boolean(selectedDistrictId) && (
+                  <select
+                    aria-label="Year"
+                    value={selectedYear || ''}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : undefined;
+                      handleYearChange(val);
+                    }}
+                    className="h-10 w-full sm:w-auto sm:min-w-[160px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select Year</option>
+                    <option value={2027}>2027 (Forecast)</option>
+                    <option value={2026}>2026 (Forecast)</option>
+                    <option value={2025}>2025 (Historical)</option>
+                    <option value={2024}>2024 (Historical)</option>
+                    <option value={2023}>2023 (Historical)</option>
+                    <option value={2022}>2022 (Historical)</option>
+                    <option value={2021}>2021 (Historical)</option>
+                    <option value={2020}>2020 (Historical)</option>
+                  </select>
+                )}
+
+                {/* 4. Month Selector (Revealed after Year is selected) */}
+                {Boolean(selectedYear) && (
+                  <select
+                    aria-label="Month"
+                    value={selectedMonth || ''}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : undefined;
+                      handleMonthChange(val);
+                    }}
+                    className="h-10 w-full sm:w-auto sm:min-w-[140px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select Month</option>
+                    {MONTH_NAMES.map((name, idx) => (
+                      <option key={idx + 1} value={idx + 1}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 5. Predict Crime Button (Revealed after Month is selected) */}
+                {Boolean(selectedMonth) && (
+                  <button
+                    type="button"
+                    onClick={handlePredictCrime}
+                    disabled={isPredicting || !selectedStateId || !selectedDistrictId || !selectedYear || !selectedMonth}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded bg-[#1769AA] px-4 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    {isPredicting ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Estimating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        <span>Predict Crime</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
 
-              {/* District Selector */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  District
-                </label>
-                <select
-                  aria-label="District"
-                  value={selectedDistrictId || ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? Number(e.target.value) : undefined;
-                    handleDistrictChange(val);
-                  }}
-                  disabled={!selectedStateId || districts.length === 0}
-                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50"
-                >
-                  <option value="">
-                    {!selectedStateId
-                      ? 'Select State First'
-                      : districts.length > 0
-                      ? 'Select District'
-                      : 'No Districts Found'}
-                  </option>
-                  {districts.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.district_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Month Selector */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  Month
-                </label>
-                <select
-                  aria-label="Month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                >
-                  <optgroup label="Supported Forecasts & Records">
-                    {monthOptions
-                      .filter((m) => m.isSupported)
-                      .map((m) => (
-                        <option key={m.month} value={m.month}>
-                          {m.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  {monthOptions.some((m) => !m.isSupported) && (
-                    <optgroup label="Outside Forecast Horizon (Unavailable)">
-                      {monthOptions
-                        .filter((m) => !m.isSupported)
-                        .map((m) => (
-                          <option key={m.month} value={m.month}>
-                            {m.label}
-                          </option>
-                        ))}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-
-              {/* Year Selector */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  Year
-                </label>
-                <select
-                  aria-label="Year"
-                  value={selectedYear}
-                  onChange={(e) => handleYearChange(Number(e.target.value))}
-                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                >
-                  <option value={2027}>2027 (Forecast)</option>
-                  <option value={2026}>2026 (Forecast)</option>
-                  <option value={2025}>2025 (Historical)</option>
-                  <option value={2024}>2024 (Historical)</option>
-                  <option value={2023}>2023 (Historical)</option>
-                  <option value={2022}>2022 (Historical)</option>
-                  <option value={2021}>2021 (Historical)</option>
-                  <option value={2020}>2020 (Historical)</option>
-                </select>
-              </div>
-
-              {/* Predict Crime Button */}
-              <div>
+              {/* Reset Filter Button */}
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={handlePredictCrime}
-                  disabled={isPredicting || !selectedDistrictId}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-[#1769AA] px-4 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer disabled:opacity-50"
+                  onClick={handleResetFilters}
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                  title="Reset all active filters"
                 >
-                  {isPredicting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Estimating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      <span>Predict Crime</span>
-                    </>
-                  )}
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Reset Filters</span>
                 </button>
-              </div>
+              )}
             </div>
 
             {predictError && (
@@ -417,7 +369,28 @@ export const PredictionsPage: React.FC = () => {
             )}
           </div>
 
-          {/* SECTION 2: COMPACT PREDICTION RESULT */}
+          {/* SECTION 2: Initial Prompt State */}
+          {!isPredicting && !predictionResult && (
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 text-center shadow-2xs">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA] mb-3">
+                <Activity className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-bold text-[#0B1F3A]">No Prediction Generated Yet</h3>
+              <p className="mt-1 text-xs text-[#5D6878] max-w-md mx-auto">
+                {!selectedStateId
+                  ? 'Select a State / UT to begin exploring crime projections.'
+                  : !selectedDistrictId
+                  ? 'Select a District within the chosen State / UT.'
+                  : !selectedYear
+                  ? 'Select a Year for historical actuals or future forecasts.'
+                  : !selectedMonth
+                  ? 'Select a Month, then click Predict Crime to generate predictions.'
+                  : 'Click Predict Crime to estimate incidents for the selected period.'}
+              </p>
+            </div>
+          )}
+
+          {/* SECTION 3: COMPACT PREDICTION RESULT */}
           {isPredicting && (
             <div className="rounded-lg border border-[#D9E1EA] bg-white p-6 text-center shadow-2xs">
               <div className="flex items-center justify-center gap-2 text-xs font-medium text-[#1769AA]">
@@ -492,84 +465,86 @@ export const PredictionsPage: React.FC = () => {
             </div>
           )}
 
-          {/* SECTION 3: COMPACT DISTRICT TIMELINE CHART */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-[#EAF3FA] p-1.5 text-[#1769AA]">
-                  <TrendingUp className="h-4 w-4" />
+          {/* SECTION 4: COMPACT DISTRICT TIMELINE CHART */}
+          {!isPredicting && actualVsPred && chartPoints.length > 0 && (
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-[#EAF3FA] p-1.5 text-[#1769AA]">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-[#0B1F3A]">
+                    Historical vs Predicted Trend
+                  </h3>
                 </div>
-                <h3 className="text-sm font-bold text-[#0B1F3A]">
-                  Historical vs Predicted Trend
-                </h3>
+              </div>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartPoints} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="period" stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 11 }} />
+                    <YAxis
+                      stroke="#CBD5E1"
+                      tick={{ fill: '#64748B', fontSize: 11 }}
+                      tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#E2E8F0',
+                        borderRadius: '0.5rem',
+                        color: '#0B1F3A',
+                        fontSize: '0.75rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                      formatter={(val: any, name: any) => {
+                        if (name === 'actual') {
+                          return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed'];
+                        }
+                        if (name === 'current_future') {
+                          return [val ? `${Number(val).toLocaleString()} estimated incidents` : '—', 'Estimated Incidents'];
+                        }
+                        return [val, String(name)];
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={32}
+                      formatter={(value) => {
+                        if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed</span>;
+                        if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Estimated Incidents</span>;
+                        return <span className="text-xs text-slate-500">{value}</span>;
+                      }}
+                    />
+
+                    {/* Historical Observed Caseload */}
+                    <Area
+                      type="monotone"
+                      dataKey="actual"
+                      name="actual"
+                      stroke="#1769AA"
+                      strokeWidth={2}
+                      fill="#1769AA"
+                      fillOpacity={0.12}
+                      connectNulls={false}
+                    />
+
+                    {/* Estimated Incidents */}
+                    <Line
+                      type="monotone"
+                      dataKey="current_future"
+                      name="current_future"
+                      stroke="#059669"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#059669' }}
+                      connectNulls={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </div>
-
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartPoints} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="period" stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 11 }} />
-                  <YAxis
-                    stroke="#CBD5E1"
-                    tick={{ fill: '#64748B', fontSize: 11 }}
-                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#E2E8F0',
-                      borderRadius: '0.5rem',
-                      color: '#0B1F3A',
-                      fontSize: '0.75rem',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                    formatter={(val: any, name: any) => {
-                      if (name === 'actual') {
-                        return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed'];
-                      }
-                      if (name === 'current_future') {
-                        return [val ? `${Number(val).toLocaleString()} estimated incidents` : '—', 'Estimated Incidents'];
-                      }
-                      return [val, String(name)];
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    height={32}
-                    formatter={(value) => {
-                      if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed</span>;
-                      if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Estimated Incidents</span>;
-                      return <span className="text-xs text-slate-500">{value}</span>;
-                    }}
-                  />
-
-                  {/* Historical Observed Caseload */}
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    name="actual"
-                    stroke="#1769AA"
-                    strokeWidth={2}
-                    fill="#1769AA"
-                    fillOpacity={0.12}
-                    connectNulls={false}
-                  />
-
-                  {/* Estimated Incidents */}
-                  <Line
-                    type="monotone"
-                    dataKey="current_future"
-                    name="current_future"
-                    stroke="#059669"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#059669' }}
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </DashboardLayout>

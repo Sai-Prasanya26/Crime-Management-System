@@ -33,6 +33,9 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 }) => {
   const selectedValue = useMemo(() => {
     if (!startDate && !endDate) {
+      return '';
+    }
+    if (startDate === '2020-01-01' && endDate === '2025-12-31') {
       return 'ALL';
     }
     const match = YEAR_OPTIONS.find(
@@ -43,8 +46,12 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    if (val === 'ALL') {
+    if (!val) {
       onChange(undefined, undefined);
+      return;
+    }
+    if (val === 'ALL') {
+      onChange('2020-01-01', '2025-12-31');
       return;
     }
     const match = YEAR_OPTIONS.find((opt) => opt.value === val);
@@ -68,6 +75,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           disabled={disabled}
           className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 pl-8 pr-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-60 cursor-pointer"
         >
+          <option value="">Select Year</option>
           {selectedValue === 'CUSTOM' && (
             <option value="CUSTOM" disabled hidden>
               Custom Range
@@ -81,31 +89,33 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         </select>
       </div>
 
-      {/* Custom Date Pickers */}
-      <div className="flex h-10 items-center justify-between sm:justify-start gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs w-full sm:w-auto overflow-hidden">
-        <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">From:</span>
-        <input
-          type="date"
-          aria-label="Start date"
-          value={startDate || ''}
-          min="2020-01-01"
-          max="2025-12-31"
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value || undefined, endDate)}
-          className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
-        />
-        <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">To:</span>
-        <input
-          type="date"
-          aria-label="End date"
-          value={endDate || ''}
-          min="2020-01-01"
-          max="2025-12-31"
-          disabled={disabled}
-          onChange={(e) => onChange(startDate, e.target.value || undefined)}
-          className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
-        />
-      </div>
+      {/* Custom Date Pickers - Revealed after Year selection */}
+      {selectedValue && (
+        <div className="flex h-10 items-center justify-between sm:justify-start gap-1.5 rounded border border-[#D9E1EA] bg-white px-2.5 py-1 text-[13px] text-[#172033] shadow-2xs w-full sm:w-auto overflow-hidden">
+          <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">From:</span>
+          <input
+            type="date"
+            aria-label="Start date"
+            value={startDate || ''}
+            min="2020-01-01"
+            max="2025-12-31"
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value || undefined, endDate)}
+            className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
+          />
+          <span className="text-[#5D6878] text-[11px] font-medium uppercase shrink-0">To:</span>
+          <input
+            type="date"
+            aria-label="End date"
+            value={endDate || ''}
+            min="2020-01-01"
+            max="2025-12-31"
+            disabled={disabled}
+            onChange={(e) => onChange(startDate, e.target.value || undefined)}
+            className="bg-transparent text-[12px] sm:text-[13px] text-[#172033] focus:outline-none [color-scheme:light] font-medium disabled:opacity-60 min-w-0"
+          />
+        </div>
+      )}
     </div>
   );
 };

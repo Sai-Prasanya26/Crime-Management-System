@@ -641,6 +641,12 @@ export const ResourceOptimizationPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3">
           {/* Scope and Status Filters */}
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
+            <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
+              <Sliders className="h-3.5 w-3.5 text-[#1769AA]" />
+              <span>Filter:</span>
+            </div>
+
+            {/* 1. State / UT Selector */}
             <select
               aria-label="Filter by State or Union Territory"
               value={selectedStateId || ''}
@@ -651,7 +657,7 @@ export const ResourceOptimizationPage: React.FC = () => {
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">All States &amp; UTs ({states.length || 36})</option>
+              <option value="">Select State / UT</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -659,34 +665,34 @@ export const ResourceOptimizationPage: React.FC = () => {
               ))}
             </select>
 
-            {/* District Dropdown Selector */}
-            <select
-              aria-label="Filter by District"
-              value={selectedDistrictId || ''}
-              onChange={(e) => {
-                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                setSelectedDistrictId(val);
-              }}
-              disabled={isDistrictsLoading || districts.length === 0}
-              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {isDistrictsLoading
-                  ? 'Loading Districts...'
-                  : districts.length === 0
-                  ? 'No Districts Available'
-                  : selectedStateId
-                  ? `All Districts in State (${districts.length})`
-                  : `All Districts (${districts.length})`}
-              </option>
-              {districts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.district_name}
+            {/* 2. District Dropdown Selector (Revealed after State is selected) */}
+            {Boolean(selectedStateId) && (
+              <select
+                aria-label="Filter by District"
+                value={selectedDistrictId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                  setSelectedDistrictId(val);
+                }}
+                disabled={isDistrictsLoading || districts.length === 0}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isDistrictsLoading
+                    ? 'Loading Districts...'
+                    : districts.length === 0
+                    ? 'No Districts Available'
+                    : 'Select District'}
                 </option>
-              ))}
-            </select>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.district_name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-            {['districts', 'personnel', 'vehicles', 'investigation', 'surveillance', 'infrastructure'].includes(activeTab) && (
+            {Boolean(selectedDistrictId) && ['districts', 'personnel', 'vehicles', 'investigation', 'surveillance', 'infrastructure'].includes(activeTab) && (
               <select
                 aria-label="Filter by Inventory Status"
                 value={statusFilter}
@@ -707,10 +713,10 @@ export const ResourceOptimizationPage: React.FC = () => {
                   setSelectedDistrictId(undefined);
                   setStatusFilter('ALL');
                 }}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-3 text-[12px] font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] transition-colors cursor-pointer shrink-0"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
+                <span>Reset Filters</span>
               </button>
             )}
           </div>

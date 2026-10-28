@@ -270,6 +270,8 @@ export const DistrictsPage: React.FC = () => {
   const handleStateChange = (stateId?: number) => {
     setSelectedStateId(stateId);
     setSelectedDistrictId(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
     setDistrictDetail(null);
     setJurisdictionProfile(null);
     setProfileError(null);
@@ -282,11 +284,16 @@ export const DistrictsPage: React.FC = () => {
     nextParams.delete('district_id');
     nextParams.delete('state');
     nextParams.delete('district');
+    nextParams.delete('start_date');
+    nextParams.delete('end_date');
+    nextParams.delete('year');
     setSearchParams(nextParams, { replace: true });
   };
 
   const handleDistrictChange = (districtId?: number) => {
     setSelectedDistrictId(districtId);
+    setStartDate(undefined);
+    setEndDate(undefined);
     setDistrictDetail(null);
     setJurisdictionProfile(null);
     setProfileError(null);
@@ -297,6 +304,9 @@ export const DistrictsPage: React.FC = () => {
       nextParams.delete('district_id');
     }
     nextParams.delete('district');
+    nextParams.delete('start_date');
+    nextParams.delete('end_date');
+    nextParams.delete('year');
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -372,7 +382,7 @@ export const DistrictsPage: React.FC = () => {
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">All States &amp; UTs ({states.length || 36})</option>
+              <option value="">Select State / UT</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -389,7 +399,7 @@ export const DistrictsPage: React.FC = () => {
                 }}
                 className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
-                <option value="">Select District ({districts.length})</option>
+                <option value="">Select District</option>
                 {districts.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.district_name}
@@ -398,12 +408,14 @@ export const DistrictsPage: React.FC = () => {
               </select>
             )}
 
-            <DateRangeFilter
-              startDate={startDate}
-              endDate={endDate}
-              onChange={handleDateChange}
-              disabled={isLoading}
-            />
+            {selectedDistrictId && (
+              <DateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onChange={handleDateChange}
+                disabled={isLoading}
+              />
+            )}
           </div>
 
           {hasActiveFilters && (

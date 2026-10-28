@@ -74,7 +74,9 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       ...filters,
       geography_mode: 'current',
       state_id: val,
-      district_id: undefined, // Reset district when state changes
+      district_id: undefined, // Clear dependent district when state changes
+      start_date: undefined,  // Clear dependent dates
+      end_date: undefined,
     });
   };
 
@@ -84,6 +86,8 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       ...filters,
       geography_mode: 'current',
       district_id: val,
+      start_date: undefined, // Clear dependent dates when district changes
+      end_date: undefined,
     });
   };
 
@@ -117,10 +121,10 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           {/* Analysis Filters Badge */}
           <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
             <Filter className="h-3.5 w-3.5 text-[#1769AA]" />
-            <span>Analysis Filters:</span>
+            <span>Filter:</span>
           </div>
 
-          {/* State / UT Selector */}
+          {/* 1. State / UT Selector (Always initially visible) */}
           <select
             id="state-select"
             aria-label="State or Union Territory"
@@ -129,7 +133,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             disabled={loadingStates || isLoading}
             className="h-10 w-full sm:w-auto sm:min-w-[190px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:opacity-60 cursor-pointer"
           >
-            <option value="">All States &amp; UTs ({states.length || 36})</option>
+            <option value="">Select State / UT</option>
             {states.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.state_name}
@@ -137,36 +141,36 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             ))}
           </select>
 
-          {/* District Selector */}
-          <select
-            id="district-select"
-            aria-label="District"
-            value={filters.district_id || ''}
-            onChange={handleDistrictChange}
-            disabled={!filters.state_id || loadingDistricts || isLoading}
-            className="h-10 w-full sm:w-auto sm:min-w-[170px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:cursor-not-allowed disabled:bg-[#F4F7FA] disabled:text-[#7C8796] disabled:opacity-60 cursor-pointer"
-          >
-            <option value="">
-              {!filters.state_id
-                ? 'All Districts'
-                : loadingDistricts
-                ? 'Loading districts...'
-                : `All Districts (${districts.length})`}
-            </option>
-            {districts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.district_name}
+          {/* 2. District Selector (Revealed after State is selected) */}
+          {Boolean(filters.state_id) && (
+            <select
+              id="district-select"
+              aria-label="District"
+              value={filters.district_id || ''}
+              onChange={handleDistrictChange}
+              disabled={loadingDistricts || isLoading}
+              className="h-10 w-full sm:w-auto sm:min-w-[170px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:cursor-not-allowed disabled:bg-[#F4F7FA] disabled:text-[#7C8796] disabled:opacity-60 cursor-pointer"
+            >
+              <option value="">
+                {loadingDistricts ? 'Loading districts...' : 'Select District'}
               </option>
-            ))}
-          </select>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.district_name}
+                </option>
+              ))}
+            </select>
+          )}
 
-          {/* Date Range Filter */}
-          <DateRangeFilter
-            startDate={filters.start_date}
-            endDate={filters.end_date}
-            onChange={handleDateChange}
-            disabled={isLoading}
-          />
+          {/* 3. Year / Date Range Selector (Revealed after District is selected) */}
+          {Boolean(filters.district_id) && (
+            <DateRangeFilter
+              startDate={filters.start_date}
+              endDate={filters.end_date}
+              onChange={handleDateChange}
+              disabled={isLoading}
+            />
+          )}
         </div>
 
         {/* Reset Filter Action */}

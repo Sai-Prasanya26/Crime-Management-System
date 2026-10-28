@@ -318,7 +318,12 @@ export const RiskAssessmentPage: React.FC = () => {
 
           {/* SECTION B: FILTER TOOLBAR */}
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-            {/* State / UT Selector */}
+            <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
+              <ShieldAlert className="h-3.5 w-3.5 text-[#1769AA]" />
+              <span>Filter:</span>
+            </div>
+
+            {/* 1. State / UT Selector */}
             <select
               id="state-filter"
               aria-label="Filter by State or Union Territory"
@@ -327,11 +332,12 @@ export const RiskAssessmentPage: React.FC = () => {
                 const val = e.target.value ? Number(e.target.value) : undefined;
                 setSelectedStateId(val);
                 setSelectedDistrictId(undefined);
+                setSelectedRiskLevel(undefined);
                 setCurrentPage(1);
               }}
-              className="h-[42px] w-full sm:w-[240px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              className="h-10 w-full sm:w-[240px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">All States &amp; UTs ({states.length || 36})</option>
+              <option value="">Select State / UT</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -339,51 +345,55 @@ export const RiskAssessmentPage: React.FC = () => {
               ))}
             </select>
 
-            {/* District Selector */}
-            <select
-              id="district-filter"
-              aria-label="Filter by District"
-              value={selectedDistrictId || ''}
-              disabled={!selectedStateId}
-              onChange={(e) => {
-                const val = e.target.value ? Number(e.target.value) : undefined;
-                setSelectedDistrictId(val);
-                setCurrentPage(1);
-              }}
-              className="h-[42px] w-full sm:w-[220px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <option value="">{selectedStateId ? `All Districts (${districts.length})` : 'Select State First'}</option>
-              {districts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.district_name}
-                </option>
-              ))}
-            </select>
+            {/* 2. District Selector (Revealed after State is selected) */}
+            {Boolean(selectedStateId) && (
+              <select
+                id="district-filter"
+                aria-label="Filter by District"
+                value={selectedDistrictId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : undefined;
+                  setSelectedDistrictId(val);
+                  setSelectedRiskLevel(undefined);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full sm:w-[220px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">Select District</option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.district_name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-            {/* Risk Level Selector */}
-            <select
-              id="risk-level-filter"
-              aria-label="Filter by Risk Category"
-              value={selectedRiskLevel || ''}
-              onChange={(e) => {
-                setSelectedRiskLevel(e.target.value || undefined);
-                setCurrentPage(1);
-              }}
-              className="h-[42px] w-full sm:w-[200px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-            >
-              <option value="">All Risk Categories</option>
-              <option value="CRITICAL">Critical</option>
-              <option value="HIGH">High</option>
-              <option value="MODERATE">Moderate</option>
-              <option value="LOW">Low</option>
-            </select>
+            {/* 3. Risk Level Selector (Revealed after District is selected) */}
+            {Boolean(selectedDistrictId) && (
+              <select
+                id="risk-level-filter"
+                aria-label="Filter by Risk Category"
+                value={selectedRiskLevel || ''}
+                onChange={(e) => {
+                  setSelectedRiskLevel(e.target.value || undefined);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full sm:w-[200px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">All Risk Categories</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MODERATE">Moderate</option>
+                <option value="LOW">Low</option>
+              </select>
+            )}
 
             {/* Reset Action */}
             {(selectedStateId !== undefined || selectedDistrictId !== undefined || selectedRiskLevel !== undefined) && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3.5 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0 ml-auto sm:ml-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Reset Filters</span>

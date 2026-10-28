@@ -46,11 +46,12 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
 }) => {
   // Navigation & filters
   const [activeTab, setActiveTab] = useState<CostTabType>('scenarios');
-  const [periodYear, setPeriodYear] = useState<number>(2026);
-  const [periodMonth, setPeriodMonth] = useState<number>(1);
+  const [periodYear, setPeriodYear] = useState<number | undefined>(undefined);
+  const [periodMonth, setPeriodMonth] = useState<number | undefined>(undefined);
   const [isAnnualView, setIsAnnualView] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedQualityTier, setSelectedQualityTier] = useState<string>('ALL');
+  const [selectedDistrictName, setSelectedDistrictName] = useState<string>('');
 
   // Optimization runs selector for scenario estimation
   const [optRuns, setOptRuns] = useState<OptimizationRunResponse[]>([]);
@@ -114,13 +115,10 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         setActiveRun(latestDetailed);
       }
 
-      if (optRunsList && optRunsList.length >= 2) {
-        setBaselineOptRunId(optRunsList[1].run_id);
-        setScenarioOptRunId(optRunsList[0].run_id);
-        setSelectedOptRunId(optRunsList[0].run_id);
-      } else if (optRunsList && optRunsList.length === 1) {
-        setSelectedOptRunId(optRunsList[0].run_id);
-      }
+      // Do not auto-select runs - require user explicit selection
+      setSelectedOptRunId('');
+      setBaselineOptRunId('');
+      setScenarioOptRunId('');
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || 'Failed to initialize budget module.');
     } finally {
@@ -143,8 +141,8 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
     try {
       const runRes = await budgetApi.estimateBudget({
         optimization_run_id: selectedOptRunId,
-        period_year: periodYear,
-        period_month: periodMonth,
+        period_year: periodYear || 2026,
+        period_month: periodMonth || 1,
         include_procurement: true,
       });
       // Fetch full details
@@ -182,6 +180,20 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
     }
   };
 
+  // Available districts for the selected state in activeRun items
+  const stateDistrictOptions = useMemo(() => {
+    if (!selectedStateId || !activeRun?.items || !states) return [];
+    const selectedState = states.find((s) => s.id === selectedStateId);
+    if (!selectedState) return [];
+    const names = new Set<string>();
+    for (const item of activeRun.items) {
+      if (item.state_name && item.state_name.toLowerCase() === selectedState.state_name.toLowerCase()) {
+        if (item.district_name) names.add(item.district_name);
+      }
+    }
+    return Array.from(names).sort();
+  }, [selectedStateId, activeRun?.items, states]);
+
   // Filtered district items
   const filteredDistrictItems = useMemo(() => {
     if (!activeRun?.items) return [];
@@ -194,6 +206,12 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
           (it) => it.state_name && it.state_name.toLowerCase() === selectedState.state_name.toLowerCase()
         );
       }
+    }
+
+    if (selectedDistrictName) {
+      list = list.filter(
+        (it) => it.district_name && it.district_name.toLowerCase() === selectedDistrictName.toLowerCase()
+      );
     }
 
     if (searchQuery.trim()) {
@@ -210,7 +228,7 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
     }
 
     return list;
-  }, [activeRun?.items, searchQuery, selectedQualityTier, selectedStateId, states]);
+  }, [activeRun?.items, searchQuery, selectedQualityTier, selectedStateId, selectedDistrictName, states]);
 
   if (isLoading) {
     return <LoadingState message="Loading financial benchmarks, cost models, and scenario runs..." />;
@@ -226,10 +244,14 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
             <select
               aria-label="Optimization Run"
               value={selectedOptRunId}
-              onChange={(e) => setSelectedOptRunId(e.target.value)}
+              onChange={(e) => {
+                setSelectedOptRunId(e.target.value);
+                setPeriodYear(undefined);
+                setPeriodMonth(undefined);
+              }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">Select Optimization Run ({optRuns.length})</option>
+              <option value="">Select Optimization Run</option>
               {optRuns.map((r) => (
                 <option key={r.run_id} value={r.run_id}>
                   {r.scenario_name} ({r.allocation_mode})
@@ -237,30 +259,55 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
               ))}
             </select>
 
-            {/* Year Selector */}
-            <select
-              aria-label="Year"
-              value={periodYear}
-              onChange={(e) => setPeriodYear(parseInt(e.target.value, 10))}
-              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-            >
-              <option value={2026}>2026</option>
-              <option value={2027}>2027</option>
-            </select>
+            {/* Year Selector (Revealed after Optimization Run is selected) */}
+            {Boolean(selectedOptRunId) && (
+              <select
+                aria-label="Year"
+                value={periodYear || ''}
+                onChange={(e) => {
+                  setPeriodYear(e.target.value ? parseInt(e.target.value, 10) : undefined);
+                  setPeriodMonth(undefined);
+                }}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">Select Year</option>
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+              </select>
+            )}
 
-            {/* Month Selector */}
-            <select
-              aria-label="Month"
-              value={periodMonth}
-              onChange={(e) => setPeriodMonth(parseInt(e.target.value, 10))}
-              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-            >
-              {[...Array(12)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}
-                </option>
-              ))}
-            </select>
+            {/* Month Selector (Revealed after Year is selected) */}
+            {Boolean(periodYear) && (
+              <select
+                aria-label="Month"
+                value={periodMonth || ''}
+                onChange={(e) => setPeriodMonth(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">Select Month</option>
+                {[...Array(12)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Reset Filters */}
+            {Boolean(selectedOptRunId || periodYear || periodMonth) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOptRunId('');
+                  setPeriodYear(undefined);
+                  setPeriodMonth(undefined);
+                }}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
 
             {/* View Mode Toggle */}
             <button
@@ -418,7 +465,11 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                     <select
                       aria-label="Baseline Scenario"
                       value={baselineOptRunId}
-                      onChange={(e) => setBaselineOptRunId(e.target.value)}
+                      onChange={(e) => {
+                        setBaselineOptRunId(e.target.value);
+                        setScenarioOptRunId('');
+                        setScenarioComparison(null);
+                      }}
                       className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                     >
                       <option value="">Select Baseline Scenario</option>
@@ -430,22 +481,41 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-semibold text-[#5D6878] shrink-0">Comparison:</label>
-                    <select
-                      aria-label="Comparison Scenario"
-                      value={scenarioOptRunId}
-                      onChange={(e) => setScenarioOptRunId(e.target.value)}
-                      className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  {Boolean(baselineOptRunId) && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-[#5D6878] shrink-0">Comparison:</label>
+                      <select
+                        aria-label="Comparison Scenario"
+                        value={scenarioOptRunId}
+                        onChange={(e) => setScenarioOptRunId(e.target.value)}
+                        className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                      >
+                        <option value="">Select Comparison Scenario</option>
+                        {optRuns
+                          .filter((r) => r.run_id !== baselineOptRunId)
+                          .map((r) => (
+                            <option key={`scen-${r.run_id}`} value={r.run_id}>
+                              {r.scenario_name} ({r.allocation_mode})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {(baselineOptRunId || scenarioOptRunId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBaselineOptRunId('');
+                        setScenarioOptRunId('');
+                        setScenarioComparison(null);
+                      }}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
                     >
-                      <option value="">Select Comparison Scenario</option>
-                      {optRuns.map((r) => (
-                        <option key={`scen-${r.run_id}`} value={r.run_id}>
-                          {r.scenario_name} ({r.allocation_mode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Reset</span>
+                    </button>
+                  )}
                 </div>
 
                 <button
@@ -663,43 +733,87 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3.5" />
-                  <input
-                    type="text"
-                    placeholder="Search district name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-10 w-56 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
-                  />
-                </div>
-
-                <select
-                  aria-label="Filter by Quality Tier"
-                  value={selectedQualityTier}
-                  onChange={(e) => setSelectedQualityTier(e.target.value)}
-                  className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                >
-                  <option value="ALL">All Quality Tiers</option>
-                  <option value="OFFICIAL_DOCUMENTED">Official Documented</option>
-                  <option value="ESTIMATED_BENCHMARK">Estimated Benchmark</option>
-                  <option value="ASSUMPTION_BASED">Assumption Based</option>
-                </select>
-
+                {/* 1. State / UT Selector */}
                 {states.length > 0 && onStateSelect && (
                   <select
                     aria-label="Filter by State"
                     value={selectedStateId || ''}
-                    onChange={(e) => onStateSelect(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                      onStateSelect(val);
+                      setSelectedDistrictName('');
+                    }}
                     className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                   >
-                    <option value="">All States / UTs</option>
+                    <option value="">Select State / UT</option>
                     {states.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.state_name}
                       </option>
                     ))}
                   </select>
+                )}
+
+                {/* 2. District Selector (Revealed after State is selected) */}
+                {Boolean(selectedStateId) && (
+                  <select
+                    aria-label="Filter by District"
+                    value={selectedDistrictName}
+                    onChange={(e) => setSelectedDistrictName(e.target.value)}
+                    className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select District</option>
+                    {stateDistrictOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 3. Quality Tier & Search (Revealed after District is selected) */}
+                {Boolean(selectedDistrictName) && (
+                  <>
+                    <select
+                      aria-label="Filter by Quality Tier"
+                      value={selectedQualityTier}
+                      onChange={(e) => setSelectedQualityTier(e.target.value)}
+                      className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                    >
+                      <option value="ALL">All Quality Tiers</option>
+                      <option value="OFFICIAL_DOCUMENTED">Official Documented</option>
+                      <option value="ESTIMATED_BENCHMARK">Estimated Benchmark</option>
+                      <option value="ASSUMPTION_BASED">Assumption Based</option>
+                    </select>
+
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3.5" />
+                      <input
+                        type="text"
+                        placeholder="Search district name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-10 w-48 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Reset Filters Action */}
+                {(selectedStateId || selectedDistrictName || selectedQualityTier !== 'ALL' || searchQuery) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onStateSelect) onStateSelect(undefined);
+                      setSelectedDistrictName('');
+                      setSelectedQualityTier('ALL');
+                      setSearchQuery('');
+                    }}
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Reset</span>
+                  </button>
                 )}
               </div>
 
