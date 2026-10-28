@@ -329,7 +329,7 @@ class TestCrimePredictionPipeline(unittest.TestCase):
         self.assertTrue(d1["is_forecast"])
         self.assertFalse(d1["is_historical"])
         self.assertEqual(d1["data_type"], "FORECAST")
-        self.assertIn(d1["crime_level"], ["Higher", "Moderate", "Lower"])
+        self.assertIn(d1["crime_level"], ["Higher", "Similar", "Lower"])
         self.assertIsNotNone(d1["predicted_count"])
         self.assertIn("Forecasts are statistical estimates", d1["disclaimer"])
 

@@ -619,21 +619,21 @@ class PredictionRepository:
         else:
             pct_change = None
 
-        # 6. Classification: Higher, Moderate, Lower
+        # 6. Classification: Higher, Similar, Lower
         if baseline_val > 0:
             if pct_change > 5.0 and num_change >= 0.5:
                 level = "Higher"
             elif pct_change < -5.0 and num_change <= -0.5:
                 level = "Lower"
             else:
-                level = "Moderate"
+                level = "Similar"
         else:
             if display_val >= 1.0:
                 level = "Higher"
             elif display_val == 0.0:
-                level = "Moderate"
+                level = "Similar"
             else:
-                level = "Moderate"
+                level = "Similar"
 
         # 7. Human-readable explanation
         month_name = date(year, month, 1).strftime("%B %Y")
