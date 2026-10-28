@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ShieldAlert,
   Activity,
@@ -25,46 +25,62 @@ import type {
   StateItem,
   DistrictItem,
   RiskScoreType,
+  RiskTrendPoint,
 } from '../types';
 
-interface AssessmentPeriodOption {
-  value: string;
-  label: string;
-  scoreType: RiskScoreType;
+interface ActivePeriodInfo {
+  period: string;
   version: string;
+  scoreType: RiskScoreType;
 }
 
-const AVAILABLE_PERIODS: AssessmentPeriodOption[] = [
-  {
-    value: '2026-11-01',
-    label: 'November 2026 (Forecast)',
-    scoreType: 'FORECAST',
-    version: 'risk-v2.0',
-  },
-  {
-    value: '2026-12-01',
-    label: 'December 2026 (Forecast)',
-    scoreType: 'FORECAST',
-    version: 'risk-v2.0',
-  },
-  {
-    value: '2027-01-01',
-    label: 'January 2027 (Forecast)',
-    scoreType: 'FORECAST',
-    version: 'risk-v2.0',
-  },
-  {
-    value: '2025-12-01',
-    label: 'December 2025 (Historical Actuals)',
-    scoreType: 'HISTORICAL',
-    version: 'risk-v2.0',
-  },
-];
+/**
+ * Automatically chooses the latest available active future forecast period from trends data.
+ * If no active forecast period exists, falls back to the latest valid available assessment period.
+ */
+const resolveActivePeriod = (trends: RiskTrendPoint[]): ActivePeriodInfo | null => {
+  if (!trends || trends.length === 0) {
+    return null;
+  }
+
+  // Filter out any unit test mock dates or dates with year < 2000
+  const validTrends = trends.filter((t) => {
+    if (!t.period) return false;
+    const year = t.period_year || parseInt(t.period.slice(0, 4), 10);
+    return !isNaN(year) && year >= 2000;
+  });
+
+  const pool = validTrends.length > 0 ? validTrends : trends;
+
+  // 1. Look for active future forecast periods (score_type === 'FORECAST')
+  const forecastPeriods = pool
+    .filter((t) => t.score_type === 'FORECAST')
+    .sort((a, b) => b.period.localeCompare(a.period));
+
+  if (forecastPeriods.length > 0) {
+    // Prefer production calculation version (risk-v2.0)
+    const v2Period = forecastPeriods.find((t) => t.calculation_version === 'risk-v2.0');
+    const chosen = v2Period || forecastPeriods[0];
+    return {
+      period: chosen.period,
+      version: chosen.calculation_version || 'risk-v2.0',
+      scoreType: 'FORECAST',
+    };
+  }
+
+  // 2. If no forecast period exists, use the latest valid available assessment period
+  const sortedAll = [...pool].sort((a, b) => b.period.localeCompare(a.period));
+  const chosen = sortedAll[0];
+  return {
+    period: chosen.period,
+    version: chosen.calculation_version || 'risk-v2.0',
+    scoreType: chosen.score_type || 'HISTORICAL',
+  };
+};
 
 export const RiskAssessmentPage: React.FC = () => {
-  // Period and version selection
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('2026-11-01');
-  const currentPeriodConfig = AVAILABLE_PERIODS.find((p) => p.value === selectedPeriod) || AVAILABLE_PERIODS[0];
+  // Internally selected assessment period (derived automatically from API data)
+  const [activePeriod, setActivePeriod] = useState<ActivePeriodInfo | null>(null);
 
   // High-level overview state
   const [overview, setOverview] = useState<RiskOverviewResponse | null>(null);
@@ -92,23 +108,42 @@ export const RiskAssessmentPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial load of overview, states, and initial table page
+  const isInitialMount = useRef<boolean>(true);
+
+  // Initial load of trends, auto-selected period, overview, states, and initial table page
   const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    isInitialMount.current = true;
     try {
-      const [overviewData, statesData, tableData] = await Promise.all([
-        riskApi.getOverview(selectedPeriod, currentPeriodConfig.version, currentPeriodConfig.scoreType),
+      const [trendsData, statesData] = await Promise.all([
+        riskApi.getTrends(),
         geographyApi.getStates('current'),
+      ]);
+
+      const resolved = resolveActivePeriod(trendsData.trends || []);
+      if (!resolved) {
+        setActivePeriod(null);
+        setOverview(null);
+        setRiskList(null);
+        setStates(statesData.items || []);
+        setIsLoading(false);
+        setIsRefreshing(false);
+        return;
+      }
+
+      const [overviewData, tableData] = await Promise.all([
+        riskApi.getOverview(resolved.period, resolved.version, resolved.scoreType),
         riskApi.listRiskScores({
           skip: 0,
           limit: pageSize,
-          assessment_period: selectedPeriod,
-          calculation_version: currentPeriodConfig.version,
-          score_type: currentPeriodConfig.scoreType,
+          assessment_period: resolved.period,
+          calculation_version: resolved.version,
+          score_type: resolved.scoreType,
         }),
       ]);
 
+      setActivePeriod(resolved);
       setOverview(overviewData);
       setStates(statesData.items || []);
       setRiskList(tableData);
@@ -118,7 +153,7 @@ export const RiskAssessmentPage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedPeriod, currentPeriodConfig, pageSize]);
+  }, [pageSize]);
 
   useEffect(() => {
     loadInitialData();
@@ -141,8 +176,9 @@ export const RiskAssessmentPage: React.FC = () => {
     }
   }, [selectedStateId]);
 
-  // Fetch filtered table data
+  // Fetch filtered table data using the internally selected active period
   const fetchTableData = useCallback(async () => {
+    if (!activePeriod) return;
     setIsLoadingTable(true);
     try {
       const skip = (currentPage - 1) * pageSize;
@@ -152,9 +188,9 @@ export const RiskAssessmentPage: React.FC = () => {
         risk_level: selectedRiskLevel || undefined,
         skip,
         limit: pageSize,
-        assessment_period: selectedPeriod,
-        calculation_version: currentPeriodConfig.version,
-        score_type: currentPeriodConfig.scoreType,
+        assessment_period: activePeriod.period,
+        calculation_version: activePeriod.version,
+        score_type: activePeriod.scoreType,
       });
       setRiskList(data);
     } catch (err: any) {
@@ -162,34 +198,38 @@ export const RiskAssessmentPage: React.FC = () => {
     } finally {
       setIsLoadingTable(false);
     }
-  }, [selectedStateId, selectedDistrictId, selectedRiskLevel, selectedPeriod, currentPeriodConfig, currentPage, pageSize]);
+  }, [selectedStateId, selectedDistrictId, selectedRiskLevel, activePeriod, currentPage, pageSize]);
 
-  // Trigger table fetch on filter or page change
+  // Trigger table fetch on filter or page change (skipping initial mount)
   useEffect(() => {
-    if (!isLoading) {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!isLoading && activePeriod) {
       fetchTableData();
     }
-  }, [fetchTableData, isLoading]);
+  }, [fetchTableData, isLoading, activePeriod]);
 
-  // Reset filters handler
+  // Reset filters handler: resets geographic and risk filters while keeping activePeriod consistent
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
     setSelectedRiskLevel(undefined);
-    setSelectedPeriod(AVAILABLE_PERIODS[0].value);
     setCurrentPage(1);
   };
 
-  // Inspect district detail handler
+  // Inspect district detail handler using the internally selected active period
   const handleInspectDistrict = async (districtId: number) => {
+    if (!activePeriod) return;
     setIsLoadingDetail(true);
     setIsDetailModalOpen(true);
     try {
       const detail = await riskApi.getDistrictRiskDetail(
         districtId,
-        selectedPeriod,
-        currentPeriodConfig.version,
-        currentPeriodConfig.scoreType
+        activePeriod.period,
+        activePeriod.version,
+        activePeriod.scoreType
       );
       setSelectedDistrictDetail(detail);
     } catch (err: any) {
@@ -281,7 +321,16 @@ export const RiskAssessmentPage: React.FC = () => {
         />
       )}
 
-      {!isLoading && !error && overview && (
+      {!isLoading && !error && (!activePeriod || !overview) && (
+        <div className="rounded-lg border border-[#DCE2EA] bg-white p-8 shadow-2xs">
+          <EmptyState
+            title="Risk Assessment Data Unavailable"
+            message="No verified crime risk assessment or active forecast periods are currently available."
+          />
+        </div>
+      )}
+
+      {!isLoading && !error && activePeriod && overview && (
         <div className="space-y-4">
           {/* SECTION A: RISK SUMMARY CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -332,24 +381,6 @@ export const RiskAssessmentPage: React.FC = () => {
           {/* SECTION B: FILTER TOOLBAR */}
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
-              {/* Period Selector */}
-              <select
-                id="period-filter"
-                aria-label="Assessment Period"
-                value={selectedPeriod}
-                onChange={(e) => {
-                  setSelectedPeriod(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-              >
-                {AVAILABLE_PERIODS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-
               {/* State / UT Selector */}
               <select
                 id="state-filter"
@@ -412,7 +443,7 @@ export const RiskAssessmentPage: React.FC = () => {
             </div>
 
             {/* Reset Action */}
-            {(selectedStateId || selectedDistrictId || selectedRiskLevel || selectedPeriod !== AVAILABLE_PERIODS[0].value) && (
+            {(selectedStateId !== undefined || selectedDistrictId !== undefined || selectedRiskLevel !== undefined) && (
               <button
                 type="button"
                 onClick={handleResetFilters}
