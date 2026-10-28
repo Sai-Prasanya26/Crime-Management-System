@@ -108,7 +108,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
       hideSidebar
       icon={BarChart3}
       title="Crime Analytics"
-      subtitle="Detailed analysis of crime categories, offense types, temporal patterns, and reported incidents."
       onRefresh={() => fetchAnalyticsData(true)}
       isRefreshing={isRefreshing}
     >
@@ -146,7 +145,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
 
       {/* Dedicated Crime Analytics Workspace Sections (Non-Duplicative) */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* SECTION 1: Crime Classification & Ranked Offenses (Interactive Category filter + ranked types) */}
           <CrimeClassificationSection
             categories={categories}

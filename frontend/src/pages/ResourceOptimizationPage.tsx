@@ -577,16 +577,6 @@ export const ResourceOptimizationPage: React.FC = () => {
     { id: 'recommendations', label: 'AI Recommendations', icon: Sparkles },
   ];
 
-  const selectedState = useMemo(() => {
-    if (!selectedStateId) return undefined;
-    return states.find((s) => s.id === selectedStateId);
-  }, [states, selectedStateId]);
-
-  const selectedDistrict = useMemo(() => {
-    if (!selectedDistrictId) return undefined;
-    return districts.find((d) => d.id === selectedDistrictId);
-  }, [districts, selectedDistrictId]);
-
   // Dynamic scope-sensitive demand values (never hardcoded, strictly distinguishing demand from actual assets)
   const personnelDemandVal = selectedDistrictId && districtDemand
     ? districtDemand.personnelDemand
@@ -642,8 +632,7 @@ export const ResourceOptimizationPage: React.FC = () => {
     <DashboardLayout
       hideSidebar
       icon={Sliders}
-      title="Resource Optimization & Operational Intelligence"
-      subtitle="Resource allocation planning, official state baselines, and district demand analysis"
+      title="Resource Optimization"
       onRefresh={() => loadInitialData(true)}
       isRefreshing={isRefreshing}
     >
@@ -828,34 +817,24 @@ export const ResourceOptimizationPage: React.FC = () => {
                       ? stateDemand.districtsCount
                       : (overview?.total_assessed_districts || 640)
                   }
-                  subtext={
-                    selectedDistrict
-                      ? `${selectedDistrict.district_name}${selectedState ? `, ${selectedState.state_name}` : ` (${selectedDistrict.state_name})`}`
-                      : selectedState
-                      ? `${selectedState.state_name} scope`
-                      : 'Census 2011 nationwide scope'
-                  }
                   icon={Layers}
                   color="navy"
                 />
                 <StatCard
                   title="States/UTs with Official Baselines"
                   value={selectedStateId || selectedDistrictId ? '1 / 1' : `${coverage?.total_active_states || 36} / 36`}
-                  subtext={selectedStateId || selectedDistrictId ? 'Official BPR&D baseline verified' : '100% active States & UTs covered'}
                   icon={Building2}
                   color="emerald"
                 />
                 <StatCard
                   title="Estimated Personnel Demand"
                   value={formattedPersonnelDemand}
-                  subtext={selectedDistrictId ? 'District tactical requirement' : 'Estimated tactical personnel requirement'}
                   icon={Users}
                   color="blue"
                 />
                 <StatCard
                   title="Estimated Vehicle Demand"
                   value={formattedVehicleDemand}
-                  subtext={selectedDistrictId ? 'District patrol & mobility demand' : 'Estimated patrol & mobility demand'}
                   icon={Car}
                   color="amber"
                 />
@@ -867,14 +846,6 @@ export const ResourceOptimizationPage: React.FC = () => {
                   <h3 className="text-base font-bold text-[#0B1F3A]">
                     Resource Demand Breakdown
                   </h3>
-                  <p className="text-xs text-[#5D6878]">
-                    Estimated operational requirements derived from population, incident forecasts, and risk weighting
-                    {selectedDistrict
-                      ? ` for ${selectedDistrict.district_name}${selectedState ? `, ${selectedState.state_name}` : ` (${selectedDistrict.state_name})`}`
-                      : selectedState
-                      ? ` for ${selectedState.state_name}`
-                      : ' nationwide'}
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

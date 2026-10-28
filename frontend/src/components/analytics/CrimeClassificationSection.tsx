@@ -71,23 +71,15 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
   return (
     <div className="space-y-4">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D9E1EA] pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <Layers className="h-4 w-4" />
-            </div>
-            <h2 className="text-[17px] font-bold text-[#0B1F3A]">
-              Crime Classification &amp; Offense Distribution
-            </h2>
+      <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-3">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <Layers className="h-4 w-4" />
           </div>
-          <p className="text-[12px] text-[#5D6878] mt-0.5">
-            Statutory breakdown across 4 major classifications and 21 codified offense types
-          </p>
+          <h2 className="text-[17px] font-bold text-[#0B1F3A]">
+            Crime Classification &amp; Offense Distribution
+          </h2>
         </div>
-        <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA] self-start sm:self-auto">
-          21 Codified Offenses
-        </span>
       </div>
 
       {/* Main Grid: Left 5 cols (Categories) | Right 7 cols (Ranked Types) */}

@@ -112,7 +112,6 @@ export const TrendsPage: React.FC = () => {
       hideSidebar
       icon={TrendingUp}
       title="Crime Trends & Forecasting"
-      subtitle="Temporal patterns, change over time and longitudinal trajectories"
       onRefresh={() => fetchTrends(true)}
       isRefreshing={isRefreshing}
     >
@@ -166,9 +165,6 @@ export const TrendsPage: React.FC = () => {
                     {trendMetrics.isIncreasing ? 'INCREASING' : 'DECELERATING'}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Across {items.length} reporting {interval}s
-                </p>
               </div>
 
               {/* Peak Period */}
@@ -181,9 +177,6 @@ export const TrendsPage: React.FC = () => {
                 </div>
                 <p className="mt-2 text-2xl font-bold text-[#0A192F]">
                   {trendMetrics.peak.period}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {trendMetrics.peak.incident_count.toLocaleString()} recorded crimes
                 </p>
               </div>
 
@@ -198,9 +191,6 @@ export const TrendsPage: React.FC = () => {
                 <p className="mt-2 text-2xl font-bold text-[#0A192F]">
                   {trendMetrics.trough.period}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {trendMetrics.trough.incident_count.toLocaleString()} recorded crimes
-                </p>
               </div>
 
               {/* SECTION 3: Short-Term Forecast Projection */}
@@ -213,9 +203,6 @@ export const TrendsPage: React.FC = () => {
                 </div>
                 <p className="mt-2 text-2xl font-bold text-blue-900">
                   {trendMetrics.projectedNext.toLocaleString()}
-                </p>
-                <p className="mt-1 text-xs text-blue-700">
-                  Forward {interval}ly projection estimate
                 </p>
               </div>
             </div>
@@ -236,18 +223,10 @@ export const TrendsPage: React.FC = () => {
                 <div className="rounded-lg bg-blue-50 p-1.5 text-blue-700">
                   <BarChart2 className="h-4 w-4" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#0A192F]">
-                    Chronological Trend Summary
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Discrete periodic incident volume and step variance
-                  </p>
-                </div>
+                <h3 className="text-base font-bold text-[#0A192F]">
+                  Trend Summary
+                </h3>
               </div>
-              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                {items.length} Periods
-              </span>
             </div>
 
             <div className="overflow-x-auto">

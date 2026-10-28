@@ -349,7 +349,6 @@ export const DistrictsPage: React.FC = () => {
       hideSidebar
       icon={MapPin}
       title="Geographic Intelligence"
-      subtitle="Spatial crime patterns, high-intensity hotspots, and district-level operational telemetry."
       onRefresh={() => {
         fetchTopDistricts(true);
         fetchJurisdictionProfile();
@@ -362,7 +361,7 @@ export const DistrictsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
             <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
               <Compass className="h-3.5 w-3.5 text-[#1769AA]" />
-              <span>Jurisdiction Filter:</span>
+              <span>Filter:</span>
             </div>
 
             <select
@@ -443,18 +442,10 @@ export const DistrictsPage: React.FC = () => {
                 <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
                   <Layers className="h-4 w-4" />
                 </div>
-                <div>
-                  <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                    Tactical Geographic Crime Distribution
-                  </h3>
-                  <p className="text-[12px] text-[#5D6878]">
-                    Spatial incident density across {geographyMode === 'historical' ? '640 Census 2011 districts' : '789 administrative districts'}
-                  </p>
-                </div>
+                <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                  Geographic Crime Distribution
+                </h3>
               </div>
-              <span className="rounded bg-[#EAF3FA] px-2.5 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-[#D9E1EA]">
-                Active GIS Layer
-              </span>
             </div>
 
             {/* GIS Photographic Visualization */}

@@ -176,11 +176,6 @@ export const DashboardPage: React.FC = () => {
       hideSidebar={isFullscreen}
       icon={LayoutDashboard}
       title="Crime Intelligence Overview"
-      subtitle={
-        isFullscreen
-          ? 'Comprehensive jurisdiction incidents, patterns, and demographics'
-          : 'Executive command center and multi-dimensional crime intelligence overview'
-      }
       onRefresh={() => fetchDashboardData(true)}
       isRefreshing={isRefreshing}
     >
@@ -218,34 +213,30 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main Comprehensive Executive Dashboard Grid */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* 1. Key Performance Indicators (5 compact KPI cards) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard
               title="Total Incidents"
               value={overview.total_incidents.toLocaleString()}
-              subtext="Historical reported incidents"
               icon={FileText}
               color="navy"
             />
             <StatCard
               title="Open Cases"
               value={overview.cases.open.toLocaleString()}
-              subtext={`${(100 - overview.cases.clearance_rate_pct).toFixed(1)}% in active inquiry`}
               icon={AlertTriangle}
               color="amber"
             />
             <StatCard
               title="Closed Cases"
               value={overview.cases.closed.toLocaleString()}
-              subtext={`${overview.cases.clearance_rate_pct.toFixed(1)}% clearance rate`}
               icon={CheckCircle2}
               color="emerald"
             />
             <StatCard
               title="Clearance Rate"
               value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
-              subtext="Formal disposition ratio"
               icon={ShieldCheck}
               color="blue"
             />
@@ -259,10 +250,6 @@ export const DashboardPage: React.FC = () => {
                 (filters.geography_mode === 'historical'
                   ? `${overview.total_districts.toLocaleString()} Districts`
                   : `${overview.total_states} States & UTs`)
-              }
-              subtext={
-                overview.jurisdiction_subtext ||
-                `${overview.total_states} States & UTs`
               }
               icon={Globe2}
               color="blue"
@@ -282,7 +269,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* 3. Crime Classification & Types (Equal 2-Column Desktop Grid) */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-stretch">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-stretch">
             <div id="categories-section" className="min-w-0 h-full">
               {categories && (
                 <CrimeCategoryChart
@@ -302,7 +289,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* 4. Temporal Patterns & Weapon Involvement (Equal 2-Column Desktop Grid) */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-stretch">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-stretch">
             <div id="hourly-section" className="min-w-0 h-full">
               {hourly && (
                 <HourlyDistributionChart

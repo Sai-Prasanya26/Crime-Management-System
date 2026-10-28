@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ShieldAlert,
   Activity,
-  Scale,
   ShieldCheck,
   AlertTriangle,
   MapPin,
@@ -252,7 +251,6 @@ export const RiskAssessmentPage: React.FC = () => {
       hideSidebar
       icon={ShieldAlert}
       title="Crime Risk Assessment"
-      subtitle="District-level risk classification and contributing factors"
       onRefresh={() => {
         setIsRefreshing(true);
         loadInitialData();
@@ -285,48 +283,36 @@ export const RiskAssessmentPage: React.FC = () => {
       {!isLoading && !error && activePeriod && overview && (
         <div className="space-y-4">
           {/* SECTION A: RISK SUMMARY CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <StatCard
               title="Assessed Districts"
               value={overview.total_assessed_districts}
-              subtext="Standardized baseline"
               icon={MapPin}
               color="blue"
             />
             <StatCard
               title="Critical Risk"
               value={overview.risk_level_distribution.CRITICAL}
-              subtext={`${overview.risk_level_percentages.CRITICAL}% (Score ≥ 65)`}
               icon={AlertTriangle}
               color="rose"
             />
             <StatCard
               title="High Risk"
               value={overview.risk_level_distribution.HIGH}
-              subtext={`${overview.risk_level_percentages.HIGH}% (Score 50–65)`}
               icon={ShieldAlert}
               color="amber"
             />
             <StatCard
               title="Moderate Risk"
               value={overview.risk_level_distribution.MODERATE}
-              subtext={`${overview.risk_level_percentages.MODERATE}% (Score 35–50)`}
               icon={Activity}
               color="navy"
             />
             <StatCard
               title="Low Risk"
               value={overview.risk_level_distribution.LOW}
-              subtext={`${overview.risk_level_percentages.LOW}% (Score < 35)`}
               icon={ShieldCheck}
               color="emerald"
-            />
-            <StatCard
-              title="Average Risk Score"
-              value={`${overview.mean_risk_score.toFixed(1)}`}
-              subtext={`Median: ${overview.median_risk_score.toFixed(1)}`}
-              icon={Scale}
-              color="blue"
             />
           </div>
 
@@ -386,10 +372,10 @@ export const RiskAssessmentPage: React.FC = () => {
               className="h-[42px] w-full sm:w-[200px] rounded border border-[#D9E1EA] bg-white px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
               <option value="">All Risk Categories</option>
-              <option value="CRITICAL">Critical (≥ 65)</option>
-              <option value="HIGH">High (50 – 64.99)</option>
-              <option value="MODERATE">Moderate (35 – 49.99)</option>
-              <option value="LOW">Low (&lt; 35)</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MODERATE">Moderate</option>
+              <option value="LOW">Low</option>
             </select>
 
             {/* Reset Action */}
@@ -408,12 +394,7 @@ export const RiskAssessmentPage: React.FC = () => {
           {/* SECTION C: DISTRICT RISK TABLE */}
           <div className="rounded-lg border border-[#DCE2EA] bg-white shadow-2xs overflow-hidden">
             <div className="py-3 px-4 border-b border-[#DCE2EA] flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-[#0B1F3A]">District Risk Evaluation Register</h3>
-                <p className="text-[11px] text-[#5D6878]">
-                  Showing {riskList?.items.length || 0} of {riskList?.total || 0} assessed administrative districts
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold text-[#0B1F3A]">District Risk Assessment</h3>
             </div>
 
             {isLoadingTable ? (

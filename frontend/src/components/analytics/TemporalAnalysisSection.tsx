@@ -33,7 +33,6 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
   const activeTrendData = temporalMode === 'month' ? monthlyTrends?.items || [] : yearlyTrends?.items || [];
 
   // Summary statistics for active trend view
-  const totalPeriods = activeTrendData.length;
   const counts = activeTrendData.map((d) => d.incident_count);
   const maxCount = counts.length > 0 ? Math.max(...counts) : 0;
   const minCount = counts.length > 0 ? Math.min(...counts) : 0;
@@ -55,9 +54,6 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
             Longitudinal Offense Trajectory &amp; Period Comparison
           </h2>
         </div>
-        <p className="text-[12px] text-[#5D6878] mt-0.5">
-          Multi-period temporal trajectory, monthly volume fluctuations, and year-over-year comparative shifts
-        </p>
       </div>
 
       {/* Longitudinal Trajectory Area / Bar Chart (Full Width Expanded) */}
@@ -73,14 +69,9 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
                     : 'Annual Incident Volume Comparison'}
                 </span>
               </h3>
-              <p className="text-[11px] text-[#5D6878] mt-0.5">
-                {temporalMode === 'month'
-                  ? 'Continuous temporal volume across reporting months'
-                  : 'Year-over-year annual volume trajectory'}
-              </p>
             </div>
 
-            {/* Right: Segmented Trajectory Toggle & Period Counter */}
+            {/* Right: Segmented Trajectory Toggle */}
             <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap sm:flex-nowrap">
               <div className="flex items-center gap-1 bg-[#F4F7FA] p-0.5 rounded-lg border border-[#D9E1EA]">
                 <button
@@ -106,10 +97,6 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
                   Yearly Comparison
                 </button>
               </div>
-
-              <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded-md border border-[#D9E1EA] whitespace-nowrap">
-                {totalPeriods} Time Periods
-              </span>
             </div>
           </div>
 
@@ -122,28 +109,21 @@ export const TemporalAnalysisSection: React.FC<TemporalAnalysisSectionProps> = (
               <span className="text-[15px] font-bold font-mono text-[#0B1F3A] block">
                 {avgCount.toLocaleString()}
               </span>
-              <span className="text-[10px] text-[#7C8796] block truncate">Per reporting interval</span>
             </div>
             <div className="rounded bg-rose-50/50 border border-rose-200/60 p-2.5">
               <span className="text-[10.5px] font-semibold uppercase tracking-wider text-rose-700 block truncate">
-                Peak Period
+                Peak Period ({peakItem?.period || 'Peak'})
               </span>
               <span className="text-[15px] font-bold font-mono text-rose-700 block">
                 {maxCount.toLocaleString()}
               </span>
-              <span className="text-[10px] text-rose-600/80 block truncate">
-                {peakItem?.period || 'Peak volume'}
-              </span>
             </div>
             <div className="rounded bg-emerald-50/50 border border-emerald-200/60 p-2.5">
               <span className="text-[10.5px] font-semibold uppercase tracking-wider text-emerald-800 block truncate">
-                Lowest Period
+                Lowest Period ({minItem?.period || 'Lowest'})
               </span>
               <span className="text-[15px] font-bold font-mono text-emerald-800 block">
                 {minCount.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-emerald-700/80 block truncate">
-                {minItem?.period || 'Lowest volume'}
               </span>
             </div>
           </div>

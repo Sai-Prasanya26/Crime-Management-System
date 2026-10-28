@@ -222,7 +222,6 @@ export const AdminDashboardPage: React.FC = () => {
       hideSidebar
       icon={UserCog}
       title="System Administration"
-      subtitle="Manage authorized staff access, roles and security activity."
       onRefresh={verifyAdminStatus}
       isRefreshing={isLoading}
     >

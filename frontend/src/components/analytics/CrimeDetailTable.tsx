@@ -122,23 +122,18 @@ export const CrimeDetailTable: React.FC<CrimeDetailTableProps> = ({ types }) => 
     <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
       {/* Table Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <FileSpreadsheet className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">
-              Codified Statutory Crime Inventory &amp; Detail Analysis
-            </h3>
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <FileSpreadsheet className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Comprehensive statutory offense catalog across all 21 codified Indian Penal Code crime types with severity tiers, legal codes, and volume shares
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+            Crime Detail Analysis
+          </h3>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
-            Showing <strong className="text-[#0B1F3A]">{filteredAndSortedItems.length}</strong> of {items.length} Codified Offenses
+            {filteredAndSortedItems.length} of {items.length} Offenses
           </span>
         </div>
       </div>

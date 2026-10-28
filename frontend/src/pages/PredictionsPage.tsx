@@ -423,10 +423,7 @@ export const PredictionsPage: React.FC = () => {
             {/* Compact Horizon Indicator Note */}
             <div className="mt-2.5 flex items-center justify-between text-[11px] text-[#5D6878] border-t border-slate-100 pt-2">
               <span>
-                Active forecast horizon:{' '}
-                <strong className="text-emerald-700 font-semibold">Nov 2026 – Jan 2027</strong> • Past forecasts:{' '}
-                <strong className="text-slate-700 font-semibold">Jan – Mar 2026</strong> • Historical records:{' '}
-                <strong className="text-[#1769AA] font-semibold">2020 – 2025</strong>
+                Forecast horizon: <strong className="text-emerald-700 font-semibold">Nov 2026 – Jan 2027</strong>
               </span>
             </div>
 
@@ -467,14 +464,6 @@ export const PredictionsPage: React.FC = () => {
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium">
                         Statistical forecast
-                      </span>
-                    )}
-                    {predictionResult.is_derived_from_parent && (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 text-xs font-medium"
-                        title={`Analytics resolve to Census 2011 baseline parent: ${predictionResult.parent_district_name || 'parent jurisdiction'}`}
-                      >
-                        Census 2011 baseline ({predictionResult.parent_district_name})
                       </span>
                     )}
                   </div>
@@ -547,14 +536,9 @@ export const PredictionsPage: React.FC = () => {
                 <div className="rounded-lg bg-[#EAF3FA] p-1.5 text-[#1769AA]">
                   <TrendingUp className="h-4 w-4" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0B1F3A]">
-                    Incident Trend &amp; Forecast — {currentDistrictName}
-                  </h3>
-                  <p className="text-xs text-[#5D6878]">
-                    Historical observed counts and estimated projections.
-                  </p>
-                </div>
+                <h3 className="text-sm font-bold text-[#0B1F3A]">
+                  Incident Trend &amp; Forecast — {currentDistrictName}
+                </h3>
               </div>
             </div>
 

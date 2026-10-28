@@ -353,23 +353,20 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
             color="navy"
           />
           <StatCard
-            title="Incremental Cost Delta (ΔCost)"
+            title="Incremental Cost Difference"
             value={formatINR(activeRun.incremental_recurring_cost, true)}
-            subtext="Net annual difference vs baseline"
             icon={TrendingUp}
             color={activeRun.incremental_recurring_cost > 0 ? 'amber' : 'emerald'}
           />
           <StatCard
             title="Capital Procurement Cost"
             value={formatINR(activeRun.total_one_time_procurement_cost, true)}
-            subtext="One-time expenditure for shortfalls"
             icon={Building2}
             color="blue"
           />
           <StatCard
             title="Shortfall Resolution Total"
             value={formatINR(activeRun.total_shortfall_resolution_cost, true)}
-            subtext="Capital purchases + incremental O&M"
             icon={Coins}
             color="emerald"
           />

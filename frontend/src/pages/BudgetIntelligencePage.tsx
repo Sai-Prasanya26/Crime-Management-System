@@ -38,7 +38,6 @@ export const BudgetIntelligencePage: React.FC = () => {
       hideSidebar
       icon={BadgeDollarSign}
       title="Budget & Cost Analysis"
-      subtitle="Estimated operational costs and budget planning"
       onRefresh={() => fetchStates(true)}
       isRefreshing={isRefreshing}
     >
