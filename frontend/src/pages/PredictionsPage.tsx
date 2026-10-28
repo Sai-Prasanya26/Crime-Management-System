@@ -3,12 +3,13 @@ import {
   TrendingUp,
   ShieldAlert,
   Activity,
-  CheckCircle2,
   Calendar,
   Clock,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Database,
+  BarChart3,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -28,7 +29,6 @@ import { StatCard } from '../components/common/StatCard';
 import { predictionApi, geographyApi } from '../api';
 import type {
   PredictionOverview,
-  ModelInfo,
   EvaluationComparison,
   ActualVsPredictedData,
   PredictionItem,
@@ -37,7 +37,6 @@ import type { StateItem, DistrictItem } from '../types';
 
 export const PredictionsPage: React.FC = () => {
   const [overview, setOverview] = useState<PredictionOverview | null>(null);
-  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationComparison | null>(null);
   const [actualVsPred, setActualVsPred] = useState<ActualVsPredictedData | null>(null);
   const [predictionsList, setPredictionsList] = useState<PredictionItem[]>([]);
@@ -49,9 +48,8 @@ export const PredictionsPage: React.FC = () => {
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
 
-  // Pagination state for District Forecast Registry
+  // Pagination state for District Prediction Results
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 20;
 
@@ -67,9 +65,8 @@ export const PredictionsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [ovData, mInfo, evalData, avpData, statesRes, predsRes] = await Promise.all([
+      const [ovData, evalData, avpData, statesRes, predsRes] = await Promise.all([
         predictionApi.getOverview(),
-        predictionApi.getModelInfo(),
         predictionApi.getEvaluation(),
         predictionApi.getActualVsPredicted(),
         geographyApi.getStates(),
@@ -77,7 +74,6 @@ export const PredictionsPage: React.FC = () => {
       ]);
 
       setOverview(ovData);
-      setModelInfo(mInfo);
       setEvaluation(evalData);
       setActualVsPred(avpData);
       setStates(statesRes.items || []);
@@ -114,7 +110,7 @@ export const PredictionsPage: React.FC = () => {
 
   // Fetch prediction list and chart data for filters or page changes
   const fetchFilteredData = useCallback(
-    async (page: number, stateId?: number, districtId?: number, period?: string, status?: string) => {
+    async (page: number, stateId?: number, districtId?: number, period?: string) => {
       setIsFilterLoading(true);
       try {
         const apiPeriod = period ? (period.length === 7 ? `${period}-01` : period) : undefined;
@@ -124,7 +120,6 @@ export const PredictionsPage: React.FC = () => {
             state_id: stateId,
             district_id: districtId,
             forecast_period: apiPeriod,
-            forecast_status: status || undefined,
             skip: (page - 1) * pageSize,
             limit: pageSize,
           }),
@@ -143,21 +138,20 @@ export const PredictionsPage: React.FC = () => {
 
   const handleFilterApply = () => {
     setCurrentPage(1);
-    fetchFilteredData(1, selectedStateId, selectedDistrictId, selectedPeriod, selectedStatus);
+    fetchFilteredData(1, selectedStateId, selectedDistrictId, selectedPeriod);
   };
 
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
     setSelectedPeriod('');
-    setSelectedStatus('');
     setCurrentPage(1);
     loadInitialData();
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    fetchFilteredData(newPage, selectedStateId, selectedDistrictId, selectedPeriod, selectedStatus);
+    fetchFilteredData(newPage, selectedStateId, selectedDistrictId, selectedPeriod);
   };
 
   const handleRefreshForecast = async () => {
@@ -182,8 +176,7 @@ export const PredictionsPage: React.FC = () => {
   const hasActiveFilters = Boolean(
     selectedStateId !== undefined ||
     selectedDistrictId !== undefined ||
-    selectedPeriod !== '' ||
-    selectedStatus !== ''
+    selectedPeriod !== ''
   );
 
   // Format forecast window (e.g., "Nov 2026 – Jan 2027")
@@ -210,31 +203,20 @@ export const PredictionsPage: React.FC = () => {
 
   // Format chart data:
   // - Historical actuals (2024–2025)
-  // - Historical evaluation (2025)
-  // - Current future forecast with calibrated prediction intervals
-  // - Expired past forecasts are excluded from default display unless 'PAST_FORECAST' is explicitly filtered
-  const isShowingPastForecast = selectedStatus === 'PAST_FORECAST';
-
+  // - Current future forecast
   const chartPoints = useMemo(() => {
     return (actualVsPred?.comparison_points || []).map((pt) => {
       const p = pt.period.substring(0, 7);
       const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined;
-      const isHistoricalEval = pt.forecast_status === 'HISTORICAL_EVALUATION';
-      const isPastForecast = pt.forecast_status === 'PAST_FORECAST';
       const isCurrentFuture = pt.forecast_status === 'CURRENT_FUTURE_FORECAST';
 
       return {
         period: p,
-        raw_status: pt.forecast_status,
         actual: isHistoricalActual ? pt.actual_count : undefined,
-        historical_eval: isHistoricalEval ? pt.predicted_count : undefined,
-        past_forecast: isShowingPastForecast && isPastForecast ? pt.predicted_count : undefined,
         current_future: isCurrentFuture ? pt.predicted_count : undefined,
-        interval_lower: isCurrentFuture ? pt.prediction_interval_lower : undefined,
-        interval_upper: isCurrentFuture ? pt.prediction_interval_upper : undefined,
       };
     });
-  }, [actualVsPred, isShowingPastForecast]);
+  }, [actualVsPred]);
 
   const totalPages = Math.ceil(totalPredictions / pageSize);
 
@@ -243,15 +225,15 @@ export const PredictionsPage: React.FC = () => {
       hideSidebar
       icon={Activity}
       title="Crime Predictions"
-      subtitle="Historical trends and estimated future crime incidents."
+      subtitle="Historical crime trends and estimated future incidents."
       onRefresh={loadInitialData}
       isRefreshing={isLoading}
     >
-      {/* SECTION 1: HEADER NOTICE & REGENERATE CONTROL */}
+      {/* SECTION 1: DISCLAIMER NOTICE & REGENERATE CONTROL */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-2.5 shadow-2xs">
         <div className="flex items-center gap-2.5 text-xs text-amber-900 leading-snug">
           <ShieldAlert className="h-4 w-4 shrink-0 text-amber-700" />
-          <span>Forecasts are statistical estimates, not confirmed future incidents.</span>
+          <span>Forecasts are estimates, not confirmed future incidents.</span>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -320,13 +302,13 @@ export const PredictionsPage: React.FC = () => {
 
       {!isLoading && !error && (
         <div className="space-y-4">
-          {/* SECTION 2: FOUR COMPACT SUMMARY CARDS */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* SECTION 2: TWO COMPACT SUMMARY CARDS */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatCard
-              title="Forecasts Available"
+              title="Stored Predictions"
               value={(overview?.total_predictions || 0).toLocaleString()}
-              subtext="Stored jurisdictional forecasts"
-              icon={Calendar}
+              subtext="Predictions across assessed districts"
+              icon={Database}
               color="blue"
             />
 
@@ -337,25 +319,9 @@ export const PredictionsPage: React.FC = () => {
               icon={Clock}
               color="emerald"
             />
-
-            <StatCard
-              title="Forecast Accuracy"
-              value={`${(evaluation?.metrics_summary?.['HistGradientBoosting']?.['WAPE%'] ?? 36.8).toFixed(1)}% WAPE`}
-              subtext="Held-Out Test Set"
-              icon={TrendingUp}
-              color="navy"
-            />
-
-            <StatCard
-              title="Model Status"
-              value={modelInfo?.is_active ?? (overview?.active_model_name ? true : false) ? 'Active' : 'Unavailable'}
-              subtext={modelInfo ? `${modelInfo.algorithm} (${modelInfo.version})` : overview?.algorithm ? `${overview.algorithm} (${overview.active_model_version || 'v1.0.0'})` : 'Production Pipeline'}
-              icon={CheckCircle2}
-              color="emerald"
-            />
           </div>
 
-          {/* SECTION 3: SIMPLIFIED FILTER TOOLBAR */}
+          {/* SECTION 3: COMPACT FILTER TOOLBAR */}
           <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3 rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
               {/* State / UT Selector (36 entities) */}
@@ -367,7 +333,7 @@ export const PredictionsPage: React.FC = () => {
                   setSelectedStateId(val);
                   setSelectedDistrictId(undefined);
                 }}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                className="h-10 w-full sm:w-auto min-w-[200px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
                 <option value="">All States &amp; UTs ({states.length || 36})</option>
                 {states.map((s) => (
@@ -383,10 +349,14 @@ export const PredictionsPage: React.FC = () => {
                 value={selectedDistrictId || ''}
                 onChange={(e) => setSelectedDistrictId(e.target.value ? Number(e.target.value) : undefined)}
                 disabled={!selectedStateId || districts.length === 0}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50"
+                className="h-10 w-full sm:w-auto min-w-[200px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50"
               >
                 <option value="">
-                  {!selectedStateId ? 'All Districts' : districts.length > 0 ? `All Districts in State (${districts.length})` : 'No Districts Found'}
+                  {!selectedStateId
+                    ? 'All Districts'
+                    : districts.length > 0
+                    ? `All Districts in State (${districts.length})`
+                    : 'No Districts Found'}
                 </option>
                 {districts.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -400,27 +370,13 @@ export const PredictionsPage: React.FC = () => {
                 aria-label="Forecast Period"
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                className="h-10 w-full sm:w-auto min-w-[180px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
-                <option value="">All Periods</option>
-                <option value="2026-11-01">2026-11 (Nov 2026)</option>
-                <option value="2026-12-01">2026-12 (Dec 2026)</option>
-                <option value="2027-01-01">2027-01 (Jan 2027)</option>
-                <option value="2026-01-01">2026-01 (Past Expired)</option>
-                <option value="2025-12-01">2025-12 (Evaluated)</option>
-              </select>
-
-              {/* Forecast Status Selector */}
-              <select
-                aria-label="Forecast Status"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-              >
-                <option value="">All Statuses</option>
-                <option value="CURRENT_FUTURE_FORECAST">Active Future Forecast</option>
-                <option value="HISTORICAL_EVALUATION">Historical Evaluation</option>
-                <option value="PAST_FORECAST">Past Expired Forecast</option>
+                <option value="">All Forecast Periods</option>
+                <option value="2026-11-01">November 2026</option>
+                <option value="2026-12-01">December 2026</option>
+                <option value="2027-01-01">January 2027</option>
+                <option value="2025-12-01">December 2025</option>
               </select>
             </div>
 
@@ -460,7 +416,7 @@ export const PredictionsPage: React.FC = () => {
                 </div>
                 <p className="mt-0.5 text-xs text-[#5D6878]">
                   {actualVsPred?.district_name || 'National Aggregate'} (
-                  {actualVsPred?.state_name || 'All 640 Districts'}) — Historical observed caseloads and calibrated future projections.
+                  {actualVsPred?.state_name || 'All Districts'}) — Historical observed crime counts and estimated future crime counts.
                 </p>
               </div>
             </div>
@@ -484,24 +440,12 @@ export const PredictionsPage: React.FC = () => {
                       fontSize: '0.75rem',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
-                    formatter={(val: any, name: any, item: any) => {
-                      const payload = item.payload;
+                    formatter={(val: any, name: any) => {
                       if (name === 'actual') {
-                        return [val ? Number(val).toLocaleString() + ' incidents' : '—', 'Historical Observed Caseload'];
-                      }
-                      if (name === 'historical_eval') {
-                        return [val ? Number(val).toLocaleString() + ' incidents' : '—', 'Historical Evaluation (2025)'];
-                      }
-                      if (name === 'past_forecast') {
-                        return [val ? Number(val).toLocaleString() + ' incidents' : '—', 'Expired Past Forecast'];
+                        return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed'];
                       }
                       if (name === 'current_future') {
-                        const low = payload.interval_lower !== undefined ? Number(payload.interval_lower).toLocaleString() : '—';
-                        const up = payload.interval_upper !== undefined ? Number(payload.interval_upper).toLocaleString() : '—';
-                        return [
-                          `${Number(val).toLocaleString()} incidents [80% Interval: ${low} to ${up}]`,
-                          'Estimated Future Incidents',
-                        ];
+                        return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Estimated Future Incidents'];
                       }
                       return [val, String(name)];
                     }}
@@ -511,9 +455,7 @@ export const PredictionsPage: React.FC = () => {
                     height={36}
                     formatter={(value) => {
                       if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed</span>;
-                      if (value === 'historical_eval') return <span className="text-xs font-semibold text-slate-600">Historical Evaluation (2025)</span>;
-                      if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Estimated Future Forecast</span>;
-                      if (value === 'past_forecast') return <span className="text-xs font-semibold text-amber-700">Expired Past Forecast</span>;
+                      if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Estimated Future Incidents</span>;
                       return <span className="text-xs text-slate-500">{value}</span>;
                     }}
                   />
@@ -530,32 +472,6 @@ export const PredictionsPage: React.FC = () => {
                     connectNulls={false}
                   />
 
-                  {/* Historical Evaluation 2025 */}
-                  <Line
-                    type="monotone"
-                    dataKey="historical_eval"
-                    name="historical_eval"
-                    stroke="#64748B"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={{ r: 2.5, fill: '#64748B' }}
-                    connectNulls={false}
-                  />
-
-                  {/* Past Expired Forecasts (only rendered if explicitly filtered) */}
-                  {isShowingPastForecast && (
-                    <Line
-                      type="monotone"
-                      dataKey="past_forecast"
-                      name="past_forecast"
-                      stroke="#D97706"
-                      strokeWidth={2}
-                      strokeDasharray="2 2"
-                      dot={{ r: 3, fill: '#D97706' }}
-                      connectNulls={false}
-                    />
-                  )}
-
                   {/* Estimated Future Forecasts */}
                   <Line
                     type="monotone"
@@ -571,21 +487,26 @@ export const PredictionsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* SECTION 5: COMPACT ACCURACY SECTION */}
+          {/* SECTION 5: MODEL PERFORMANCE */}
           <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-sm font-bold text-[#0B1F3A]">Forecast Performance</h4>
-                <p className="text-xs text-[#5D6878] mt-0.5">
-                  Evaluated on held-out 2025 incidents across all districts.
+                <div className="flex items-center gap-2">
+                  <div className="rounded-md bg-[#EAF3FA] p-1.5 text-[#1769AA]">
+                    <BarChart3 className="h-4 w-4" />
+                  </div>
+                  <h4 className="text-sm font-bold text-[#0B1F3A]">Model Performance</h4>
+                </div>
+                <p className="text-xs text-[#5D6878] mt-1">
+                  Validation benchmarks evaluated on held-out test data across all districts.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 text-xs">
                 <div className="flex items-center gap-2 rounded-md bg-[#F4F7FA] border border-[#D9E1EA] px-3 py-1.5">
-                  <span className="text-[#5D6878] font-medium">Evaluation Metric:</span>
+                  <span className="text-[#5D6878] font-medium">WAPE (Weighted Absolute % Error):</span>
                   <span className="font-bold text-[#0B1F3A]">
-                    {(evaluation?.metrics_summary?.['HistGradientBoosting']?.['WAPE%'] ?? 36.8).toFixed(1)}% WAPE
+                    {(evaluation?.metrics_summary?.['HistGradientBoosting']?.['WAPE%'] ?? 36.8).toFixed(1)}%
                   </span>
                   <span className="text-slate-300">|</span>
                   <span className="text-[#5D6878]">MAE:</span>
@@ -593,17 +514,11 @@ export const PredictionsPage: React.FC = () => {
                     {(evaluation?.metrics_summary?.['HistGradientBoosting']?.MAE ?? 1.70).toFixed(2)}
                   </span>
                 </div>
-
-                <div className="flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800">
-                  <span className="font-medium text-emerald-900">Interval Coverage:</span>
-                  <span className="font-bold">79.5% empirical coverage</span>
-                  <span className="text-emerald-700 text-[11px]">(at 80% nominal target)</span>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* SECTION 6: DISTRICT FORECAST REGISTRY */}
+          {/* SECTION 6: DISTRICT PREDICTION RESULTS TABLE */}
           <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
               <div className="flex items-center gap-2">
@@ -611,84 +526,46 @@ export const PredictionsPage: React.FC = () => {
                   <Calendar className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-[#0B1F3A]">District Forecast Registry</h4>
+                  <h4 className="text-base font-bold text-[#0B1F3A]">District Prediction Results</h4>
                   <p className="text-xs text-[#5D6878]">
                     Showing {predictionsList.length} of {totalPredictions.toLocaleString()} stored predictions
                   </p>
                 </div>
               </div>
-              <span className="rounded bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 border border-slate-200 self-start sm:self-auto">
-                Monthly Jurisdictional Level
-              </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-xs">
+              <table className="w-full min-w-[600px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600 whitespace-nowrap">
-                    <th className="py-2.5 pl-3">District Name</th>
-                    <th className="py-2.5 px-3">State / UT</th>
-                    <th className="py-2.5 px-3">Forecast Period</th>
-                    <th className="py-2.5 px-3">Forecast Status</th>
-                    <th className="py-2.5 px-3 text-right">Predicted Count</th>
-                    <th className="py-2.5 px-3 text-right">80% Prediction Interval</th>
-                    <th className="py-2.5 px-3 text-right">Model Version</th>
+                    <th className="py-2.5 pl-3 w-[32%]">District</th>
+                    <th className="py-2.5 px-3 w-[28%]">State / UT</th>
+                    <th className="py-2.5 px-3 w-[20%]">Forecast Month</th>
+                    <th className="py-2.5 px-3 text-right w-[20%]">Predicted Crime Count</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {predictionsList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-slate-500">
+                      <td colSpan={4} className="py-8 text-center text-xs text-slate-500">
                         No prediction records found for the selected filter criteria.
                       </td>
                     </tr>
                   ) : (
-                    predictionsList.map((row) => {
-                      const isFuture = row.forecast_status === 'CURRENT_FUTURE_FORECAST';
-                      const isPast = row.forecast_status === 'PAST_FORECAST';
-                      const isEval = row.forecast_status === 'HISTORICAL_EVALUATION';
-
-                      return (
-                        <tr key={row.id} className="h-10 hover:bg-slate-50/70 whitespace-nowrap">
-                          <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">
-                            {row.district_name || `District #${row.district_id}`}
-                          </td>
-                          <td className="py-2 px-3 text-slate-600">{row.state_name || '—'}</td>
-                          <td className="py-2 px-3 font-mono text-slate-700">{row.forecast_period}</td>
-                          <td className="py-2 px-3">
-                            {isFuture && (
-                              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-300">
-                                ACTIVE FUTURE {row.horizon_step ? `(M${row.horizon_step})` : ''}
-                              </span>
-                            )}
-                            {isPast && (
-                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-300">
-                                EXPIRED PAST
-                              </span>
-                            )}
-                            {isEval && (
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-300">
-                                HISTORICAL EVAL
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono font-bold text-[#1769AA]">
-                            {row.predicted_crime_count.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-slate-700">
-                            {typeof row.prediction_interval_lower === 'number' &&
-                            typeof row.prediction_interval_upper === 'number'
-                              ? `[${row.prediction_interval_lower.toFixed(2)}, ${row.prediction_interval_upper.toFixed(2)}]`
-                              : '—'}
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-700 border border-slate-200">
-                              {row.model_version}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
+                    predictionsList.map((row) => (
+                      <tr key={row.id} className="h-10 hover:bg-slate-50/70 whitespace-nowrap">
+                        <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">
+                          {row.district_name || `District #${row.district_id}`}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">{row.state_name || '—'}</td>
+                        <td className="py-2 px-3 font-mono text-slate-700">
+                          {row.forecast_period ? row.forecast_period.substring(0, 7) : '—'}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-[#1769AA]">
+                          {row.predicted_crime_count.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
