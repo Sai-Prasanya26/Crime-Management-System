@@ -111,7 +111,7 @@ export const TrendsPage: React.FC = () => {
     <DashboardLayout
       hideSidebar
       icon={TrendingUp}
-      title="Crime Trends & Forecasting"
+      title="Crime Trends"
       onRefresh={() => fetchTrends(true)}
       isRefreshing={isRefreshing}
     >
@@ -123,7 +123,7 @@ export const TrendsPage: React.FC = () => {
 
       {isLoading && !trends && (
         <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
-          <LoadingState message="Aggregating longitudinal time-series data..." />
+          <LoadingState message="Loading crime trends..." />
         </div>
       )}
 
@@ -141,9 +141,9 @@ export const TrendsPage: React.FC = () => {
           {trendMetrics && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* Overall Trajectory */}
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                     Net Trajectory
                   </span>
                   {trendMetrics.isIncreasing ? (
@@ -161,47 +161,44 @@ export const TrendsPage: React.FC = () => {
                     {trendMetrics.netChangePct >= 0 ? '+' : ''}
                     {trendMetrics.netChangePct.toFixed(1)}%
                   </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    {trendMetrics.isIncreasing ? 'INCREASING' : 'DECELERATING'}
-                  </span>
                 </div>
               </div>
 
               {/* Peak Period */}
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                     Peak Activity
                   </span>
                   <CalendarRange className="h-4 w-4 text-amber-500" />
                 </div>
-                <p className="mt-2 text-2xl font-bold text-[#0A192F]">
+                <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
                   {trendMetrics.peak.period}
                 </p>
               </div>
 
               {/* Trough / Lowest Period */}
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                     Baseline Period
                   </span>
                   <Activity className="h-4 w-4 text-blue-500" />
                 </div>
-                <p className="mt-2 text-2xl font-bold text-[#0A192F]">
+                <p className="mt-2 text-2xl font-bold text-[#0B1F3A]">
                   {trendMetrics.trough.period}
                 </p>
               </div>
 
-              {/* SECTION 3: Short-Term Forecast Projection */}
-              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 shadow-2xs">
+              {/* Short-Term Forecast Projection */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-blue-900">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
                     Projected Next
                   </span>
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <TrendingUp className="h-4 w-4 text-[#1769AA]" />
                 </div>
-                <p className="mt-2 text-2xl font-bold text-blue-900">
+                <p className="mt-2 text-2xl font-bold text-[#1769AA]">
                   {trendMetrics.projectedNext.toLocaleString()}
                 </p>
               </div>
@@ -217,13 +214,13 @@ export const TrendsPage: React.FC = () => {
           />
 
           {/* OPTIONAL CONCISE TREND TABLE: Period Summary Table */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs">
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-blue-50 p-1.5 text-blue-700">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
                   <BarChart2 className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-bold text-[#0A192F]">
+                <h3 className="text-[16px] font-bold text-[#0B1F3A]">
                   Trend Summary
                 </h3>
               </div>
@@ -248,11 +245,11 @@ export const TrendsPage: React.FC = () => {
 
                     return (
                       <tr key={row.period} className="hover:bg-slate-50/70 h-10 transition-colors">
-                        <td className="py-2 pl-3 font-semibold text-[#0A192F] flex items-center gap-2">
+                        <td className="py-2 pl-3 font-semibold text-[#0B1F3A] flex items-center gap-2">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
                           <span>{row.period}</span>
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
+                        <td className="py-2 px-3 text-right font-mono font-bold text-[#0B1F3A]">
                           {row.incident_count.toLocaleString()}
                         </td>
                         <td className="py-2 px-3 text-right font-mono">
@@ -267,15 +264,15 @@ export const TrendsPage: React.FC = () => {
                         <td className="py-2 px-3 text-center">
                           {idx === 0 ? (
                             <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                              INITIAL
+                              Initial
                             </span>
                           ) : isUp ? (
                             <span className="rounded bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200">
-                              ▲ SURGE
+                              ▲ Higher
                             </span>
                           ) : (
                             <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                              ▼ REDUCED
+                              ▼ Lower
                             </span>
                           )}
                         </td>

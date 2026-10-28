@@ -243,16 +243,6 @@ export const PredictionsPage: React.FC = () => {
     });
   }, [actualVsPred]);
 
-  // Selected district name lookup
-  const currentDistrictName = useMemo(() => {
-    return (
-      districts.find((d) => d.id === selectedDistrictId)?.district_name ||
-      predictionResult?.district_name ||
-      actualVsPred?.district_name ||
-      'Selected District'
-    );
-  }, [districts, selectedDistrictId, predictionResult, actualVsPred]);
-
   // Trend mapping: Higher, Similar, Lower
   const trendLabel = useMemo(() => {
     if (!predictionResult || !predictionResult.is_available) return null;
@@ -265,7 +255,6 @@ export const PredictionsPage: React.FC = () => {
       hideSidebar
       icon={Activity}
       title="Crime Predictions"
-      subtitle="Select a district and month to estimate crime incidents."
       onRefresh={loadInitialData}
       isRefreshing={isInitialLoading}
     >
@@ -420,13 +409,6 @@ export const PredictionsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Compact Horizon Indicator Note */}
-            <div className="mt-2.5 flex items-center justify-between text-[11px] text-[#5D6878] border-t border-slate-100 pt-2">
-              <span>
-                Forecast horizon: <strong className="text-emerald-700 font-semibold">Nov 2026 – Jan 2027</strong>
-              </span>
-            </div>
-
             {predictError && (
               <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
@@ -447,27 +429,12 @@ export const PredictionsPage: React.FC = () => {
 
           {!isPredicting && predictionResult && (
             <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#1769AA] shrink-0" />
-                  <span className="text-sm font-bold text-[#0B1F3A]">
-                    {predictionResult.district_name}, {predictionResult.state_name} —{' '}
-                    {MONTH_NAMES[predictionResult.month - 1]} {predictionResult.year}
-                  </span>
-                </div>
-                {predictionResult.is_available && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {predictionResult.is_historical ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 text-xs font-medium">
-                        Historical actual record
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium">
-                        Statistical forecast
-                      </span>
-                    )}
-                  </div>
-                )}
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3">
+                <MapPin className="h-4 w-4 text-[#1769AA] shrink-0" />
+                <span className="text-sm font-bold text-[#0B1F3A]">
+                  {predictionResult.district_name}, {predictionResult.state_name} —{' '}
+                  {MONTH_NAMES[predictionResult.month - 1]} {predictionResult.year}
+                </span>
               </div>
 
               {predictionResult.is_available ? (
@@ -477,14 +444,11 @@ export const PredictionsPage: React.FC = () => {
                     <span className="text-xs font-medium text-[#5D6878]">
                       {predictionResult.is_historical ? 'Confirmed Crime Incidents' : 'Estimated Crime Incidents'}
                     </span>
-                    <div className="mt-1 flex items-baseline gap-1.5">
+                    <div className="mt-1">
                       <span className="text-3xl font-bold font-mono text-[#1769AA]">
                         {predictionResult.display_value !== undefined && predictionResult.display_value !== null
                           ? predictionResult.display_value.toFixed(2)
                           : '—'}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {predictionResult.is_historical ? 'incidents recorded' : 'estimated incidents'}
                       </span>
                     </div>
                   </div>
@@ -507,7 +471,6 @@ export const PredictionsPage: React.FC = () => {
                         {trendLabel === 'Similar' && <Minus className="h-4 w-4" />}
                         {trendLabel}
                       </span>
-                      <span className="text-xs text-slate-500 font-medium">vs historical baseline</span>
                     </div>
                   </div>
                 </div>
@@ -537,7 +500,7 @@ export const PredictionsPage: React.FC = () => {
                   <TrendingUp className="h-4 w-4" />
                 </div>
                 <h3 className="text-sm font-bold text-[#0B1F3A]">
-                  Incident Trend &amp; Forecast — {currentDistrictName}
+                  Historical vs Predicted Trend
                 </h3>
               </div>
             </div>
