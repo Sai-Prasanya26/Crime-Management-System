@@ -10,6 +10,13 @@ import {
   ChevronRight,
   Database,
   BarChart3,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Info,
+  AlertCircle,
+  MapPin,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -32,6 +39,7 @@ import type {
   EvaluationComparison,
   ActualVsPredictedData,
   PredictionItem,
+  DistrictMonthPrediction,
 } from '../api/predictionApi';
 import type { StateItem, DistrictItem } from '../types';
 
@@ -48,6 +56,16 @@ export const PredictionsPage: React.FC = () => {
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+
+  // Interactive District & Month Predictor states
+  const [predictorStateId, setPredictorStateId] = useState<number | undefined>(undefined);
+  const [predictorDistrictId, setPredictorDistrictId] = useState<number | undefined>(undefined);
+  const [predictorYear, setPredictorYear] = useState<number>(2026);
+  const [predictorMonth, setPredictorMonth] = useState<number>(11);
+  const [predictorDistricts, setPredictorDistricts] = useState<DistrictItem[]>([]);
+  const [isPredictorLoading, setIsPredictorLoading] = useState<boolean>(false);
+  const [predictorError, setPredictorError] = useState<string | null>(null);
+  const [monthPrediction, setMonthPrediction] = useState<DistrictMonthPrediction | null>(null);
 
   // Pagination state for District Prediction Results
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -107,6 +125,59 @@ export const PredictionsPage: React.FC = () => {
       setSelectedDistrictId(undefined);
     }
   }, [selectedStateId]);
+
+  // Default predictor state to first state when states load
+  useEffect(() => {
+    if (states.length > 0 && !predictorStateId) {
+      setPredictorStateId(states[0].id);
+    }
+  }, [states, predictorStateId]);
+
+  // Load districts dynamically for the interactive predictor
+  useEffect(() => {
+    if (predictorStateId) {
+      geographyApi
+        .getDistricts(predictorStateId, 'current')
+        .then((res) => {
+          const items = res.items || [];
+          setPredictorDistricts(items);
+          if (items.length > 0 && (!predictorDistrictId || !items.some((d) => d.id === predictorDistrictId))) {
+            setPredictorDistrictId(items[0].id);
+          }
+        })
+        .catch(() => {
+          setPredictorDistricts([]);
+          setPredictorDistrictId(undefined);
+        });
+    } else {
+      setPredictorDistricts([]);
+      setPredictorDistrictId(undefined);
+    }
+  }, [predictorStateId]);
+
+  const handlePredictCrime = async () => {
+    if (!predictorDistrictId) {
+      setPredictorError('Please select a district to predict crime.');
+      return;
+    }
+    setIsPredictorLoading(true);
+    setPredictorError(null);
+    try {
+      const data = await predictionApi.getDistrictMonthPrediction(
+        predictorDistrictId,
+        predictorYear,
+        predictorMonth
+      );
+      setMonthPrediction(data);
+    } catch (err: any) {
+      setPredictorError(
+        err?.response?.data?.detail || err?.message || 'Failed to retrieve month prediction.'
+      );
+      setMonthPrediction(null);
+    } finally {
+      setIsPredictorLoading(false);
+    }
+  };
 
   // Fetch prediction list and chart data for filters or page changes
   const fetchFilteredData = useCallback(
@@ -319,6 +390,344 @@ export const PredictionsPage: React.FC = () => {
               icon={Clock}
               color="emerald"
             />
+          </div>
+
+          {/* SECTION 2B: USER-SELECTED MONTH CRIME PREDICTION TOOL */}
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-[#EAF3FA] p-1.5 text-[#1769AA]">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#0B1F3A]">District &amp; Month Crime Prediction</h3>
+                  <p className="text-xs text-[#5D6878]">
+                    Select any district and month to view projected incident counts, historical baseline comparisons, and estimated crime levels.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-[#5D6878] bg-slate-50 border border-slate-200 px-2.5 py-1 rounded">
+                <Info className="h-3.5 w-3.5 text-[#1769AA] shrink-0" />
+                <span>Forecast Horizon: Nov 2026 – Jan 2027 | Historical: 2020 – 2025</span>
+              </div>
+            </div>
+
+            {/* Controls Toolbar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+              {/* State / UT */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                  State / UT
+                </label>
+                <select
+                  aria-label="Predictor State or Union Territory"
+                  value={predictorStateId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    setPredictorStateId(val);
+                    setMonthPrediction(null);
+                  }}
+                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                >
+                  <option value="">Select State / UT ({states.length || 36})</option>
+                  {states.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.state_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* District */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                  District
+                </label>
+                <select
+                  aria-label="Predictor District"
+                  value={predictorDistrictId || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    setPredictorDistrictId(val);
+                    setMonthPrediction(null);
+                  }}
+                  disabled={!predictorStateId || predictorDistricts.length === 0}
+                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:opacity-50"
+                >
+                  <option value="">
+                    {!predictorStateId
+                      ? 'Select State First'
+                      : predictorDistricts.length > 0
+                      ? 'Select District'
+                      : 'No Districts Found'}
+                  </option>
+                  {predictorDistricts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.district_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                  Month
+                </label>
+                <select
+                  aria-label="Predictor Month"
+                  value={predictorMonth}
+                  onChange={(e) => {
+                    setPredictorMonth(Number(e.target.value));
+                    setMonthPrediction(null);
+                  }}
+                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                >
+                  <option value={1}>January (01)</option>
+                  <option value={2}>February (02)</option>
+                  <option value={3}>March (03)</option>
+                  <option value={4}>April (04)</option>
+                  <option value={5}>May (05)</option>
+                  <option value={6}>June (06)</option>
+                  <option value={7}>July (07)</option>
+                  <option value={8}>August (08)</option>
+                  <option value={9}>September (09)</option>
+                  <option value={10}>October (10)</option>
+                  <option value={11}>November (11)</option>
+                  <option value={12}>December (12)</option>
+                </select>
+              </div>
+
+              {/* Year */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                  Year
+                </label>
+                <select
+                  aria-label="Predictor Year"
+                  value={predictorYear}
+                  onChange={(e) => {
+                    setPredictorYear(Number(e.target.value));
+                    setMonthPrediction(null);
+                  }}
+                  className="h-10 w-full rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                >
+                  <option value={2027}>2027 (Forecast Horizon)</option>
+                  <option value={2026}>2026 (Active Forecast)</option>
+                  <option value={2025}>2025 (Historical Actual)</option>
+                  <option value={2024}>2024 (Historical Actual)</option>
+                  <option value={2023}>2023 (Historical Actual)</option>
+                  <option value={2022}>2022 (Historical Actual)</option>
+                  <option value={2021}>2021 (Historical Actual)</option>
+                  <option value={2020}>2020 (Historical Actual)</option>
+                </select>
+              </div>
+
+              {/* Predict Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={handlePredictCrime}
+                  disabled={isPredictorLoading || !predictorDistrictId}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-[#1769AA] px-4 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isPredictorLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Calculating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Predict Crime</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {predictorError && (
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{predictorError}</span>
+              </div>
+            )}
+
+            {/* Prediction Result Display */}
+            {monthPrediction && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                {/* Result Status Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#F4F7FA] border border-[#D9E1EA] rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-[#1769AA] shrink-0" />
+                    <span className="text-sm font-bold text-[#0B1F3A]">
+                      {monthPrediction.district_name}, {monthPrediction.state_name} — {monthPrediction.period}
+                    </span>
+                  </div>
+                  <div>
+                    {monthPrediction.is_forecast && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 text-xs font-semibold">
+                        <Sparkles className="h-3 w-3" />
+                        Statistical Forecast Estimate
+                      </span>
+                    )}
+                    {monthPrediction.is_historical && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 text-xs font-semibold">
+                        <Calendar className="h-3 w-3" />
+                        Observed Historical Caseload
+                      </span>
+                    )}
+                    {!monthPrediction.is_available && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 text-xs font-semibold">
+                        <AlertCircle className="h-3 w-3" />
+                        {monthPrediction.crime_level}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {monthPrediction.is_available ? (
+                  <>
+                    {/* 4 Metric Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {/* 1. Value */}
+                      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
+                        <span className="text-xs font-medium text-[#5D6878]">
+                          {monthPrediction.is_forecast ? 'Predicted Crime Count' : 'Observed Crime Count'}
+                        </span>
+                        <div className="mt-1 flex items-baseline gap-1">
+                          <span className="text-2xl font-bold font-mono text-[#1769AA]">
+                            {monthPrediction.display_value !== undefined && monthPrediction.display_value !== null
+                              ? monthPrediction.display_value.toFixed(2)
+                              : '—'}
+                          </span>
+                          <span className="text-xs text-slate-500 font-medium">incidents</span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {monthPrediction.is_forecast ? 'Forward model projection' : 'Verified historical incidents'}
+                        </p>
+                      </div>
+
+                      {/* 2. Crime Level */}
+                      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
+                        <span className="text-xs font-medium text-[#5D6878]">Estimated Crime Level</span>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-sm font-bold ${
+                              monthPrediction.crime_level === 'Higher'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : monthPrediction.crime_level === 'Lower'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            }`}
+                          >
+                            {monthPrediction.crime_level === 'Higher' && <ArrowUpRight className="h-4 w-4" />}
+                            {monthPrediction.crime_level === 'Lower' && <ArrowDownRight className="h-4 w-4" />}
+                            {monthPrediction.crime_level === 'Moderate' && <Minus className="h-4 w-4" />}
+                            {monthPrediction.crime_level}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Compared to historical baseline
+                        </p>
+                      </div>
+
+                      {/* 3. Historical Baseline */}
+                      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
+                        <span className="text-xs font-medium text-[#5D6878]">Historical Baseline</span>
+                        <div className="mt-1 flex items-baseline gap-1">
+                          <span className="text-2xl font-bold font-mono text-[#0B1F3A]">
+                            {monthPrediction.baseline_count !== undefined && monthPrediction.baseline_count !== null
+                              ? monthPrediction.baseline_count.toFixed(2)
+                              : '0.00'}
+                          </span>
+                          <span className="text-xs text-slate-500 font-medium">incidents</span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500 truncate" title={monthPrediction.baseline_type || ''}>
+                          {monthPrediction.baseline_type || 'Same month baseline'}
+                        </p>
+                      </div>
+
+                      {/* 4. Comparative Difference */}
+                      <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
+                        <span className="text-xs font-medium text-[#5D6878]">Numerical &amp; % Change</span>
+                        <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                          <span
+                            className={`text-xl font-bold font-mono ${
+                              (monthPrediction.numerical_change || 0) > 0
+                                ? 'text-rose-600'
+                                : (monthPrediction.numerical_change || 0) < 0
+                                ? 'text-emerald-600'
+                                : 'text-slate-700'
+                            }`}
+                          >
+                            {(monthPrediction.numerical_change || 0) > 0 ? '+' : ''}
+                            {monthPrediction.numerical_change !== undefined && monthPrediction.numerical_change !== null
+                              ? monthPrediction.numerical_change.toFixed(2)
+                              : '0.00'}
+                          </span>
+                          {monthPrediction.percentage_change !== null && monthPrediction.percentage_change !== undefined && (
+                            <span
+                              className={`text-xs font-semibold ${
+                                monthPrediction.percentage_change > 0
+                                  ? 'text-rose-600'
+                                  : monthPrediction.percentage_change < 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-600'
+                              }`}
+                            >
+                              ({monthPrediction.percentage_change > 0 ? '+' : ''}
+                              {monthPrediction.percentage_change.toFixed(1)}%)
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {(monthPrediction.numerical_change || 0) > 0
+                            ? 'Projected above baseline'
+                            : (monthPrediction.numerical_change || 0) < 0
+                            ? 'Projected below baseline'
+                            : 'Consistent with baseline'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Explanation Box */}
+                    <div className="rounded-lg border border-blue-100 bg-[#F7FAFD] p-3.5 text-xs text-[#0B1F3A] leading-relaxed">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium">{monthPrediction.explanation}</p>
+                          <p className="mt-1.5 text-[11px] text-[#5D6878]">
+                            <strong>Comparison Rule:</strong> {monthPrediction.comparison_rule}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Unavailable State Card */
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 leading-relaxed">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-bold text-amber-950">
+                          {monthPrediction.crime_level === 'Insufficient Baseline'
+                            ? 'Insufficient Historical Baseline Data'
+                            : 'Forecast Unavailable for Selected Period'}
+                        </h4>
+                        <p className="mt-1">{monthPrediction.explanation}</p>
+                        <p className="mt-2 text-[11px] text-amber-800">
+                          <strong>Supported Horizons:</strong> Active forecast predictions are currently available for{' '}
+                          <strong>November 2026, December 2026, and January 2027</strong>. Historical actual caseloads are
+                          recorded from <strong>January 2020 through December 2025</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* SECTION 3: COMPACT FILTER TOOLBAR */}

@@ -16,6 +16,7 @@ from backend.app.schemas.predictions import (
     PredictionItemResponse,
     PredictionOverviewResponse,
     DistrictPredictionSeriesResponse,
+    DistrictMonthPredictionResponse,
     ModelInfoResponse,
     ModelListItemResponse,
     EvaluationComparisonResponse,
@@ -245,6 +246,34 @@ class PredictionService:
             overall_rmse=data["overall_rmse"],
             overall_wape=data["overall_wape"],
         )
+
+    @staticmethod
+    def get_district_month_prediction(
+        db: Session,
+        district_id: int,
+        year: int,
+        month: int,
+    ) -> DistrictMonthPredictionResponse:
+        """
+        Retrieves prediction or historical incident count for a specific district and month,
+        computing comparative baseline metrics and crime-level classification.
+        """
+        if month < 1 or month > 12:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid month {month}. Month must be between 1 and 12.",
+            )
+
+        data = PredictionRepository.get_district_month_prediction(
+            db, district_id=district_id, year=year, month=month
+        )
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"District with ID {district_id} not found.",
+            )
+
+        return DistrictMonthPredictionResponse(**data)
 
     @staticmethod
     def trigger_train(db: Session, refit_production: bool = True) -> TrainTriggerResponse:

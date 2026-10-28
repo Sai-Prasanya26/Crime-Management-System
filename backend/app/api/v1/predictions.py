@@ -16,6 +16,7 @@ from backend.app.schemas.predictions import (
     PredictionOverviewResponse,
     PredictionItemResponse,
     DistrictPredictionSeriesResponse,
+    DistrictMonthPredictionResponse,
     ModelInfoResponse,
     ModelListItemResponse,
     EvaluationComparisonResponse,
@@ -197,6 +198,24 @@ def trigger_generation(
         forecast_origin_date=forecast_origin_date,
         calibrate_intervals=calibrate_intervals,
         include_2025=include_2025,
+    )
+
+
+@router.get(
+    "/district-month",
+    response_model=DistrictMonthPredictionResponse,
+    summary="Get District-Specific Monthly Crime Prediction and Level",
+    description="Retrieve the predicted crime count or historical actuals and estimated crime level for a selected district, year, and month.",
+)
+def get_district_month_prediction(
+    district_id: int = Query(..., ge=1, description="Unique ID of the district"),
+    year: int = Query(..., ge=2000, le=2100, description="Calendar year"),
+    month: int = Query(..., ge=1, le=12, description="Calendar month (1 to 12)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DistrictMonthPredictionResponse:
+    return PredictionService.get_district_month_prediction(
+        db, district_id=district_id, year=year, month=month
     )
 
 

@@ -106,6 +106,36 @@ export interface ActualVsPredictedData {
   overall_wape?: number;
 }
 
+export interface DistrictMonthPrediction {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  year: number;
+  month: number;
+  period: string;
+  is_available: boolean;
+  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'UNAVAILABLE';
+  is_forecast: boolean;
+  is_historical: boolean;
+  display_value?: number | null;
+  predicted_count?: number | null;
+  actual_count?: number | null;
+  has_baseline: boolean;
+  baseline_year?: number | null;
+  baseline_month?: number | null;
+  baseline_period?: string | null;
+  baseline_count?: number | null;
+  baseline_type?: string | null;
+  numerical_change?: number | null;
+  percentage_change?: number | null;
+  crime_level: string; // 'Higher' | 'Moderate' | 'Lower' | 'Insufficient Baseline' | 'Unavailable'
+  comparison_rule: string;
+  explanation: string;
+  disclaimer: string;
+  message?: string | null;
+}
+
 export interface PredictionFilters {
   state_id?: number;
   district_id?: number;
@@ -161,6 +191,17 @@ export const predictionApi = {
     series: PredictionItem[];
   }> => {
     const res = await apiClient.get(`/predictions/${districtId}`);
+    return res.data;
+  },
+
+  getDistrictMonthPrediction: async (
+    districtId: number,
+    year: number,
+    month: number
+  ): Promise<DistrictMonthPrediction> => {
+    const res = await apiClient.get<DistrictMonthPrediction>('/predictions/district-month', {
+      params: { district_id: districtId, year, month },
+    });
     return res.data;
   },
 

@@ -439,3 +439,247 @@ class PredictionRepository:
             "overall_rmse": overall_rmse,
             "overall_wape": overall_wape,
         }
+
+    @staticmethod
+    def get_district_month_prediction(
+        db: Session,
+        district_id: int,
+        year: int,
+        month: int,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves forecast or historical incident count for a specific district and month,
+        evaluating comparative baseline metrics and crime-level classification.
+        """
+        district = (
+            db.query(District.id, District.district_name, State.id.label("state_id"), State.state_name)
+            .join(State, District.state_id == State.id)
+            .filter(District.id == district_id)
+            .first()
+        )
+        if not district:
+            return None
+
+        did, dname, sid, sname = district.id, district.district_name, district.state_id, district.state_name
+        period_str = f"{year}-{month:02d}-01"
+        period_display = f"{year}-{month:02d}"
+
+        # 1. Check baseline incident history for this district
+        total_dist_incidents = db.execute(
+            text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
+            {"did": did},
+        ).scalar() or 0
+
+        has_baseline = total_dist_incidents > 0
+        comparison_rule = (
+            "Projected crime volume is evaluated against the historical incident baseline for the same calendar month. "
+            "Changes exceeding +5.0% are classified as 'Higher', below -5.0% as 'Lower', and within ±5.0% as 'Moderate'. "
+            "This metric serves as an analytical planning benchmark and is not an official government classification or crime probability."
+        )
+
+        if not has_baseline:
+            return {
+                "district_id": did,
+                "district_name": dname,
+                "state_id": sid,
+                "state_name": sname,
+                "year": year,
+                "month": month,
+                "period": period_display,
+                "is_available": False,
+                "data_type": "UNAVAILABLE",
+                "is_forecast": False,
+                "is_historical": False,
+                "display_value": None,
+                "predicted_count": None,
+                "actual_count": None,
+                "has_baseline": False,
+                "baseline_year": None,
+                "baseline_month": None,
+                "baseline_period": None,
+                "baseline_count": None,
+                "baseline_type": None,
+                "numerical_change": None,
+                "percentage_change": None,
+                "crime_level": "Insufficient Baseline",
+                "comparison_rule": comparison_rule,
+                "explanation": f"District '{dname}' does not have historical time-series incident records in the database to establish a predictive baseline.",
+                "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
+                "message": "Insufficient historical baseline data for this district.",
+            }
+
+        # 2. Check if stored prediction exists
+        pred_row = db.execute(
+            text("""
+                SELECT predicted_crime_count, forecast_status, prediction_interval_lower, prediction_interval_upper
+                FROM crime_predictions
+                WHERE district_id = :did AND prediction_date = :pdate
+            """),
+            {"did": did, "pdate": period_str},
+        ).fetchone()
+
+        # 3. Check if historical actuals exist for this month
+        actual_cnt = db.execute(
+            text("""
+                SELECT COUNT(*) FROM crime_incidents
+                WHERE district_id = :did
+                  AND incident_date >= :pdate
+                  AND incident_date <= LAST_DAY(:pdate)
+            """),
+            {"did": did, "pdate": period_str},
+        ).scalar()
+
+        is_historical = year <= 2025 and actual_cnt is not None
+        has_prediction = pred_row is not None
+
+        if not is_historical and not has_prediction:
+            return {
+                "district_id": did,
+                "district_name": dname,
+                "state_id": sid,
+                "state_name": sname,
+                "year": year,
+                "month": month,
+                "period": period_display,
+                "is_available": False,
+                "data_type": "UNAVAILABLE",
+                "is_forecast": False,
+                "is_historical": False,
+                "display_value": None,
+                "predicted_count": None,
+                "actual_count": None,
+                "has_baseline": True,
+                "baseline_year": None,
+                "baseline_month": None,
+                "baseline_period": None,
+                "baseline_count": None,
+                "baseline_type": None,
+                "numerical_change": None,
+                "percentage_change": None,
+                "crime_level": "Unavailable",
+                "comparison_rule": comparison_rule,
+                "explanation": f"Forecast is unavailable for {period_display}. The forecasting pipeline currently supports active 3-month forecast horizons (Nov 2026 – Jan 2027) and historical records (2020–2025).",
+                "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
+                "message": f"Forecast unavailable for {period_display}.",
+            }
+
+        # Determine value and type
+        if is_historical:
+            data_type = "HISTORICAL_ACTUAL"
+            is_forecast = False
+            display_val = float(actual_cnt)
+            pred_val = float(pred_row[0]) if pred_row else None
+            act_val = int(actual_cnt)
+        else:
+            data_type = "FORECAST"
+            is_forecast = True
+            display_val = float(pred_row[0])
+            pred_val = display_val
+            act_val = None
+
+        # 4. Determine baseline comparison
+        if year >= 2026:
+            base_year = 2025
+        elif year > 2020:
+            base_year = year - 1
+        else:
+            base_year = 2021
+
+        base_period_str = f"{base_year}-{month:02d}-01"
+        base_cnt = db.execute(
+            text("""
+                SELECT COUNT(*) FROM crime_incidents
+                WHERE district_id = :did
+                  AND incident_date >= :bstart
+                  AND incident_date <= LAST_DAY(:bstart)
+            """),
+            {"did": did, "bstart": base_period_str},
+        ).scalar() or 0
+
+        baseline_val = float(base_cnt)
+        baseline_desc = f"Same month in {base_year} ({base_year}-{month:02d})"
+
+        # Fallback to seasonal monthly average if prior year was zero
+        if baseline_val == 0.0 and total_dist_incidents > 0:
+            seasonal_avg = db.execute(
+                text("""
+                    SELECT COUNT(*) / 6.0 FROM crime_incidents
+                    WHERE district_id = :did AND MONTH(incident_date) = :m
+                """),
+                {"did": did, "m": month},
+            ).scalar() or 0.0
+            if seasonal_avg > 0.0:
+                baseline_val = round(float(seasonal_avg), 2)
+                baseline_desc = f"Historical seasonal average for month {month:02d} (2020–2025)"
+
+        # 5. Compute comparison metrics
+        num_change = round(display_val - baseline_val, 2)
+        if baseline_val > 0:
+            pct_change = round(((display_val - baseline_val) / baseline_val) * 100.0, 1)
+        else:
+            pct_change = None
+
+        # 6. Classification: Higher, Moderate, Lower
+        if baseline_val > 0:
+            if pct_change > 5.0 and num_change >= 0.5:
+                level = "Higher"
+            elif pct_change < -5.0 and num_change <= -0.5:
+                level = "Lower"
+            else:
+                level = "Moderate"
+        else:
+            if display_val >= 1.0:
+                level = "Higher"
+            elif display_val == 0.0:
+                level = "Moderate"
+            else:
+                level = "Moderate"
+
+        # 7. Human-readable explanation
+        month_name = date(year, month, 1).strftime("%B %Y")
+        base_label = baseline_desc
+
+        if is_forecast:
+            change_txt = f"{abs(num_change):.2f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.2f} incidents"
+            explanation = (
+                f"For {month_name}, {dname} is projected to record approximately {display_val:.2f} incidents. "
+                f"This estimated crime level is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
+                f"representing an expected change of {change_txt}."
+            )
+        else:
+            change_txt = f"{abs(num_change):.0f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.0f} incidents"
+            explanation = (
+                f"In {month_name}, {dname} recorded {act_val} confirmed incidents. "
+                f"This incident volume is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
+                f"representing a difference of {change_txt}."
+            )
+
+        return {
+            "district_id": did,
+            "district_name": dname,
+            "state_id": sid,
+            "state_name": sname,
+            "year": year,
+            "month": month,
+            "period": period_display,
+            "is_available": True,
+            "data_type": data_type,
+            "is_forecast": is_forecast,
+            "is_historical": is_historical,
+            "display_value": display_val,
+            "predicted_count": pred_val,
+            "actual_count": act_val,
+            "has_baseline": True,
+            "baseline_year": base_year,
+            "baseline_month": month,
+            "baseline_period": f"{base_year}-{month:02d}",
+            "baseline_count": baseline_val,
+            "baseline_type": baseline_desc,
+            "numerical_change": num_change,
+            "percentage_change": pct_change,
+            "crime_level": level,
+            "comparison_rule": comparison_rule,
+            "explanation": explanation,
+            "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
+            "message": None,
+        }

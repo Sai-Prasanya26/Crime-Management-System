@@ -316,6 +316,67 @@ class TestCrimePredictionPipeline(unittest.TestCase):
             cnt = conn.execute(text("SELECT COUNT(*) FROM crime_incidents")).scalar()
             self.assertEqual(cnt, 191679, "crime_incidents row count was modified!")
 
+    def test_15_district_month_prediction_feature(self):
+        """15. District month prediction: Covers forecast, historical, unavailable, and insufficient baseline."""
+        # 1. Supported Future Forecast (Nov 2026 for District 1)
+        resp1 = client.get(
+            "/api/v1/predictions/district-month?district_id=1&year=2026&month=11",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp1.status_code, 200)
+        d1 = resp1.json()
+        self.assertTrue(d1["is_available"])
+        self.assertTrue(d1["is_forecast"])
+        self.assertFalse(d1["is_historical"])
+        self.assertEqual(d1["data_type"], "FORECAST")
+        self.assertIn(d1["crime_level"], ["Higher", "Moderate", "Lower"])
+        self.assertIsNotNone(d1["predicted_count"])
+        self.assertIn("Forecasts are statistical estimates", d1["disclaimer"])
+
+        # 2. Supported Historical Actual (Oct 2025 for District 1)
+        resp2 = client.get(
+            "/api/v1/predictions/district-month?district_id=1&year=2025&month=10",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp2.status_code, 200)
+        d2 = resp2.json()
+        self.assertTrue(d2["is_available"])
+        self.assertTrue(d2["is_historical"])
+        self.assertFalse(d2["is_forecast"])
+        self.assertEqual(d2["data_type"], "HISTORICAL_ACTUAL")
+        self.assertIsNotNone(d2["actual_count"])
+
+        # 3. Unavailable Month (Jun 2026 for District 1)
+        resp3 = client.get(
+            "/api/v1/predictions/district-month?district_id=1&year=2026&month=6",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp3.status_code, 200)
+        d3 = resp3.json()
+        self.assertFalse(d3["is_available"])
+        self.assertEqual(d3["data_type"], "UNAVAILABLE")
+        self.assertEqual(d3["crime_level"], "Unavailable")
+        self.assertIn("unavailable", d3["message"].lower())
+
+        # 4. District with Insufficient Baseline (District 674)
+        resp4 = client.get(
+            "/api/v1/predictions/district-month?district_id=674&year=2026&month=11",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp4.status_code, 200)
+        d4 = resp4.json()
+        self.assertFalse(d4["is_available"])
+        self.assertFalse(d4["has_baseline"])
+        self.assertEqual(d4["crime_level"], "Insufficient Baseline")
+        self.assertIn("insufficient", d4["message"].lower())
+
+        # 5. Non-existent District -> 404
+        resp5 = client.get(
+            "/api/v1/predictions/district-month?district_id=99999&year=2026&month=11",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(resp5.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

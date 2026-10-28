@@ -149,3 +149,34 @@ class GenerateTriggerResponse(BaseModel):
     generated_count: int
     status_breakdown: Optional[Dict[str, int]] = None
     message: str
+
+
+class DistrictMonthPredictionResponse(BaseModel):
+    district_id: int
+    district_name: str
+    state_id: int
+    state_name: str
+    year: int
+    month: int
+    period: str
+    is_available: bool
+    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", or "UNAVAILABLE"
+    is_forecast: bool
+    is_historical: bool
+    display_value: Optional[float] = None
+    predicted_count: Optional[float] = None
+    actual_count: Optional[int] = None
+    has_baseline: bool
+    baseline_year: Optional[int] = None
+    baseline_month: Optional[int] = None
+    baseline_period: Optional[str] = None
+    baseline_count: Optional[float] = None
+    baseline_type: Optional[str] = None
+    numerical_change: Optional[float] = None
+    percentage_change: Optional[float] = None
+    crime_level: str  # "Higher", "Moderate", "Lower", "Insufficient Baseline", "Unavailable"
+    comparison_rule: str
+    explanation: str
+    disclaimer: str
+    message: Optional[str] = None
+
