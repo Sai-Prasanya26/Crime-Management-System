@@ -28,7 +28,6 @@ export const DistrictsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const geographyMode = (searchParams.get('geography_mode') || searchParams.get('view') || 'current') as 'current' | 'historical';
 
-  const [metric, setMetric] = useState<'volume' | 'rate'>('volume');
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(() => {
     const sId = searchParams.get('state_id');
     return sId ? Number(sId) : undefined;
@@ -209,7 +208,7 @@ export const DistrictsPage: React.FC = () => {
     setError(null);
     try {
       const data = await analyticsApi.getTopDistricts({
-        metric,
+        metric: 'volume',
         limit: 15,
         state_id: selectedStateId,
         geography_mode: geographyMode,
@@ -223,7 +222,7 @@ export const DistrictsPage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [metric, selectedStateId, geographyMode, startDate, endDate]);
+  }, [selectedStateId, geographyMode, startDate, endDate]);
 
   useEffect(() => {
     fetchTopDistricts();
@@ -254,18 +253,6 @@ export const DistrictsPage: React.FC = () => {
     }
     return 'All States & UTs (National Overview)';
   }, [selectedDistrictId, selectedDistrictName, selectedStateName, districtDetail, jurisdictionProfile]);
-
-  const activePeriodLabel = useMemo(() => {
-    if (startDate && endDate) {
-      if (startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && startDate.slice(0, 4) === endDate.slice(0, 4)) {
-        return `Period: ${startDate.slice(0, 4)}`;
-      }
-      return `Period: ${startDate} to ${endDate}`;
-    }
-    if (startDate) return `Period: From ${startDate}`;
-    if (endDate) return `Period: Up to ${endDate}`;
-    return 'Period: 2020–2025 (All Years)';
-  }, [startDate, endDate]);
 
   const handleStateChange = (stateId?: number) => {
     setSelectedStateId(stateId);
@@ -481,26 +468,12 @@ export const DistrictsPage: React.FC = () => {
 
           {/* SECTION 2: Jurisdiction Profile Section */}
           <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs transition-all">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-blue-200/60 pb-3 gap-2">
+            <div className="flex items-center justify-between border-b border-blue-200/60 pb-3">
               <div className="flex items-center gap-2">
                 <Building className="h-4 w-4 text-[#1769AA]" />
                 <h3 className="text-[15px] font-bold text-[#0B1F3A]">
                   Jurisdiction Profile: {profileHeading}
                 </h3>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-blue-200">
-                  {activePeriodLabel}
-                </span>
-                {(jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id) ? (
-                  <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1769AA] border border-blue-200">
-                    Census 2011 Parent #{jurisdictionProfile?.parent_district_id || districtDetail?.parent_district_id}
-                  </span>
-                ) : (
-                  <span className="rounded bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 border border-blue-200">
-                    {selectedDistrictId ? 'District Scope' : selectedStateId ? 'State Scope' : 'National Scope'}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -606,8 +579,6 @@ export const DistrictsPage: React.FC = () => {
           {/* SECTION 3: Jurisdiction Comparison (Top Districts Table) */}
           <TopDistrictsTable
             districts={topDistricts.items}
-            metric={metric}
-            onMetricChange={(newMetric) => setMetric(newMetric)}
             isLoading={isRefreshing}
           />
         </div>

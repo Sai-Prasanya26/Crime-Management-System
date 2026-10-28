@@ -39,7 +39,6 @@ export const DashboardPage: React.FC = () => {
     geography_mode: 'current',
   });
   const [trendInterval, setTrendInterval] = useState<'year' | 'month' | 'day'>('month');
-  const [rankingMetric, setRankingMetric] = useState<'volume' | 'rate'>('volume');
 
   // Sync with URL query parameters (state_id, district_id, year, start_date, end_date, dimension)
   useEffect(() => {
@@ -110,7 +109,7 @@ export const DashboardPage: React.FC = () => {
         analyticsApi.getDemographics(filters),
         analyticsApi.getWeapons(filters),
         analyticsApi.getTopDistricts({
-          metric: rankingMetric,
+          metric: 'volume',
           limit: 10,
           state_id: filters.state_id,
           geography_mode: 'current',
@@ -133,7 +132,7 @@ export const DashboardPage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [filters, trendInterval, rankingMetric]);
+  }, [filters, trendInterval]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -160,10 +159,6 @@ export const DashboardPage: React.FC = () => {
 
   const handleIntervalChange = (newInterval: 'year' | 'month' | 'day') => {
     setTrendInterval(newInterval);
-  };
-
-  const handleMetricChange = (newMetric: 'volume' | 'rate') => {
-    setRankingMetric(newMetric);
   };
 
   const isFullscreen =
@@ -315,8 +310,6 @@ export const DashboardPage: React.FC = () => {
             {topDistricts && (
               <TopDistrictsTable
                 districts={topDistricts.items}
-                metric={rankingMetric}
-                onMetricChange={handleMetricChange}
                 isLoading={isRefreshing}
               />
             )}
