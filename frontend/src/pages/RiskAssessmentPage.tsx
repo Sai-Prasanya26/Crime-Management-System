@@ -6,11 +6,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   MapPin,
-  X,
   RotateCcw,
-  ChevronRight,
-  Sparkles,
-  FileText,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -21,7 +17,6 @@ import { riskApi, geographyApi } from '../api';
 import type {
   RiskOverviewResponse,
   RiskListResponse,
-  DistrictRiskDetailResponse,
   StateItem,
   DistrictItem,
   RiskScoreType,
@@ -79,7 +74,7 @@ const resolveActivePeriod = (trends: RiskTrendPoint[]): ActivePeriodInfo | null 
 };
 
 export const RiskAssessmentPage: React.FC = () => {
-  // Internally selected assessment period (derived automatically from API data)
+  // Internally selected assessment period (derived automatically from backend API data)
   const [activePeriod, setActivePeriod] = useState<ActivePeriodInfo | null>(null);
 
   // High-level overview state
@@ -96,11 +91,6 @@ export const RiskAssessmentPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 20;
   const [riskList, setRiskList] = useState<RiskListResponse | null>(null);
-
-  // District detail / explainability modal state
-  const [selectedDistrictDetail, setSelectedDistrictDetail] = useState<DistrictRiskDetailResponse | null>(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
   // Loading & error flags
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -217,44 +207,6 @@ export const RiskAssessmentPage: React.FC = () => {
     setSelectedDistrictId(undefined);
     setSelectedRiskLevel(undefined);
     setCurrentPage(1);
-  };
-
-  // Inspect district detail handler using the internally selected active period
-  const handleInspectDistrict = async (districtId: number) => {
-    if (!activePeriod) return;
-    setIsLoadingDetail(true);
-    setIsDetailModalOpen(true);
-    try {
-      const detail = await riskApi.getDistrictRiskDetail(
-        districtId,
-        activePeriod.period,
-        activePeriod.version,
-        activePeriod.scoreType
-      );
-      setSelectedDistrictDetail(detail);
-    } catch (err: any) {
-      console.error(`Failed to load detail for district ${districtId}:`, err);
-    } finally {
-      setIsLoadingDetail(false);
-    }
-  };
-
-  // Format primary risk driver label
-  const formatDriverName = (driver?: string | null): string => {
-    switch (driver) {
-      case 'forecast_volume':
-        return 'Forecast Incident Volume';
-      case 'historical_volume':
-        return 'Observed Incident Volume';
-      case 'severity_profile':
-        return 'Crime Severity Profile';
-      case 'crime_rate_per_100k':
-        return 'Per-Capita Incident Rate';
-      case 'trend_ratio':
-        return 'Recent Trend Momentum';
-      default:
-        return driver ? driver.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'N/A';
-    }
   };
 
   // Risk band badge generator
@@ -485,10 +437,8 @@ export const RiskAssessmentPage: React.FC = () => {
                       <th className="py-2.5 px-3 text-center w-14">Rank</th>
                       <th className="py-2.5 px-3">District</th>
                       <th className="py-2.5 px-3">State / UT</th>
-                      <th className="py-2.5 px-3 text-center">Risk Score</th>
-                      <th className="py-2.5 px-3">Risk Level</th>
-                      <th className="py-2.5 px-3">Primary Contributing Factor</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
+                      <th className="py-2.5 px-3 text-center w-28">Risk Score</th>
+                      <th className="py-2.5 px-3 w-32">Risk Level</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#DCE2EA]">
@@ -512,19 +462,6 @@ export const RiskAssessmentPage: React.FC = () => {
                           </td>
                           <td className="py-2.5 px-3">
                             {getRiskBadge(item.risk_level)}
-                          </td>
-                          <td className="py-2.5 px-3 text-[#1769AA] font-medium">
-                            {formatDriverName(item.strongest_driver)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleInspectDistrict(item.district_id)}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors cursor-pointer"
-                            >
-                              Explain
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
                           </td>
                         </tr>
                       );
@@ -556,148 +493,6 @@ export const RiskAssessmentPage: React.FC = () => {
                     className="px-2.5 py-1 rounded border border-[#DCE2EA] bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 font-medium cursor-pointer"
                   >
                     Next
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SECTION D: EXPLAINABILITY DETAIL MODAL */}
-      {isDetailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-xl bg-white rounded-lg shadow-xl border border-[#DCE2EA] max-h-[90vh] overflow-y-auto p-5">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE2EA]">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded bg-[#EAF3FA] text-[#1769AA]">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#0B1F3A]">
-                    {selectedDistrictDetail?.district_name || 'District Risk Profile'}
-                  </h3>
-                  <p className="text-xs text-[#5D6878]">
-                    {selectedDistrictDetail?.state_name} • Period: {selectedDistrictDetail?.assessment_period} ({selectedDistrictDetail?.score_type === 'FORECAST' ? 'Forward Forecast' : 'Observed Historical Actuals'})
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDetailModalOpen(false);
-                  setSelectedDistrictDetail(null);
-                }}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {isLoadingDetail || !selectedDistrictDetail ? (
-              <div className="py-8">
-                <LoadingState message="Loading risk factor profile..." />
-              </div>
-            ) : (
-              <div className="space-y-4 pt-4">
-                {/* Score & Driver Highlights */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <div>
-                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
-                      Risk Score
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-2xl font-bold font-mono text-[#0B1F3A]">
-                        {selectedDistrictDetail.overall_risk_score.toFixed(1)}
-                      </span>
-                      <span className="text-xs text-[#5D6878]">/ 100</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
-                      Assigned Level
-                    </span>
-                    <div className="mt-1">
-                      {getRiskBadge(selectedDistrictDetail.risk_level)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider">
-                      Primary Driver
-                    </span>
-                    <p className="text-xs font-bold text-[#1769AA] mt-1">
-                      {formatDriverName(selectedDistrictDetail.strongest_driver)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Plain-Language Assessment Summary */}
-                {selectedDistrictDetail.explanation_summary && (
-                  <div className="p-3 bg-[#EAF3FA]/50 rounded-lg border border-[#1769AA]/20">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1769AA] mb-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Assessment Summary
-                    </div>
-                    <p className="text-xs text-[#0B1F3A] leading-relaxed">
-                      {selectedDistrictDetail.explanation_summary}
-                    </p>
-                  </div>
-                )}
-
-                {/* Contributing Factors Breakdown */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#5D6878] mb-2">
-                    Contributing Risk Factors
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {Object.entries(selectedDistrictDetail.factor_contributions).map(([fKey, fVal]) => {
-                      if (!fVal) return null;
-                      return (
-                        <div key={fKey} className="rounded border border-[#DCE2EA] bg-white p-2.5 text-xs">
-                          <div className="font-semibold text-[#0B1F3A] mb-1">
-                            {formatDriverName(fKey)}
-                          </div>
-                          <div className="flex justify-between text-[#5D6878] text-[11px]">
-                            <span>Relative Standing:</span>
-                            <strong className="text-[#0B1F3A]">{fVal.percentile.toFixed(1)}th percentile</strong>
-                          </div>
-                          <div className="flex justify-between text-[#5D6878] text-[11px] mt-0.5">
-                            <span>Contribution to Score:</span>
-                            <strong className="font-mono text-[#1769AA]">+{fVal.weighted.toFixed(1)} pts</strong>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Context & Analytical Disclaimer */}
-                <div className="p-2.5 bg-slate-50 rounded border border-slate-200 text-xs text-[#5D6878] space-y-1">
-                  <div className="flex justify-between">
-                    <span>Jurisdiction Population Baseline:</span>
-                    <span className="font-semibold text-[#0B1F3A]">
-                      {selectedDistrictDetail.census_2011_population ? `${selectedDistrictDetail.census_2011_population.toLocaleString()} residents` : 'Standard panel'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#5D6878] pt-1 border-t border-slate-200 mt-1">
-                    <strong>Notice:</strong> Risk scores are relative statistical indicators designed for resource allocation and operational planning. They are not official government risk classifications and do not represent individual risk or guaranteed crime predictions.
-                  </p>
-                </div>
-
-                {/* Modal Close Action */}
-                <div className="flex justify-end pt-2 border-t border-[#DCE2EA]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsDetailModalOpen(false);
-                      setSelectedDistrictDetail(null);
-                    }}
-                    className="px-4 py-1.5 rounded bg-slate-100 text-[#0B1F3A] hover:bg-slate-200 text-xs font-medium transition-colors cursor-pointer"
-                  >
-                    Close
                   </button>
                 </div>
               </div>
