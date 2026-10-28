@@ -91,6 +91,29 @@ Across the entire platform, UI clutter, redundant descriptions, small explanator
 ### J. System Administration (`AdminDashboardPage.tsx`)
 - **Header**: Removed page subtitle.
 
+### K. Executive Dashboard Card Decluttering (`DashboardPage.tsx` & Chart Components)
+- **Crime Trend Analysis (`CrimeTrendChart.tsx`)**:
+  - Removed redundant subtitle sentence `Temporal volume distribution across reporting periods (X incidents)` beneath the title.
+  - Aligned header min-height for uniform layout.
+- **Crime Category Distribution (`CrimeCategoryChart.tsx`)**:
+  - Removed redundant subtitle `Categorization by legal domain & severity weighting` and decorative `4 Categories` badge.
+  - Removed redundant bottom legal domain classification color legend footer strip (already visible in the category list).
+- **Legal Crime Type Distribution (`CrimeTypeChart.tsx`)**:
+  - Removed redundant subtitle `Statutory offenses classified by volume and legal severity tier`.
+  - Removed redundant bottom severity tier classification color legend footer strip.
+- **24-Hour Diurnal Pattern (`HourlyDistributionChart.tsx`)**:
+  - Removed subtitle `Hourly incident distribution for shift planning and patrol optimization`.
+  - Removed redundant bottom operational shift recommendation box and peak-hour description.
+- **Weapon Involvement Profile (`WeaponDistributionChart.tsx`)**:
+  - Removed subtitle `Recorded weapon classifications utilized during commission of offenses`.
+  - Removed bottom tactical recommendation box with redundant classification and total incident counts.
+- **Victim Demographics Profile (`VictimDemographicsChart.tsx`)**:
+  - Removed subtitle `Age cohort distribution and disaggregated gender split`.
+  - Removed redundant bottom demographic normalization footer strip.
+- **Top Jurisdictions by Crime Load (`TopDistrictsTable.tsx`)**:
+  - Removed subtitle describing metric ranking.
+  - Removed redundant bottom table footer strip (`Displaying top 10 ranked districts... Census 2011 Baseline`).
+
 ---
 
 ## 3. Preserved Architecture & Invariants
@@ -111,5 +134,6 @@ Across the entire platform, UI clutter, redundant descriptions, small explanator
 | Test / Check | Tool / Command | Result |
 | :--- | :--- | :--- |
 | Frontend Linting | `oxlint` | **0 errors** (66 files checked) |
-| Frontend Production Build | `tsc -b && vite build` | **Passed** (Built in 2.98s) |
+| Frontend Production Build | `tsc -b && vite build` | **Passed** (Built in 3.36s) |
 | Geography & Jurisdiction Tests | `python -m unittest backend.tests.test_jurisdiction_profiles backend.tests.test_geography_mode_switch` | **20 / 20 Passed** |
+

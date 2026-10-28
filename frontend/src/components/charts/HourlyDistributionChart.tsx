@@ -31,17 +31,12 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
 
   return (
     <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <Clock className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">24-Hour Diurnal Pattern</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[46px]">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <Clock className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Hourly incident distribution for shift planning and patrol optimization
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">24-Hour Diurnal Pattern</h3>
         </div>
 
         {peakItem && (
@@ -103,19 +98,6 @@ export const HourlyDistributionChart: React.FC<HourlyDistributionChartProps> = (
         )}
       </div>
 
-      <div className="mt-auto flex items-center justify-between rounded border border-[#D9E1EA] bg-[#F4F7FA] px-3 py-2 text-xs text-[#5D6878]">
-        <span className="text-[11px] font-medium truncate mr-2">
-          Operational Shift Recommendation: Concentrate coverage 16:00–22:00.
-        </span>
-        <div className="flex items-center gap-3 text-[11px] shrink-0">
-          <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2 w-2 rounded-xs bg-[#1769AA]" /> Normal
-          </span>
-          <span className="flex items-center gap-1.5 font-medium text-slate-700">
-            <span className="h-2 w-2 rounded-xs bg-[#C98512]" /> Peak Hour
-          </span>
-        </div>
-      </div>
     </div>
   );
 };

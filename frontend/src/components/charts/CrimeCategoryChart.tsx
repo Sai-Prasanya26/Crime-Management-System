@@ -23,21 +23,13 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
 }) => {
   return (
     <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-red-50 text-[#C53B3B]">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Crime Category Distribution</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[46px]">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-red-50 text-[#C53B3B]">
+            <ShieldAlert className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Categorization by legal domain &amp; severity weighting
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">Crime Category Distribution</h3>
         </div>
-        <span className="rounded bg-[#F4F7FA] px-2.5 py-1 text-[11px] font-bold text-[#5D6878] border border-[#D9E1EA]">
-          4 Categories
-        </span>
       </div>
 
       <div className="my-auto py-2 grid grid-cols-1 sm:grid-cols-12 items-center gap-4 min-h-[260px]">
@@ -123,18 +115,6 @@ export const CrimeCategoryChart: React.FC<CrimeCategoryChartProps> = ({
         </div>
       </div>
 
-      {/* Aligned Domain Summary Footer */}
-      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5D6878]">
-        <span className="font-semibold text-slate-700">Legal Domain Classification:</span>
-        <div className="flex flex-wrap items-center gap-3">
-          {Object.entries(CATEGORY_COLORS).map(([name, color]) => (
-            <div key={name} className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-              <span className="font-medium text-slate-600">{name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

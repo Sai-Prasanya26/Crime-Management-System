@@ -14,30 +14,24 @@ import type { WeaponDistributionItem } from '../../types';
 
 interface WeaponDistributionChartProps {
   data: WeaponDistributionItem[];
-  totalIncidents: number;
+  totalIncidents?: number;
 }
 
 const WEAPON_COLORS = ['#C53B3B', '#C98512', '#1769AA', '#0B1F3A', '#16845B', '#7C8796'];
 
 export const WeaponDistributionChart: React.FC<WeaponDistributionChartProps> = ({
   data,
-  totalIncidents,
 }) => {
   const topWeapon = data.length > 0 ? data[0] : null;
 
   return (
     <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <Crosshair className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Weapon Involvement Profile</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[46px]">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <Crosshair className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Recorded weapon classifications utilized during commission of offenses
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">Weapon Involvement Profile</h3>
         </div>
 
         {topWeapon && (
@@ -104,17 +98,6 @@ export const WeaponDistributionChart: React.FC<WeaponDistributionChartProps> = (
         )}
       </div>
 
-      {/* Aligned Bottom Tactical Recommendation Box */}
-      <div className="mt-auto flex items-center justify-between rounded border border-[#D9E1EA] bg-[#F4F7FA] px-3 py-2 text-xs text-[#5D6878]">
-        <span className="text-[11px] font-medium truncate mr-2">
-          Tactical Assessment: High prevalence of sharp instruments and edged weapons.
-        </span>
-        <div className="flex items-center gap-3 text-[11px] shrink-0">
-          <span className="font-semibold text-[#0B1F3A]">{data.length} Classifications</span>
-          <span className="text-slate-300">|</span>
-          <span className="font-medium text-[#1769AA]">{totalIncidents.toLocaleString()} Incidents</span>
-        </div>
-      </div>
     </div>
   );
 };

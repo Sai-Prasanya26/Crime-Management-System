@@ -31,21 +31,14 @@ export const CrimeTrendChart: React.FC<CrimeTrendChartProps> = ({
     onIntervalChange?.(intVal);
   };
 
-  const totalIncidents = data.reduce((sum, item) => sum + item.incident_count, 0);
-
   return (
     <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Crime Trend Analysis</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[46px]">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+            <TrendingUp className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Temporal volume distribution across reporting periods ({totalIncidents.toLocaleString()} incidents)
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">Crime Trend Analysis</h3>
         </div>
 
         {onIntervalChange && (

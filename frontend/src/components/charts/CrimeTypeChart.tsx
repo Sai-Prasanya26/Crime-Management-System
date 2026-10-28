@@ -31,17 +31,12 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
 
   return (
     <div className="flex flex-col justify-between h-full rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[58px]">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="rounded p-1.5 bg-amber-50 text-[#C98512]">
-              <Scale className="h-4 w-4" />
-            </div>
-            <h3 className="text-[16px] font-bold text-[#0B1F3A]">Legal Crime Type Distribution</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 min-h-[46px]">
+        <div className="flex items-center gap-2">
+          <div className="rounded p-1.5 bg-amber-50 text-[#C98512]">
+            <Scale className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-[12px] text-[#5D6878]">
-            Statutory offenses classified by volume and legal severity tier
-          </p>
+          <h3 className="text-[16px] font-bold text-[#0B1F3A]">Legal Crime Type Distribution</h3>
         </div>
 
         <div className="flex items-center gap-1 rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[12px]">
@@ -117,18 +112,6 @@ export const CrimeTypeChart: React.FC<CrimeTypeChartProps> = ({ data }) => {
         )}
       </div>
 
-      {/* Aligned Severity Legend Footer */}
-      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5D6878]">
-        <span className="font-semibold text-slate-700">Severity Tier Classification:</span>
-        <div className="flex flex-wrap items-center gap-3">
-          {Object.entries(SEVERITY_COLORS).map(([tier, color]) => (
-            <div key={tier} className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-              <span className="font-medium text-slate-600">{tier}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
