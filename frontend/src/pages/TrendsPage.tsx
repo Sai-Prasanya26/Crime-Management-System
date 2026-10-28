@@ -14,6 +14,7 @@ import DashboardFilters from '../components/filters/DashboardFilters';
 import CrimeTrendChart from '../components/charts/CrimeTrendChart';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import { analyticsApi } from '../api';
 import type { FilterParams, TrendResponse } from '../types';
 
@@ -135,7 +136,16 @@ export const TrendsPage: React.FC = () => {
         />
       )}
 
-      {!isLoading && !error && trends && (
+      {/* Empty State */}
+      {!isLoading && !error && trends && trends.items.length === 0 && (
+        <EmptyState
+          title="No Trend Records Found"
+          message="No recorded crime trends match the selected geographic or date criteria."
+          onClearFilters={() => handleFilterChange({})}
+        />
+      )}
+
+      {!isLoading && !error && trends && trends.items.length > 0 && (
         <div className="space-y-4">
           {/* SECTION 2: Trend Comparison & Momentum Summary */}
           {trendMetrics && (

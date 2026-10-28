@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Globe2,
-  ShieldCheck,
   LayoutDashboard,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -214,8 +213,8 @@ export const DashboardPage: React.FC = () => {
       {/* Main Comprehensive Executive Dashboard Grid */}
       {!isLoading && !error && overview && overview.total_incidents > 0 && (
         <div className="space-y-4">
-          {/* 1. Key Performance Indicators (5 compact KPI cards) */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {/* 1. Key Performance Indicators (4 verified summary cards) */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total Incidents"
               value={overview.total_incidents.toLocaleString()}
@@ -223,27 +222,21 @@ export const DashboardPage: React.FC = () => {
               color="navy"
             />
             <StatCard
-              title="Open Cases"
-              value={overview.cases.open.toLocaleString()}
+              title="Crime Categories"
+              value={overview.total_crime_categories.toLocaleString()}
               icon={AlertTriangle}
               color="amber"
             />
             <StatCard
-              title="Closed Cases"
-              value={overview.cases.closed.toLocaleString()}
+              title="Offense Types"
+              value={overview.total_crime_types.toLocaleString()}
               icon={CheckCircle2}
               color="emerald"
             />
             <StatCard
-              title="Clearance Rate"
-              value={`${overview.cases.clearance_rate_pct.toFixed(1)}%`}
-              icon={ShieldCheck}
-              color="blue"
-            />
-            <StatCard
               title={
                 overview.jurisdiction_label ||
-                (filters.geography_mode === 'historical' ? 'Census 2011 Districts' : 'Administrative Entities')
+                (filters.geography_mode === 'historical' ? 'Census Districts' : 'Administrative Entities')
               }
               value={
                 overview.jurisdiction_value ||

@@ -471,10 +471,7 @@ export const DistrictsPage: React.FC = () => {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/85 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[11px]">
-                <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10">
-                  Spatial Coordinate Grid &bull; Boundary Analysis
-                </span>
+              <div className="absolute bottom-3 right-3 text-white text-[11px]">
                 <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[#1D7FE2]">
                   {geographyMode === 'historical' ? '640 Monitored Jurisdictions' : '789 Monitored Jurisdictions'}
                 </span>
