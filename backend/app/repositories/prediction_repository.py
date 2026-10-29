@@ -198,6 +198,7 @@ class PredictionRepository:
 
         if state_id is not None:
             query = query.filter(District.state_id == state_id)
+        dist_obj = None
         if district_id is not None:
             dist_obj = db.query(District).filter(District.id == district_id).first()
             eff_did = (
@@ -227,12 +228,19 @@ class PredictionRepository:
             .all()
         )
 
+        is_child = bool(dist_obj and not dist_obj.is_census_2011 and dist_obj.parent_district_id)
+        parent_dist = (
+            db.query(District).filter(District.id == dist_obj.parent_district_id).first()
+            if is_child
+            else None
+        )
+
         items = [
             {
                 "id": r.id,
-                "district_id": r.district_id,
-                "district_name": r.district_name,
-                "state_id": r.state_id,
+                "district_id": dist_obj.id if is_child else r.district_id,
+                "district_name": dist_obj.district_name if is_child else r.district_name,
+                "state_id": dist_obj.state_id if is_child else r.state_id,
                 "state_name": r.state_name,
                 "forecast_period": str(r.prediction_date),
                 "predicted_crime_count": float(r.predicted_crime_count),
@@ -246,6 +254,9 @@ class PredictionRepository:
                 "is_latest": bool(r.is_latest),
                 "model_version": r.model_version,
                 "model_name": r.model_name,
+                "parent_district_id": dist_obj.parent_district_id if is_child else None,
+                "parent_district_name": parent_dist.district_name if (is_child and parent_dist) else None,
+                "is_derived_from_parent": is_child,
             }
             for r in rows
         ]
@@ -256,13 +267,35 @@ class PredictionRepository:
     def get_district_series(db: Session, district_id: int) -> Optional[Dict[str, Any]]:
         """Returns the longitudinal forecast series with uncertainty bounds for a specific district."""
         district = (
-            db.query(District.id, District.district_name, State.id.label("state_id"), State.state_name)
+            db.query(
+                District.id,
+                District.district_name,
+                District.parent_district_id,
+                District.is_census_2011,
+                State.id.label("state_id"),
+                State.state_name,
+            )
             .join(State, District.state_id == State.id)
             .filter(District.id == district_id)
             .first()
         )
         if not district:
             return None
+
+        is_child = bool(not district.is_census_2011 and district.parent_district_id)
+        eff_did = district.parent_district_id if is_child else district_id
+        parent_dist = (
+            db.query(District).filter(District.id == district.parent_district_id).first()
+            if is_child
+            else None
+        )
+        parent_id = district.parent_district_id if is_child else None
+        parent_name = parent_dist.district_name if parent_dist else None
+        derived_note = (
+            f"Longitudinal forecast series dynamically derived from Census 2011 parent jurisdiction '{parent_name}' (#{parent_id})."
+            if is_child
+            else None
+        )
 
         rows = (
             db.query(
@@ -282,7 +315,7 @@ class PredictionRepository:
                 MLModel.model_name,
             )
             .join(MLModel, CrimePrediction.model_id == MLModel.id)
-            .filter(CrimePrediction.district_id == district_id)
+            .filter(CrimePrediction.district_id == eff_did)
             .order_by(asc(CrimePrediction.prediction_date))
             .all()
         )
@@ -290,7 +323,7 @@ class PredictionRepository:
         series = [
             {
                 "id": r.id,
-                "district_id": r.district_id,
+                "district_id": district.id,
                 "district_name": district.district_name,
                 "state_id": district.state_id,
                 "state_name": district.state_name,
@@ -306,6 +339,9 @@ class PredictionRepository:
                 "is_latest": bool(r.is_latest),
                 "model_version": r.model_version,
                 "model_name": r.model_name,
+                "parent_district_id": parent_id,
+                "parent_district_name": parent_name,
+                "is_derived_from_parent": is_child,
             }
             for r in rows
         ]
@@ -315,6 +351,10 @@ class PredictionRepository:
             "district_name": district.district_name,
             "state_id": district.state_id,
             "state_name": district.state_name,
+            "parent_district_id": parent_id,
+            "parent_district_name": parent_name,
+            "is_derived_from_parent": is_child,
+            "notes": derived_note,
             "series": series,
         }
 
@@ -335,11 +375,24 @@ class PredictionRepository:
         active_model = PredictionRepository.get_active_model(db)
         model_id = active_model.id if active_model else 1
 
+        is_child = False
+        parent_id = None
+        parent_name = None
+        derived_note = None
+
         eff_did = district_id
         if district_id:
             d_obj = db.query(District).filter(District.id == district_id).first()
             if d_obj and not d_obj.is_census_2011 and d_obj.parent_district_id:
                 eff_did = d_obj.parent_district_id
+                is_child = True
+                parent_id = d_obj.parent_district_id
+                parent_dist = db.query(District).filter(District.id == d_obj.parent_district_id).first()
+                parent_name = parent_dist.district_name if parent_dist else None
+                derived_note = (
+                    f"Caseload timeline and historical actual baseline dynamically derived from Census 2011 parent jurisdiction '{parent_name}' (#{parent_id}). "
+                    f"Independent actual observations for modern carved district '{d_obj.district_name}' remain unrecorded/NULL."
+                )
 
         # 1. Fetch actual incident totals by month for 2024-2025
         actual_query = """
@@ -446,6 +499,10 @@ class PredictionRepository:
             "district_id": district_id,
             "district_name": district_info["district_name"] if district_info else "All 640 Districts (Aggregated)",
             "state_name": district_info["state_name"] if district_info else "National Aggregate",
+            "parent_district_id": parent_id,
+            "parent_district_name": parent_name,
+            "is_derived_from_parent": is_child,
+            "notes": derived_note,
             "comparison_points": points,
             "overall_mae": overall_mae,
             "overall_rmse": overall_rmse,
@@ -732,4 +789,430 @@ class PredictionRepository:
             "explanation": explanation,
             "disclaimer": "Forecasts are statistical estimates, not confirmed future incidents.",
             "message": None,
+        }
+
+    @staticmethod
+    def get_prediction_breakdown(
+        db: Session,
+        district_id: int,
+        year: int,
+        month: int,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Computes two-level hierarchical compositional crime category and crime type forecasts
+        for a specific district and month, reconciling additively with the total HGBR forecast.
+        Supports parent-jurisdiction lineage for carved administrative districts.
+        """
+        district = (
+            db.query(
+                District.id,
+                District.district_name,
+                District.parent_district_id,
+                District.is_census_2011,
+                State.id.label("state_id"),
+                State.state_name,
+            )
+            .join(State, District.state_id == State.id)
+            .filter(District.id == district_id)
+            .first()
+        )
+        if not district:
+            return None
+
+        did, dname, sid, sname = district.id, district.district_name, district.state_id, district.state_name
+        period_str = f"{year}-{month:02d}-01"
+        period_display = f"{year}-{month:02d}"
+
+        # Resolve Census 2011 parent jurisdiction for carved districts
+        eff_did = district.id
+        parent_district_name = None
+        is_derived_from_parent = False
+
+        if not district.is_census_2011 and district.parent_district_id:
+            parent_dist = db.query(District).filter(District.id == district.parent_district_id).first()
+            if parent_dist:
+                eff_did = parent_dist.id
+                parent_district_name = parent_dist.district_name
+                is_derived_from_parent = True
+
+        # Retrieve total prediction using existing district-month logic
+        overall_pred = PredictionRepository.get_district_month_prediction(
+            db, district_id=district_id, year=year, month=month
+        )
+        if not overall_pred or not overall_pred["is_available"]:
+            return {
+                "district_id": did,
+                "district_name": dname,
+                "state_id": sid,
+                "state_name": sname,
+                "parent_district_id": district.parent_district_id,
+                "parent_district_name": parent_district_name,
+                "is_derived_from_parent": is_derived_from_parent,
+                "year": year,
+                "month": month,
+                "period": period_display,
+                "data_type": "UNAVAILABLE",
+                "is_forecast": False,
+                "is_historical": False,
+                "total_predicted_count": 0.0,
+                "total_actual_count": None,
+                "reconciliation_difference": 0.0,
+                "methodology": "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)",
+                "categories": [],
+                "crime_types": [],
+                "provenance_notes": f"Forecast breakdown unavailable for district '{dname}' for period {period_display}.",
+                "limitations": "Insufficient baseline observations or forecast period beyond active pipeline horizon.",
+                "disclaimer": "Forecasts are expected statistical counts, not confirmed future incidents.",
+            }
+
+        total_predicted = float(overall_pred["predicted_count"] if overall_pred["predicted_count"] is not None else (overall_pred["display_value"] or 0.0))
+        total_actual = overall_pred["actual_count"]
+        data_type = overall_pred["data_type"]
+        is_forecast = overall_pred["is_forecast"]
+        is_historical = overall_pred["is_historical"]
+
+        # 1. Fetch all 4 categories and 21 crime types from database
+        cat_type_rows = db.execute(
+            text("""
+                SELECT 
+                    c.id as cat_id,
+                    c.category_name,
+                    c.severity_weight,
+                    t.id as type_id,
+                    t.crime_code,
+                    t.crime_name,
+                    t.severity_level
+                FROM crime_categories c
+                JOIN crime_types t ON t.category_id = c.id
+                ORDER BY c.id, t.id
+            """)
+        ).fetchall()
+
+        # Build taxonomy maps
+        categories_map = {}
+        types_map = {}
+        for r in cat_type_rows:
+            cid, cname, cweight = r[0], r[1], float(r[2])
+            tid, tcode, tname, tsev = r[3], r[4], r[5], r[6]
+            if cid not in categories_map:
+                categories_map[cid] = {
+                    "category_id": cid,
+                    "category_name": cname,
+                    "severity_weight": cweight,
+                    "type_ids": [],
+                }
+            categories_map[cid]["type_ids"].append(tid)
+            types_map[tid] = {
+                "type_id": tid,
+                "crime_code": tcode,
+                "crime_name": tname,
+                "category_id": cid,
+                "category_name": cname,
+                "severity_level": tsev,
+            }
+
+        # 2. Compute Pre-Forecast Historical Training Frequencies strictly before target year
+        # Pre-target historical data (MIN(year - 1, 2024)) for computing Dirichlet priors
+        prior_cutoff_year = min(year - 1, 2024)
+        if prior_cutoff_year < 2020:
+            prior_cutoff_year = 2024
+
+        nat_cat_counts = dict(
+            db.execute(
+                text("""
+                    SELECT t.category_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    JOIN crime_types t ON i.crime_type_id = t.id
+                    WHERE YEAR(i.incident_date) <= :cutoff
+                    GROUP BY t.category_id
+                """),
+                {"cutoff": prior_cutoff_year},
+            ).fetchall()
+        )
+        total_nat_incidents = sum(nat_cat_counts.values()) or 1
+        nat_cat_priors = {cid: nat_cat_counts.get(cid, 0) / total_nat_incidents for cid in categories_map}
+
+        nat_type_counts = dict(
+            db.execute(
+                text("""
+                    SELECT i.crime_type_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    WHERE YEAR(i.incident_date) <= :cutoff
+                    GROUP BY i.crime_type_id
+                """),
+                {"cutoff": prior_cutoff_year},
+            ).fetchall()
+        )
+        nat_cond_type_priors = {}
+        for cid, cat_info in categories_map.items():
+            cat_sum = sum(nat_type_counts.get(tid, 0) for tid in cat_info["type_ids"]) or 1
+            for tid in cat_info["type_ids"]:
+                nat_cond_type_priors[tid] = nat_type_counts.get(tid, 0) / cat_sum
+
+        dist_cat_counts = dict(
+            db.execute(
+                text("""
+                    SELECT t.category_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    JOIN crime_types t ON i.crime_type_id = t.id
+                    WHERE i.district_id = :did AND YEAR(i.incident_date) <= :cutoff
+                    GROUP BY t.category_id
+                """),
+                {"did": eff_did, "cutoff": prior_cutoff_year},
+            ).fetchall()
+        )
+        dist_total_incidents = sum(dist_cat_counts.values())
+
+        dist_type_counts = dict(
+            db.execute(
+                text("""
+                    SELECT i.crime_type_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    WHERE i.district_id = :did AND YEAR(i.incident_date) <= :cutoff
+                    GROUP BY i.crime_type_id
+                """),
+                {"did": eff_did, "cutoff": prior_cutoff_year},
+            ).fetchall()
+        )
+
+        # 3. Two-Level Empirical Bayes Shrinkage
+        # Level 1: Category composition (alpha = 20.0)
+        alpha_cat = 20.0
+        cat_shares = {}
+        for cid in categories_map:
+            n_c = dist_cat_counts.get(cid, 0)
+            prior_c = nat_cat_priors.get(cid, 0.25)
+            cat_shares[cid] = (n_c + alpha_cat * prior_c) / (dist_total_incidents + alpha_cat)
+        sum_cat_shares = sum(cat_shares.values()) or 1.0
+        cat_shares = {cid: sh / sum_cat_shares for cid, sh in cat_shares.items()}
+
+        # Level 2: Conditional crime-type composition within category (beta = 10.0)
+        beta_type = 10.0
+        type_shares = {}
+        for cid, cat_info in categories_map.items():
+            n_cat = dist_cat_counts.get(cid, 0)
+            sub_shares = {}
+            for tid in cat_info["type_ids"]:
+                n_t = dist_type_counts.get(tid, 0)
+                prior_t = nat_cond_type_priors.get(tid, 1.0 / len(cat_info["type_ids"]))
+                sub_shares[tid] = (n_t + beta_type * prior_t) / (n_cat + beta_type)
+            sum_sub = sum(sub_shares.values()) or 1.0
+            for tid, sub_sh in sub_shares.items():
+                type_shares[tid] = sub_sh / sum_sub
+
+        # 4. Compute Historical Baseline (strictly pre-forecast, zero leakage)
+        base_cat_counts = {}
+        base_type_counts = {}
+        base_period_label = ""
+
+        if year >= 2026:
+            base_year = 2025
+            base_period_str = f"2025-{month:02d}-01"
+            base_period_label = f"2025-{month:02d}"
+
+            b_cat_rows = db.execute(
+                text("""
+                    SELECT t.category_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    JOIN crime_types t ON i.crime_type_id = t.id
+                    WHERE i.district_id = :did
+                      AND i.incident_date >= :bdate
+                      AND i.incident_date <= LAST_DAY(:bdate)
+                    GROUP BY t.category_id
+                """),
+                {"did": eff_did, "bdate": base_period_str},
+            ).fetchall()
+            base_cat_counts = {r[0]: float(r[1]) for r in b_cat_rows}
+
+            b_type_rows = db.execute(
+                text("""
+                    SELECT i.crime_type_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    WHERE i.district_id = :did
+                      AND i.incident_date >= :bdate
+                      AND i.incident_date <= LAST_DAY(:bdate)
+                    GROUP BY i.crime_type_id
+                """),
+                {"did": eff_did, "bdate": base_period_str},
+            ).fetchall()
+            base_type_counts = {r[0]: float(r[1]) for r in b_type_rows}
+
+            # Seasonal fallback (2020-2024 same calendar month) if district had 0 in 2025
+            seasonal_cat_rows = db.execute(
+                text("""
+                    SELECT t.category_id, COUNT(i.id) / 5.0
+                    FROM crime_incidents i
+                    JOIN crime_types t ON i.crime_type_id = t.id
+                    WHERE i.district_id = :did
+                      AND MONTH(i.incident_date) = :m
+                      AND YEAR(i.incident_date) BETWEEN 2020 AND 2024
+                    GROUP BY t.category_id
+                """),
+                {"did": eff_did, "m": month},
+            ).fetchall()
+            seasonal_cat = {r[0]: float(r[1]) for r in seasonal_cat_rows}
+
+            seasonal_type_rows = db.execute(
+                text("""
+                    SELECT i.crime_type_id, COUNT(i.id) / 5.0
+                    FROM crime_incidents i
+                    WHERE i.district_id = :did
+                      AND MONTH(i.incident_date) = :m
+                      AND YEAR(i.incident_date) BETWEEN 2020 AND 2024
+                    GROUP BY i.crime_type_id
+                """),
+                {"did": eff_did, "m": month},
+            ).fetchall()
+            seasonal_type = {r[0]: float(r[1]) for r in seasonal_type_rows}
+
+            # Apply fallback where 2025 was 0
+            for cid in categories_map:
+                if base_cat_counts.get(cid, 0.0) == 0.0 and seasonal_cat.get(cid, 0.0) > 0.0:
+                    base_cat_counts[cid] = round(seasonal_cat[cid], 2)
+
+            for tid in types_map:
+                if base_type_counts.get(tid, 0.0) == 0.0 and seasonal_type.get(tid, 0.0) > 0.0:
+                    base_type_counts[tid] = round(seasonal_type[tid], 2)
+
+        else:
+            base_year = year - 1
+            base_period_str = f"{base_year}-{month:02d}-01"
+            base_period_label = f"{base_year}-{month:02d}"
+
+            b_cat_rows = db.execute(
+                text("""
+                    SELECT t.category_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    JOIN crime_types t ON i.crime_type_id = t.id
+                    WHERE i.district_id = :did
+                      AND i.incident_date >= :bdate
+                      AND i.incident_date <= LAST_DAY(:bdate)
+                    GROUP BY t.category_id
+                """),
+                {"did": eff_did, "bdate": base_period_str},
+            ).fetchall()
+            base_cat_counts = {r[0]: float(r[1]) for r in b_cat_rows}
+
+            b_type_rows = db.execute(
+                text("""
+                    SELECT i.crime_type_id, COUNT(i.id)
+                    FROM crime_incidents i
+                    WHERE i.district_id = :did
+                      AND i.incident_date >= :bdate
+                      AND i.incident_date <= LAST_DAY(:bdate)
+                    GROUP BY i.crime_type_id
+                """),
+                {"did": eff_did, "bdate": base_period_str},
+            ).fetchall()
+            base_type_counts = {r[0]: float(r[1]) for r in b_type_rows}
+
+        # 5. Build Category Forecast Items
+        category_items = []
+        for cid in sorted(categories_map.keys()):
+            cat_info = categories_map[cid]
+            c_share = cat_shares[cid]
+            c_pred = total_predicted * c_share
+            c_base = base_cat_counts.get(cid, 0.0)
+
+            c_num_change = round(c_pred - c_base, 2)
+            c_pct_change = round(((c_pred - c_base) / c_base) * 100.0, 1) if c_base > 0 else None
+
+            if c_base > 0:
+                if (c_pct_change or 0) > 5.0 and c_num_change >= 0.2:
+                    trend = "Increasing"
+                elif (c_pct_change or 0) < -5.0 and c_num_change <= -0.2:
+                    trend = "Decreasing"
+                else:
+                    trend = "Stable"
+            else:
+                trend = "Increasing" if c_pred >= 0.5 else "Stable"
+
+            category_items.append({
+                "category_id": cid,
+                "category_name": cat_info["category_name"],
+                "severity_weight": cat_info["severity_weight"],
+                "predicted_count": round(c_pred, 2),
+                "historical_baseline_count": round(c_base, 2),
+                "baseline_period": base_period_label,
+                "numerical_change": c_num_change,
+                "percentage_change": c_pct_change,
+                "share_of_total_percent": round(c_share * 100.0, 1),
+                "trend_status": trend,
+                "crime_types_count": len(cat_info["type_ids"]),
+            })
+
+        # 6. Build Crime Type Forecast Items
+        crime_type_items = []
+        for tid in sorted(types_map.keys()):
+            t_info = types_map[tid]
+            cid = t_info["category_id"]
+            c_share = cat_shares[cid]
+            cond_share = type_shares[tid]
+            total_type_share = c_share * cond_share
+            t_pred = total_predicted * total_type_share
+            t_base = base_type_counts.get(tid, 0.0)
+
+            t_num_change = round(t_pred - t_base, 2)
+            t_pct_change = round(((t_pred - t_base) / t_base) * 100.0, 1) if t_base > 0 else None
+
+            if t_base > 0:
+                if (t_pct_change or 0) > 5.0 and t_num_change >= 0.05:
+                    trend = "Increasing"
+                elif (t_pct_change or 0) < -5.0 and t_num_change <= -0.05:
+                    trend = "Decreasing"
+                else:
+                    trend = "Stable"
+            else:
+                trend = "Increasing" if t_pred >= 0.2 else "Stable"
+
+            pre_avg = dist_type_counts.get(tid, 0) / 60.0
+            is_sparse = pre_avg < 0.25
+
+            crime_type_items.append({
+                "crime_type_id": tid,
+                "crime_code": t_info["crime_code"],
+                "crime_name": t_info["crime_name"],
+                "category_id": cid,
+                "category_name": t_info["category_name"],
+                "severity_level": t_info["severity_level"],
+                "predicted_count": round(t_pred, 2),
+                "historical_baseline_count": round(t_base, 2),
+                "baseline_period": base_period_label,
+                "numerical_change": t_num_change,
+                "percentage_change": t_pct_change,
+                "share_of_category_percent": round(cond_share * 100.0, 1),
+                "share_of_total_percent": round(total_type_share * 100.0, 1),
+                "trend_status": trend,
+                "is_sparse": is_sparse,
+            })
+
+        lineage_provenance = (
+            f"Crime category and crime-type distributions are dynamically derived from Census 2011 parent jurisdiction '{parent_district_name}' (#{district.parent_district_id}). Actual historical observations remain unrecorded (null)."
+            if is_derived_from_parent
+            else f"Crime category and crime-type distributions are derived from jurisdiction '{dname}' historical baseline using Empirical Bayes shrinkage."
+        )
+
+        return {
+            "district_id": did,
+            "district_name": dname,
+            "state_id": sid,
+            "state_name": sname,
+            "parent_district_id": district.parent_district_id,
+            "parent_district_name": parent_district_name,
+            "is_derived_from_parent": is_derived_from_parent,
+            "year": year,
+            "month": month,
+            "period": period_display,
+            "data_type": data_type,
+            "is_forecast": is_forecast,
+            "is_historical": is_historical,
+            "total_predicted_count": round(total_predicted, 2),
+            "total_actual_count": total_actual,
+            "reconciliation_difference": 0.0,
+            "methodology": "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)",
+            "categories": category_items,
+            "crime_types": crime_type_items,
+            "provenance_notes": lineage_provenance,
+            "limitations": "Individual crime-type forecasts represent expected monthly statistical rates. Individual occurrences are subject to Poisson variability in low-volume districts.",
+            "disclaimer": "Forecasts are expected statistical counts, not confirmed future incidents. Values are displayed rounded to 2 decimal places; component sums may differ by ±0.01 from total due to display rounding.",
         }

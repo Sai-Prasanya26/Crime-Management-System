@@ -112,6 +112,7 @@ export const DashboardPage: React.FC = () => {
           metric: 'volume',
           limit: 10,
           state_id: filters.state_id,
+          district_id: filters.district_id,
           geography_mode: 'current',
           start_date: filters.start_date,
           end_date: filters.end_date,

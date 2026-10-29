@@ -7,7 +7,6 @@ import ErrorState from '../components/common/ErrorState';
 import EmptyState from '../components/common/EmptyState';
 import DashboardFilters from '../components/filters/DashboardFilters';
 import { CrimeClassificationSection } from '../components/analytics/CrimeClassificationSection';
-import { TemporalAnalysisSection } from '../components/analytics/TemporalAnalysisSection';
 import { CrimeDetailTable } from '../components/analytics/CrimeDetailTable';
 import { analyticsApi } from '../api';
 import type {
@@ -15,7 +14,6 @@ import type {
   CrimeOverviewResponse,
   CategoryBreakdownResponse,
   TypeBreakdownResponse,
-  TrendResponse,
 } from '../types';
 
 export const CrimeAnalyticsPage: React.FC = () => {
@@ -55,8 +53,6 @@ export const CrimeAnalyticsPage: React.FC = () => {
   const [overview, setOverview] = useState<CrimeOverviewResponse | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownResponse | null>(null);
   const [types, setTypes] = useState<TypeBreakdownResponse | null>(null);
-  const [monthlyTrends, setMonthlyTrends] = useState<TrendResponse | null>(null);
-  const [yearlyTrends, setYearlyTrends] = useState<TrendResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -71,26 +67,20 @@ export const CrimeAnalyticsPage: React.FC = () => {
     setError(null);
 
     try {
-      // Parallel fetch targeted specifically to offense classification, rankings, trends, and detail inventory
+      // Parallel fetch targeted specifically to offense classification, rankings, and detail inventory
       const [
         overviewRes,
         catRes,
         typesRes,
-        monthlyRes,
-        yearlyRes,
       ] = await Promise.all([
         analyticsApi.getOverview(filters),
         analyticsApi.getByCategory(filters),
         analyticsApi.getByType(undefined, filters),
-        analyticsApi.getTrends('month', filters),
-        analyticsApi.getTrends('year', filters),
       ]);
 
       setOverview(overviewRes);
       setCategories(catRes);
       setTypes(typesRes);
-      setMonthlyTrends(monthlyRes);
-      setYearlyTrends(yearlyRes);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch analytical metrics from backend API.');
     } finally {
@@ -152,14 +142,7 @@ export const CrimeAnalyticsPage: React.FC = () => {
             types={types}
           />
 
-          {/* SECTION 2: Longitudinal Offense Trajectory & Period Comparison (Monthly Trajectory & Yearly Comparison) */}
-          <TemporalAnalysisSection
-            monthlyTrends={monthlyTrends}
-            yearlyTrends={yearlyTrends}
-            isLoading={isRefreshing}
-          />
-
-          {/* SECTION 3: Codified Statutory Crime Detail Table (All 21 IPC offenses with search, filter, and multi-column sort) */}
+          {/* SECTION 2: Codified Statutory Crime Detail Table (All 21 IPC offenses with search, filter, and multi-column sort) */}
           <CrimeDetailTable
             types={types}
           />

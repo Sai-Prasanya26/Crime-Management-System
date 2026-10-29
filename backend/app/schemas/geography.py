@@ -60,6 +60,9 @@ class DistrictDetailResponse(BaseModel):
     is_census_2011: Optional[bool] = False
     is_current_admin: Optional[bool] = True
     parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
     demographics: Optional[DistrictDemographicsData] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -95,6 +98,8 @@ class JurisdictionProfileResponse(BaseModel):
     district_id: Optional[int] = None
     district_name: Optional[str] = None
     parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
     geography_mode: str = "current"
     reported_incidents: Optional[int] = None
     population: Optional[int] = None

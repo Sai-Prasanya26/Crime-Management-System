@@ -24,7 +24,9 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from backend.app.main import app
+from backend.app.database.session import engine
 
 client = TestClient(app)
 
@@ -105,17 +107,40 @@ class TestJurisdictionProfiles(unittest.TestCase):
         self.assertEqual(data["risk_level"], "HIGH")
         self.assertEqual(data["risk_label"], "High Risk Hotspot")
 
-    def test_newly_formed_district_missing_census_baseline(self):
-        """Newly created district without Census 2011 baseline (Aravalli ID 725)."""
+    def test_newly_formed_district_with_parent_baseline(self):
+        """Newly created district with corrected Census 2011 baseline (Aravalli ID 725 -> Sabar Kantha ID 151)."""
         resp = client.get("/api/v1/geography/jurisdiction-profile?district_id=725")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["district_name"], "Aravalli")
-        self.assertIsNone(data["population"])
-        self.assertIsNone(data["crime_rate_per_100k"])
-        self.assertIsNone(data["risk_level"])
-        self.assertEqual(data["risk_label"], "Not available")
-        self.assertIn("unavailable", data["notes"])
+        self.assertEqual(data["parent_district_id"], 151)
+        self.assertEqual(data["population"], 2428589)
+        self.assertEqual(data["crime_rate_per_100k"], 15.32)
+        self.assertEqual(data["risk_level"], "MODERATE")
+        self.assertEqual(data["risk_label"], "Moderate Crime Zone")
+        self.assertIn("parent jurisdiction #151", data["notes"])
+
+    def test_unmapped_district_missing_census_baseline(self):
+        """District with no Census baseline and no parent safely returns None for population and rate."""
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO districts (id, state_id, district_name, is_census_2011, is_current_admin, parent_district_id)
+                VALUES (99997, 11, 'Test Unmapped Profile District', FALSE, TRUE, NULL)
+                ON DUPLICATE KEY UPDATE parent_district_id = NULL
+            """))
+        try:
+            resp = client.get("/api/v1/geography/jurisdiction-profile?district_id=99997")
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertEqual(data["district_name"], "Test Unmapped Profile District")
+            self.assertIsNone(data["population"])
+            self.assertIsNone(data["crime_rate_per_100k"])
+            self.assertIsNone(data["risk_level"])
+            self.assertEqual(data["risk_label"], "Not available")
+            self.assertIn("unavailable", data["notes"])
+        finally:
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM districts WHERE id = 99997"))
 
     def test_inconsistent_district_and_state_ids_returns_400(self):
         """District Nicobars (State ID 1) passed with State ID 36 (Telangana) must fail with 400."""

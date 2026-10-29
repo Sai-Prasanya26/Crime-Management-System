@@ -372,11 +372,19 @@ export interface TopDistrictItem {
   incident_count: number;
   total_population?: number | null;
   crime_rate_per_100k?: number | null;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
+  notes?: string | null;
 }
 
 export interface TopDistrictsResponse {
   metric: 'volume' | 'rate';
   items: TopDistrictItem[];
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
+  notes?: string | null;
 }
 
 export * from './risk';

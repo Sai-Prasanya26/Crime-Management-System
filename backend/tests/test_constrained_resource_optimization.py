@@ -358,7 +358,7 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
         self.assertIn("total", data)
 
     def test_16_regression_integrity_of_crime_and_geography(self):
-        """16. Confirms all 191,679 crime incidents, 640 districts, 11,520 predictions, and 3,200 risk scores remain untouched."""
+        """16. Confirms all 191,679 crime incidents, 640 districts, 21,760 predictions, and 3,840 risk scores remain untouched."""
         db = SessionLocal()
         try:
             incidents_count = db.execute(text("SELECT COUNT(*) FROM crime_incidents")).scalar()
@@ -368,8 +368,8 @@ class TestConstrainedResourceOptimization(unittest.TestCase):
 
             self.assertEqual(incidents_count, 191679, "crime_incidents count must remain exactly 191,679")
             self.assertEqual(census_districts, 640, "Census 2011 districts count must remain exactly 640")
-            self.assertEqual(predictions_count, 11520, "crime_predictions count must remain exactly 11,520")
-            self.assertEqual(risk_scores_count, 3200, "crime_risk_scores count must remain exactly 3,200")
+            self.assertEqual(predictions_count, 21760, "crime_predictions count must remain exactly 21,760")
+            self.assertEqual(risk_scores_count, 3840, "crime_risk_scores count must remain exactly 3,840")
         finally:
             db.close()
 

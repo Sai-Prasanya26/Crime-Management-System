@@ -1,7 +1,7 @@
 """
 Regression tests for Current Admin vs Historical Census Geography Switching in Analytics Engine.
 Validates:
-1. National KPI card jurisdiction values and subtitles in current (36 entities, 789 districts) vs historical (35 states, 640 districts).
+1. National KPI card jurisdiction values and subtitles in current (36 entities, 797 districts) vs historical (35 states, 640 districts).
 2. AP bifurcation: Modern AP (13 parent districts, 7,072 incidents) vs Undivided Census 2011 AP (23 districts, 12,352 incidents).
 3. Telangana resolution: Modern Telangana (10 parent districts, 5,280 incidents).
 4. Incident integrity: Modern AP (7,072) + Modern Telangana (5,280) == Historical AP (12,352).
@@ -25,17 +25,17 @@ client = TestClient(app)
 
 class TestGeographyModeSwitch(unittest.TestCase):
     def test_national_overview_current_mode(self):
-        """Current mode: 36 administrative entities (28 States + 8 UTs), 789 modern districts."""
+        """Current mode: 36 administrative entities (28 States + 8 UTs), 797 modern districts."""
         resp = client.get("/api/v1/analytics/overview?geography_mode=current")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["total_incidents"], 191679)
         self.assertEqual(data["total_states"], 36)
-        self.assertEqual(data["total_districts"], 789)
+        self.assertEqual(data["total_districts"], 797)
         self.assertEqual(data["geography_mode"], "current")
         self.assertEqual(data["jurisdiction_label"], "Administrative Entities")
         self.assertEqual(data["jurisdiction_value"], "36 States & UTs")
-        self.assertEqual(data["jurisdiction_subtext"], "789 Modern Administrative Districts (28 States, 8 UTs)")
+        self.assertEqual(data["jurisdiction_subtext"], "797 Modern Administrative Districts (28 States, 8 UTs)")
 
     def test_national_overview_historical_mode(self):
         """Historical mode: 35 Census 2011 states/UTs, 640 Census 2011 districts."""
@@ -57,7 +57,7 @@ class TestGeographyModeSwitch(unittest.TestCase):
         data = resp.json()
         self.assertEqual(data["total_incidents"], 191679)
         self.assertEqual(data["total_states"], 36)
-        self.assertEqual(data["total_districts"], 789)
+        self.assertEqual(data["total_districts"], 797)
         self.assertEqual(data["geography_mode"], "current")
 
     def test_ap_bifurcation_and_telangana_resolution(self):

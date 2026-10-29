@@ -83,16 +83,17 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
         </div>
       </div>
 
-      {/* Main Grid: Left 5 cols (Categories) | Right 7 cols (Ranked Types) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* Main Grid: Left 5 cols (Categories) | Right 7 cols (Ranked Types) - Anchored at top */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Left: 4 Category Distribution Cards */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between h-6 mb-1">
             <h3 className="text-[14px] font-bold text-[#0B1F3A]">
               Statutory Categories
             </h3>
             {selectedCategory && (
               <button
+                type="button"
                 onClick={() => setSelectedCategory(null)}
                 className="text-[11px] font-semibold text-[#1769AA] hover:underline cursor-pointer"
               >
@@ -119,22 +120,22 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
                   onClick={() =>
                     setSelectedCategory(isSelected ? null : cat.category_name)
                   }
-                  className={`rounded-lg border p-3.5 transition-all cursor-pointer ${
+                  className={`rounded-lg border p-3.5 transition-colors duration-150 cursor-pointer ${
                     isSelected
-                      ? 'border-[#1769AA] bg-blue-50/50 shadow-xs ring-1 ring-[#1769AA]'
+                      ? 'border-[#1769AA] bg-blue-50/50 shadow-xs'
                       : 'border-[#D9E1EA] bg-white hover:border-[#BAC7D5] hover:bg-slate-50/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`rounded p-1 ${style.bg} ${style.text} border ${style.border}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`rounded p-1 ${style.bg} ${style.text} border ${style.border} shrink-0`}>
                         <Icon className="h-3.5 w-3.5" />
                       </div>
-                      <span className="text-[13px] font-bold text-[#0B1F3A]">
+                      <span className="text-[13px] font-bold text-[#0B1F3A] truncate">
                         {cat.category_name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 font-mono text-[12px]">
+                    <div className="flex items-center gap-1.5 font-mono text-[12px] shrink-0 ml-2">
                       <span className="font-bold text-[#0B1F3A]">
                         {cat.incident_count.toLocaleString()}
                       </span>
@@ -147,7 +148,7 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
                   {/* Horizontal Volume Bar */}
                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-2.5">
                     <div
-                      className={`h-full rounded-full ${style.bar} transition-all duration-500`}
+                      className={`h-full rounded-full ${style.bar}`}
                       style={{ width: `${Math.min(cat.percentage, 100)}%` }}
                     />
                   </div>
@@ -157,42 +158,43 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
           </div>
         </div>
 
-        {/* Right: Ranked Crime Types Horizontal Bar List */}
-        <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="h-4 w-4 text-[#1769AA]" />
-                <h3 className="text-[14px] font-bold text-[#0B1F3A]">
-                  Top Crime Types Ranking{selectedCategory ? ` (${selectedCategory})` : ''}
-                </h3>
-              </div>
-
-              {/* Top 5, Top 8, Top 12, Top 21 controls */}
-              <div className="flex items-center gap-1 rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[11px] self-start sm:self-auto">
-                {[5, 8, 12, 21].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => {
-                      setDisplayCount(count);
-                      setShowAllTypes(false);
-                    }}
-                    className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
-                      !showAllTypes && displayCount === count
-                        ? 'bg-white text-[#0B1F3A] shadow-2xs font-semibold'
-                        : 'text-[#5D6878] hover:text-[#0B1F3A]'
-                    }`}
-                  >
-                    Top {count}
-                  </button>
-                ))}
-              </div>
+        {/* Right: Ranked Crime Types Horizontal Bar List (Stable fixed height & internal scroll) */}
+        <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs flex flex-col min-h-[390px] lg:h-[416px]">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-[#1769AA]" />
+              <h3 className="text-[14px] font-bold text-[#0B1F3A]">
+                Top Crime Types Ranking{selectedCategory ? ` (${selectedCategory})` : ''}
+              </h3>
             </div>
 
-            {/* List of Ranked Bars */}
-            <div className="space-y-2.5">
-              {displayedTypes.map((t, idx) => {
+            {/* Top 5, Top 8, Top 12, Top 21 controls */}
+            <div className="flex items-center gap-1 rounded border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-[11px] self-start sm:self-auto shrink-0">
+              {[5, 8, 12, 21].map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => {
+                    setDisplayCount(count);
+                    setShowAllTypes(false);
+                  }}
+                  className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
+                    !showAllTypes && displayCount === count
+                      ? 'bg-white text-[#0B1F3A] shadow-2xs font-semibold'
+                      : 'text-[#5D6878] hover:text-[#0B1F3A]'
+                  }`}
+                >
+                  Top {count}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List of Ranked Bars with stable scrollable viewport */}
+          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
+            {displayedTypes.length > 0 ? (
+              displayedTypes.map((t, idx) => {
                 const pctOfMax = (t.incident_count / maxTypeCount) * 100;
                 const sevBadge = SEVERITY_BADGES[t.severity_level] || SEVERITY_BADGES.LOW;
 
@@ -228,19 +230,23 @@ export const CrimeClassificationSection: React.FC<CrimeClassificationSectionProp
                     {/* Proportional Bar */}
                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-[#1769AA] group-hover:bg-[#12345B] transition-all duration-300"
+                        className="h-full rounded-full bg-[#1769AA] group-hover:bg-[#12345B] transition-colors"
                         style={{ width: `${Math.min(pctOfMax, 100)}%` }}
                       />
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs text-[#7C8796]">
+                No offenses recorded for this selection
+              </div>
+            )}
           </div>
 
           {/* View All toggle */}
           {sortedTypes.length > displayCount && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAllTypes((prev) => !prev)}

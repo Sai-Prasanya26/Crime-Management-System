@@ -110,6 +110,11 @@ class CrimeRepository:
             categories_count_query = categories_count_query.filter(CrimeIncident.incident_date <= end_date)
         total_categories = categories_count_query.scalar() or 0
 
+        is_child = False
+        parent_id = None
+        parent_name = None
+        derived_note = None
+
         # Determine jurisdiction metadata and entity counts based on geography_mode and filters
         if district_id is not None:
             dist = db.query(District).filter(District.id == district_id).first()
@@ -121,6 +126,15 @@ class CrimeRepository:
             mode_desc = "Current Admin" if geography_mode == "current" else "Census 2011"
             parent_info = f" ({dist.state.state_name})" if dist and dist.state else ""
             jurisdiction_subtext = f"{mode_desc}{parent_info}"
+            if dist and not dist.is_census_2011 and dist.parent_district_id:
+                is_child = True
+                parent_id = dist.parent_district_id
+                parent_dist = db.query(District).filter(District.id == dist.parent_district_id).first()
+                parent_name = parent_dist.district_name if parent_dist else None
+                derived_note = (
+                    f"Historical crime incidents derived from Census 2011 parent jurisdiction '{parent_name}' (#{parent_id}). "
+                    f"Direct actual counts for carved district '{dist.district_name}' remain unrecorded/NULL."
+                )
         elif state_id is not None:
             state = db.query(State).filter(State.id == state_id).first()
             state_name = state.state_name if state else f"State #{state_id}"
@@ -141,10 +155,10 @@ class CrimeRepository:
             # Nationwide Overview
             if geography_mode == "current":
                 total_states = 36
-                total_districts = 789
+                total_districts = db.query(District).filter(District.is_current_admin == True).count() or 797
                 jurisdiction_label = "Administrative Entities"
                 jurisdiction_value = "36 States & UTs"
-                jurisdiction_subtext = "789 Modern Administrative Districts (28 States, 8 UTs)"
+                jurisdiction_subtext = f"{total_districts} Modern Administrative Districts (28 States, 8 UTs)"
             else:
                 total_states = 35
                 total_districts = 640
@@ -172,6 +186,10 @@ class CrimeRepository:
             "jurisdiction_label": jurisdiction_label,
             "jurisdiction_value": jurisdiction_value,
             "jurisdiction_subtext": jurisdiction_subtext,
+            "parent_district_id": parent_id,
+            "parent_district_name": parent_name,
+            "is_derived_from_parent": is_child,
+            "notes": derived_note,
         }
 
     @staticmethod
@@ -440,6 +458,7 @@ class CrimeRepository:
         metric: str = "volume",
         limit: int = 10,
         state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
         geography_mode: str = "current",
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
@@ -463,7 +482,7 @@ class CrimeRepository:
             query = query.filter(CrimeIncident.incident_date <= end_date)
 
         filter_ids = CrimeRepository.resolve_filter_district_ids(
-            db, state_id=state_id, district_id=None, geography_mode=geography_mode
+            db, state_id=state_id, district_id=district_id, geography_mode=geography_mode
         )
         if filter_ids is not None:
             query = query.filter(District.id.in_(filter_ids))
@@ -485,16 +504,66 @@ class CrimeRepository:
             query = query.order_by(desc("incident_count"))
 
         rows = query.limit(limit).all()
+
+        current_state_map: Dict[int, str] = {}
+        if geography_mode == "current":
+            current_state_map = dict(
+                db.query(DistrictGeographyMapping.historical_district_id, State.state_name)
+                .join(District, DistrictGeographyMapping.current_district_id == District.id)
+                .join(State, District.state_id == State.id)
+                .distinct()
+                .all()
+            )
+
+        target_state = db.query(State).filter(State.id == state_id).first() if state_id else None
+        target_district = db.query(District).filter(District.id == district_id).first() if district_id else None
+
         result = []
         for r in rows:
             pop = r.total_population
             rate = round((r.incident_count * 100000.0 / pop), 2) if pop and pop > 0 else None
+
+            p_id = None
+            p_name = None
+            is_derived = False
+            notes = None
+
+            if target_district is not None:
+                res_did = target_district.id
+                res_dname = target_district.district_name
+                if geography_mode == "current" and target_district.state:
+                    res_sname = target_district.state.state_name
+                elif target_state:
+                    res_sname = target_state.state_name
+                else:
+                    res_sname = current_state_map.get(r.district_id, r.state_name)
+
+                if not target_district.is_census_2011 and target_district.parent_district_id:
+                    p_id = target_district.parent_district_id
+                    p_parent = db.query(District).filter(District.id == p_id).first()
+                    p_name = p_parent.district_name if p_parent else None
+                    is_derived = True
+                    notes = f"Analytics derived from Census 2011 parent jurisdiction '{p_name}' (#{p_id})."
+            else:
+                res_did = r.district_id
+                res_dname = r.district_name
+                if target_state and geography_mode == "current":
+                    res_sname = target_state.state_name
+                elif geography_mode == "current":
+                    res_sname = current_state_map.get(r.district_id, r.state_name)
+                else:
+                    res_sname = r.state_name
+
             result.append({
-                "district_id": r.district_id,
-                "district_name": r.district_name,
-                "state_name": r.state_name,
+                "district_id": res_did,
+                "district_name": res_dname,
+                "state_name": res_sname,
                 "incident_count": r.incident_count,
                 "total_population": pop,
                 "crime_rate_per_100k": rate,
+                "parent_district_id": p_id,
+                "parent_district_name": p_name,
+                "is_derived_from_parent": is_derived,
+                "notes": notes,
             })
         return result

@@ -19,10 +19,14 @@ class CrimeOverviewResponse(BaseModel):
     latest_incident_date: str
     filtered_by_state_id: Optional[int] = None
     filtered_by_district_id: Optional[int] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
     geography_mode: str = "current"
     jurisdiction_label: str = "Administrative Entities"
     jurisdiction_value: str = "36 States & UTs"
-    jurisdiction_subtext: str = "789 Modern Administrative Districts"
+    jurisdiction_subtext: str = "797 Modern Administrative Districts"
 
 
 class TrendItem(BaseModel):
@@ -34,6 +38,10 @@ class TrendResponse(BaseModel):
     interval: str
     total_points: int
     items: List[TrendItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class CategoryBreakdownItem(BaseModel):
@@ -47,6 +55,10 @@ class CategoryBreakdownItem(BaseModel):
 class CategoryBreakdownResponse(BaseModel):
     total_incidents: int
     items: List[CategoryBreakdownItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class TypeBreakdownItem(BaseModel):
@@ -62,6 +74,10 @@ class TypeBreakdownItem(BaseModel):
 class TypeBreakdownResponse(BaseModel):
     total_incidents: int
     items: List[TypeBreakdownItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class HourlyDistributionItem(BaseModel):
@@ -73,12 +89,20 @@ class HourlyDistributionItem(BaseModel):
 class HourlyDistributionResponse(BaseModel):
     peak_hour: int
     items: List[HourlyDistributionItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class VictimDemographicsResponse(BaseModel):
     gender_distribution: Dict[str, int]
     age_distribution: Dict[str, int]
     average_age: Optional[float] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class WeaponDistributionItem(BaseModel):
@@ -90,6 +114,10 @@ class WeaponDistributionItem(BaseModel):
 class WeaponDistributionResponse(BaseModel):
     total_incidents: int
     items: List[WeaponDistributionItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class TopDistrictItem(BaseModel):
@@ -99,8 +127,16 @@ class TopDistrictItem(BaseModel):
     incident_count: int
     total_population: Optional[int] = None
     crime_rate_per_100k: Optional[float] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class TopDistrictsResponse(BaseModel):
     metric: str
     items: List[TopDistrictItem]
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None

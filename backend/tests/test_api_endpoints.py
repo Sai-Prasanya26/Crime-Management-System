@@ -1,6 +1,6 @@
 """
 Phase 7B & 7C End-to-End API Integration, Dual-Layer Geography & State Crime Coverage Verification Tests.
-Tests live MySQL database with dual-layer geography, 789 current districts (including 28 AP districts),
+Tests live MySQL database with dual-layer geography, 797 current districts (including 28 AP districts),
 640 historical Census-2011 districts, official NCRB crime statistics, and analytics integrity across all
 191,679 historical incident records.
 """
@@ -61,11 +61,11 @@ def test_geography_states():
 
 
 def test_geography_districts():
-    # 1. All Current Administrative Districts: 789 districts (incorporating AP 28-district reorganization)
+    # 1. All Current Administrative Districts: 797 districts
     resp = client.get("/api/v1/geography/districts")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 789, f"Expected 789 current districts, got {data['total']}"
+    assert data["total"] == 797, f"Expected 797 current districts, got {data['total']}"
     print(f"[PASS] GET /api/v1/geography/districts (current layer): PASS ({data['total']} districts)")
 
     # 2. All Historical Census 2011 Districts: 640 districts
@@ -97,13 +97,13 @@ def test_geography_districts():
     assert "Polavaram" in ap_district_names, "Polavaram must exist in AP current districts"
     print(f"[PASS] GET /api/v1/geography/districts?state_id={ap_state['id']} (Andhra Pradesh): PASS (28 districts verified)")
 
-    # 5. Current Ladakh Districts: Exactly 2 districts
+    # 5. Current Ladakh Districts: Exactly 7 districts
     la_state = next(s for s in resp_states.json()["items"] if s["state_name"] == "LADAKH")
     resp_la = client.get(f"/api/v1/geography/districts?state_id={la_state['id']}&view=current")
     assert resp_la.status_code == 200
     data_la = resp_la.json()
-    assert data_la["total"] == 2, f"Expected 2 Ladakh districts, got {data_la['total']}"
-    print(f"[PASS] GET /api/v1/geography/districts?state_id={la_state['id']} (Ladakh): PASS (2 districts verified)")
+    assert data_la["total"] == 7, f"Expected 7 Ladakh districts, got {data_la['total']}"
+    print(f"[PASS] GET /api/v1/geography/districts?state_id={la_state['id']} (Ladakh): PASS (7 districts verified)")
 
 
 def test_geography_hyderabad():
@@ -208,8 +208,8 @@ def test_phase7c_state_coverage_api():
     assert data["states_count"] == 28, f"Expected 28 States, got {data['states_count']}"
     # 3. Exactly 8 UTs
     assert data["uts_count"] == 8, f"Expected 8 UTs, got {data['uts_count']}"
-    # 4. Total current districts nationwide is 789
-    assert data["total_current_districts"] == 789, f"Expected 789 current districts, got {data['total_current_districts']}"
+    # 4. Total current districts nationwide is 797
+    assert data["total_current_districts"] == 797, f"Expected 797 current districts, got {data['total_current_districts']}"
     # 5. Historical incident count across all states is exactly 191,679
     assert data["total_historical_incidents"] == 191679, f"Expected 191679 incidents, got {data['total_historical_incidents']}"
 
@@ -240,7 +240,7 @@ def test_phase7c_state_coverage_api():
     assert "LADAKH" in items_by_name
     la = items_by_name["LADAKH"]
     assert la["entity_type"] == "UT"
-    assert la["district_count"] == 2, f"Expected 2 Ladakh districts, got {la['district_count']}"
+    assert la["district_count"] == 7, f"Expected 7 Ladakh districts, got {la['district_count']}"
     assert la["official_data_available"] is True
 
     # Check that every entity has valid coverage_status
@@ -249,7 +249,7 @@ def test_phase7c_state_coverage_api():
         assert item["data_source"] is not None
         assert item["data_freshness"] is not None
 
-    print(f"[PASS] Phase 7C Coverage API: PASS (36 entities: 28 States, 8 UTs, 789 districts, 191,679 incidents, all COMPLETE)")
+    print(f"[PASS] Phase 7C Coverage API: PASS (36 entities: 28 States, 8 UTs, 797 districts, 191,679 incidents, all COMPLETE)")
 
 
 def test_phase7c_data_freshness_api():
@@ -269,7 +269,7 @@ def test_phase7c_data_freshness_api():
     assert "2024" in str(data["latest_official_nationwide_year"])
     assert data["total_active_states"] == 28
     assert data["total_active_uts"] == 8
-    assert data["total_current_districts"] == 789
+    assert data["total_current_districts"] == 797
     assert data["total_census_2011_districts"] == 640
     assert data["total_historical_incidents"] == 191679
     assert data["total_official_records"] >= 50

@@ -302,7 +302,7 @@ class OfficialCrimeRepository:
             "latest_nationwide_official_benchmark": "Crime in India 2023 (Official Published) / 2024 (Provisional Advance)",
             "latest_official_nationwide_year": 2024,
             "population_baseline": "Census 2011 Enumerated Baseline (Office of the Registrar General & Census Commissioner of India)",
-            "current_administrative_geography": "2026 Administrative Boundaries (36 States/UTs, 789 Current Districts incorporating AP Reorganization of Dec 31, 2025)",
+            "current_administrative_geography": f"2026 Administrative Boundaries (36 States/UTs, {current_districts} Current Districts)",
             "total_active_states": states_count,
             "total_active_uts": uts_count,
             "total_current_districts": current_districts,

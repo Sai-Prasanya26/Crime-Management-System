@@ -141,6 +141,63 @@ export interface DistrictMonthPrediction {
   message?: string | null;
 }
 
+export interface CategoryForecastItem {
+  category_id: number;
+  category_name: string;
+  severity_weight: number;
+  predicted_count: number;
+  historical_baseline_count?: number | null;
+  baseline_period?: string | null;
+  numerical_change?: number | null;
+  percentage_change?: number | null;
+  share_of_total_percent: number;
+  trend_status: 'Increasing' | 'Decreasing' | 'Stable' | 'Insufficient Baseline';
+  crime_types_count: number;
+}
+
+export interface CrimeTypeForecastItem {
+  crime_type_id: number;
+  crime_code: string;
+  crime_name: string;
+  category_id: number;
+  category_name: string;
+  severity_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  predicted_count: number;
+  historical_baseline_count?: number | null;
+  baseline_period?: string | null;
+  numerical_change?: number | null;
+  percentage_change?: number | null;
+  share_of_category_percent: number;
+  share_of_total_percent: number;
+  trend_status: 'Increasing' | 'Decreasing' | 'Stable' | 'Insufficient Baseline';
+  is_sparse: boolean;
+}
+
+export interface PredictionBreakdownResponse {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent: boolean;
+  year: number;
+  month: number;
+  period: string;
+  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'UNAVAILABLE';
+  is_forecast: boolean;
+  is_historical: boolean;
+  total_predicted_count: number;
+  total_actual_count?: number | null;
+  reconciliation_difference: number;
+  methodology: string;
+  categories: CategoryForecastItem[];
+  crime_types: CrimeTypeForecastItem[];
+  provenance_notes: string;
+  limitations: string;
+  disclaimer: string;
+}
+
 export interface PredictionFilters {
   state_id?: number;
   district_id?: number;
@@ -205,6 +262,17 @@ export const predictionApi = {
     month: number
   ): Promise<DistrictMonthPrediction> => {
     const res = await apiClient.get<DistrictMonthPrediction>('/predictions/district-month', {
+      params: { district_id: districtId, year, month },
+    });
+    return res.data;
+  },
+
+  getPredictionBreakdown: async (
+    districtId: number,
+    year: number,
+    month: number
+  ): Promise<PredictionBreakdownResponse> => {
+    const res = await apiClient.get<PredictionBreakdownResponse>('/predictions/breakdown', {
       params: { district_id: districtId, year, month },
     });
     return res.data;

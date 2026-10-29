@@ -11,6 +11,11 @@ from backend.app.schemas.geography import (
     DistrictGeographyMappingListResponse,
     JurisdictionProfileResponse,
 )
+from backend.app.schemas.data_coverage import (
+    DistrictCoverageReport,
+    NationwideCoverageSummary,
+)
+from backend.app.services.data_coverage_service import DataCoverageService
 
 router = APIRouter()
 
@@ -102,3 +107,29 @@ def get_district_mappings(
         historical_district_id=historical_district_id,
         current_district_id=current_district_id,
     )
+
+
+@router.get(
+    "/data-coverage/summary",
+    response_model=NationwideCoverageSummary,
+    summary="Get Nationwide Data Coverage and Provenance Summary",
+    description="Retrieve nationwide statistics broken down by data coverage tier (DIRECT_OBSERVATION, PARENT_DERIVED, UNAVAILABLE, SIMULATED_TEST) across all functional domains.",
+)
+def get_nationwide_coverage_summary(
+    db: Session = Depends(get_db),
+) -> NationwideCoverageSummary:
+    return DataCoverageService.get_nationwide_coverage_summary(db)
+
+
+@router.get(
+    "/data-coverage/{district_id}",
+    response_model=DistrictCoverageReport,
+    summary="Get District Data Coverage and Provenance Profile",
+    description="Retrieve domain-by-domain data coverage classification for a specific district, detailing direct vs parent-derived lineage.",
+)
+def get_district_coverage(
+    district_id: int = Path(..., description="Target District ID", ge=1),
+    db: Session = Depends(get_db),
+) -> DistrictCoverageReport:
+    return DataCoverageService.get_district_coverage(db, district_id=district_id)
+

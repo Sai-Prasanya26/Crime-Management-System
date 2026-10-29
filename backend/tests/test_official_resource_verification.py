@@ -70,7 +70,7 @@ class TestOfficialResourceVerification(unittest.TestCase):
         self.assertEqual(census_dist_count, 640, "Canonical Census 2011 district count must remain 640.")
 
         total_dist_count = self.db.execute(text("SELECT COUNT(*) FROM districts")).scalar()
-        self.assertEqual(total_dist_count, 803, "Total districts in database must remain 803.")
+        self.assertEqual(total_dist_count, 811, "Total districts in database must match 811 after complete district coverage expansion.")
 
         demo_count = self.db.execute(text("SELECT COUNT(*) FROM district_demographics")).scalar()
         self.assertEqual(demo_count, 640, "Canonical district demographics must remain 640.")

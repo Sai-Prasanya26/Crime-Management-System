@@ -66,6 +66,9 @@ class GeographyService:
 
         demo_data = None
         d = district.demographics
+        is_child = bool(not district.is_census_2011 and district.parent_district_id)
+        parent_name = district.parent_district.district_name if (is_child and district.parent_district) else None
+
         if not d and district.parent_district and district.parent_district.demographics:
             d = district.parent_district.demographics
 
@@ -79,6 +82,13 @@ class GeographyService:
                 total_workers=d.total_workers,
             )
 
+        notes = (
+            f"Census 2011 demographic baseline dynamically derived from parent jurisdiction '{parent_name}' (#{district.parent_district_id}). "
+            f"Standalone enumeration for modern carved district '{district.district_name}' awaits upcoming decennial Census."
+            if is_child
+            else None
+        )
+
         return DistrictDetailResponse(
             id=district.id,
             state_id=district.state_id,
@@ -89,6 +99,9 @@ class GeographyService:
             is_census_2011=district.is_census_2011,
             is_current_admin=district.is_current_admin,
             parent_district_id=district.parent_district_id,
+            parent_district_name=parent_name,
+            is_derived_from_parent=is_child,
+            notes=notes,
             demographics=demo_data,
         )
 
@@ -250,6 +263,9 @@ class GeographyService:
                     else:
                         risk_label = f"{risk_level} Risk"
 
+            is_child = bool(not district.is_census_2011 and district.parent_district_id)
+            parent_name = district.parent_district.district_name if (is_child and district.parent_district) else None
+
             return JurisdictionProfileResponse(
                 scope="DISTRICT",
                 state_id=state_id_resolved,
@@ -257,6 +273,8 @@ class GeographyService:
                 district_id=district.id,
                 district_name=district.district_name,
                 parent_district_id=district.parent_district_id,
+                parent_district_name=parent_name,
+                is_derived_from_parent=is_child,
                 geography_mode=geography_mode,
                 reported_incidents=reported_incidents,
                 population=population,

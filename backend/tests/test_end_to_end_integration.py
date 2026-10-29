@@ -150,10 +150,10 @@ class TestEndToEndIntegration(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
 
-        # Total 11,520 records across 640 districts
-        self.assertEqual(data["total_predictions"], 11520)
+        # Total 21,760 records across 640 districts and 34 periods
+        self.assertEqual(data["total_predictions"], 21760)
         self.assertEqual(data["districts_covered"], 640)
-        self.assertEqual(data["periods_count"], 18)
+        self.assertEqual(data["periods_count"], 34)
         self.assertIn("status_breakdown", data)
         self.assertIsNotNone(data["status_breakdown"])
 
@@ -427,8 +427,8 @@ class TestEndToEndIntegration(unittest.TestCase):
             self.assertEqual(crime_count, 191679, "Crime incidents count must remain exactly 191,679.")
             self.assertEqual(census_districts, 640, "Census 2011 districts must remain exactly 640.")
             self.assertEqual(state_count, 37, "States count must remain exactly 37.")
-            self.assertEqual(predictions_count, 11520, "Predictions count must remain exactly 11,520.")
-            self.assertEqual(risk_count, 3200, "Risk scores count must remain exactly 3,200.")
+            self.assertEqual(predictions_count, 21760, "Predictions count must remain exactly 21,760.")
+            self.assertEqual(risk_count, 3840, "Risk scores count must remain exactly 3,840.")
             self.assertEqual(state_res_count, 288, "State resources must remain exactly 288.")
             self.assertEqual(district_res_count, 4510, "District resources must remain exactly 4,510.")
             self.assertEqual(benchmarks_count, 13, "Cost benchmark rates must remain exactly 13.")

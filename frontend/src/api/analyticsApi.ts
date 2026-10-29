@@ -105,6 +105,7 @@ export const analyticsApi = {
     metric?: 'volume' | 'rate';
     limit?: number;
     state_id?: number;
+    district_id?: number;
     geography_mode?: 'current' | 'historical';
     start_date?: string;
     end_date?: string;

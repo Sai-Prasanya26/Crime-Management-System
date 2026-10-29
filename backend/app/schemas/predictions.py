@@ -26,6 +26,9 @@ class PredictionItemResponse(BaseModel):
     is_latest: bool = True
     model_version: str
     model_name: str
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
 
 
 class PredictionOverviewResponse(BaseModel):
@@ -53,6 +56,10 @@ class DistrictPredictionSeriesResponse(BaseModel):
     district_name: str
     state_id: int
     state_name: str
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
     series: List[PredictionItemResponse]
 
 
@@ -113,6 +120,10 @@ class ActualVsPredictedResponse(BaseModel):
     district_id: Optional[int] = None
     district_name: Optional[str] = None
     state_name: Optional[str] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
     comparison_points: List[ActualVsPredictedPoint]
     overall_mae: Optional[float] = None
     overall_rmse: Optional[float] = None
@@ -184,4 +195,62 @@ class DistrictMonthPredictionResponse(BaseModel):
     explanation: str
     disclaimer: str
     message: Optional[str] = None
+
+
+class CategoryForecastItem(BaseModel):
+    category_id: int
+    category_name: str
+    severity_weight: float
+    predicted_count: float
+    historical_baseline_count: Optional[float] = None
+    baseline_period: Optional[str] = None
+    numerical_change: Optional[float] = None
+    percentage_change: Optional[float] = None
+    share_of_total_percent: float
+    trend_status: str  # "Increasing", "Decreasing", "Stable", "Insufficient Baseline"
+    crime_types_count: int
+
+
+class CrimeTypeForecastItem(BaseModel):
+    crime_type_id: int
+    crime_code: str
+    crime_name: str
+    category_id: int
+    category_name: str
+    severity_level: str  # "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    predicted_count: float
+    historical_baseline_count: Optional[float] = None
+    baseline_period: Optional[str] = None
+    numerical_change: Optional[float] = None
+    percentage_change: Optional[float] = None
+    share_of_category_percent: float
+    share_of_total_percent: float
+    trend_status: str  # "Increasing", "Decreasing", "Stable", "Insufficient Baseline"
+    is_sparse: bool  # True if historical average < 0.25 incidents/month
+
+
+class PredictionBreakdownResponse(BaseModel):
+    district_id: int
+    district_name: str
+    state_id: int
+    state_name: str
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    year: int
+    month: int
+    period: str
+    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", or "UNAVAILABLE"
+    is_forecast: bool
+    is_historical: bool
+    total_predicted_count: float
+    total_actual_count: Optional[int] = None
+    reconciliation_difference: float = 0.0
+    methodology: str = "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)"
+    categories: List[CategoryForecastItem]
+    crime_types: List[CrimeTypeForecastItem]
+    provenance_notes: str
+    limitations: str
+    disclaimer: str
+
 

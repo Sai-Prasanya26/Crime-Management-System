@@ -40,6 +40,9 @@ class RiskItemResponse(BaseModel):
     factor_contributions: Optional[Dict[str, Any]] = None
     explanation_summary: Optional[str] = None
     generated_at: Optional[str] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
 
 
 class DistrictRiskDetailResponse(BaseModel):
@@ -71,6 +74,10 @@ class DistrictRiskDetailResponse(BaseModel):
     model_name: Optional[str] = None
     forecast_origin_date: Optional[str] = None
     generated_at: Optional[str] = None
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    notes: Optional[str] = None
 
 
 class RiskOverviewResponse(BaseModel):

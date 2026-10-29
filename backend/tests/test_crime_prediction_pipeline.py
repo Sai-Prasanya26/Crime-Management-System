@@ -380,17 +380,39 @@ class TestCrimePredictionPipeline(unittest.TestCase):
         self.assertEqual(d4["parent_district_id"], 22)
         self.assertIsNotNone(d4["predicted_count"])
 
-        # 5. District with Truly Insufficient Baseline (District 725 Aravalli - unmapped parent)
+        # 5. Reorganized District with Corrected Parent Resolution (District 725 Aravalli -> Parent 151 Sabar Kantha)
         resp5 = client.get(
             "/api/v1/predictions/district-month?district_id=725&year=2026&month=11",
             headers=self.admin_headers,
         )
         self.assertEqual(resp5.status_code, 200)
         d5 = resp5.json()
-        self.assertFalse(d5["is_available"])
-        self.assertFalse(d5["has_baseline"])
-        self.assertEqual(d5["crime_level"], "Insufficient Baseline")
-        self.assertIn("insufficient", d5["message"].lower())
+        self.assertTrue(d5["is_available"])
+        self.assertTrue(d5["is_derived_from_parent"])
+        self.assertEqual(d5["parent_district_id"], 151)
+        self.assertEqual(d5["parent_district_name"], "Sabar Kantha")
+
+        # 5b. District with Truly Insufficient Baseline (Unmapped Parent Safeguard)
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO districts (id, state_id, district_name, is_census_2011, is_current_admin, parent_district_id)
+                VALUES (99998, 11, 'Test Unmapped District', FALSE, TRUE, NULL)
+                ON DUPLICATE KEY UPDATE parent_district_id = NULL
+            """))
+        try:
+            resp_unm = client.get(
+                "/api/v1/predictions/district-month?district_id=99998&year=2026&month=11",
+                headers=self.admin_headers,
+            )
+            self.assertEqual(resp_unm.status_code, 200)
+            d_unm = resp_unm.json()
+            self.assertFalse(d_unm["is_available"])
+            self.assertFalse(d_unm["has_baseline"])
+            self.assertEqual(d_unm["crime_level"], "Insufficient Baseline")
+            self.assertIn("insufficient", d_unm["message"].lower())
+        finally:
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM districts WHERE id = 99998"))
 
         # 6. Non-existent District -> 404
         resp6 = client.get(

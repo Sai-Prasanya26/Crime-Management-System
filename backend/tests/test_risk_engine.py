@@ -165,9 +165,9 @@ class TestRiskEngineAndIntegration(unittest.TestCase):
         """8. Missing Forecast Handling: Fails safely when production forecast is missing."""
         db = SessionLocal()
         try:
-            # Query non-existent period to test failure
+            # Query non-existent future forecast period to test failure
             with self.assertRaises(Exception):
-                RiskService.run_risk_assessment(db, assessment_date="1999-01-01")
+                RiskService.run_risk_assessment(db, assessment_date="2099-01-01")
         finally:
             db.close()
 
@@ -242,8 +242,8 @@ class TestRiskEngineAndIntegration(unittest.TestCase):
         model_resp = client.get("/api/v1/risk/model", headers=self.auth_headers)
         self.assertEqual(model_resp.status_code, 200)
         m_data = model_resp.json()
-        self.assertEqual(m_data["methodology_version"], "risk-v1.0")
-        self.assertEqual(len(m_data["factors"]), 4)
+        self.assertEqual(m_data["methodology_version"], "risk-v2.0")
+        self.assertEqual(len(m_data["factors"]), 5)
 
         # List with risk_level filter
         crit_resp = client.get("/api/v1/risk?risk_level=CRITICAL", headers=self.auth_headers)

@@ -364,24 +364,41 @@ class TestExplainableRiskScoring(unittest.TestCase):
             self.assertEqual(item["state_name"], "ANDHRA PRADESH")
 
     def test_17_district_detail_modern_and_historical_id(self):
-        """17. District Detail Dual-Resolution: Both modern (644) and historical (9) resolve to Hyderabad profile."""
-        # Modern ID 644
+        """17. District Detail Dual-Resolution: Both modern (644) and historical (9) resolve to Hyderabad profile with explicit lineage."""
+        # Modern ID 644 (Hyderabad child district -> parent 9)
         resp_modern = client.get("/api/v1/risk/districts/644?assessment_period=2026-11-01", headers=self.admin_headers)
         self.assertEqual(resp_modern.status_code, 200)
         data_modern = resp_modern.json()
-        self.assertEqual(data_modern["district_id"], 9)
+        self.assertEqual(data_modern["district_id"], 644)
         self.assertEqual(data_modern["district_name"], "Hyderabad")
+        self.assertEqual(data_modern["parent_district_id"], 9)
+        self.assertEqual(data_modern["parent_district_name"], "Hyderabad")
+        self.assertTrue(data_modern["is_derived_from_parent"])
         self.assertEqual(data_modern["state_id"], 36)
         self.assertEqual(data_modern["state_name"], "TELANGANA")
+        self.assertIn("parent jurisdiction 'Hyderabad' (#9)", data_modern["notes"])
 
-        # Historical ID 9
+        # Historical ID 9 (Census 2011 baseline)
         resp_hist = client.get("/api/v1/risk/districts/9?assessment_period=2026-11-01", headers=self.admin_headers)
         self.assertEqual(resp_hist.status_code, 200)
         data_hist = resp_hist.json()
         self.assertEqual(data_hist["district_id"], 9)
         self.assertEqual(data_hist["district_name"], "Hyderabad")
+        self.assertIsNone(data_hist["parent_district_id"])
+        self.assertFalse(data_hist["is_derived_from_parent"])
         self.assertEqual(data_hist["state_id"], 36)
         self.assertEqual(data_hist["state_name"], "TELANGANA")
+
+        # Newly carved district (806 Vav-Tharad -> parent 135 Banas Kantha)
+        resp_806 = client.get("/api/v1/risk/districts/806?assessment_period=2026-11-01", headers=self.admin_headers)
+        self.assertEqual(resp_806.status_code, 200)
+        d_806 = resp_806.json()
+        self.assertEqual(d_806["district_id"], 806)
+        self.assertEqual(d_806["district_name"], "Vav-Tharad")
+        self.assertEqual(d_806["parent_district_id"], 135)
+        self.assertEqual(d_806["parent_district_name"], "Banas Kantha")
+        self.assertTrue(d_806["is_derived_from_parent"])
+        self.assertIn("Banas Kantha", d_806["notes"])
 
     def test_18_honest_empty_state_handling(self):
         """18. Honest Empty State: Filtering by non-existent or unassessed geography returns empty list cleanly."""

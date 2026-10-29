@@ -432,6 +432,13 @@ class RiskRepository:
             where_clauses.append("r.score_type = :st")
             params["st"] = score_type
 
+        dist_filter_obj = None
+        parent_filter_obj = None
+        if district_id is not None:
+            dist_filter_obj = db.query(District).filter(District.id == district_id).first()
+            if dist_filter_obj and not dist_filter_obj.is_census_2011 and dist_filter_obj.parent_district_id:
+                parent_filter_obj = db.query(District).filter(District.id == dist_filter_obj.parent_district_id).first()
+
         if district_id is not None or state_id is not None:
             from backend.app.repositories.crime_repository import CrimeRepository
             filter_district_ids = CrimeRepository.resolve_filter_district_ids(
@@ -508,11 +515,25 @@ class RiskRepository:
                     f_contrib = json.loads(f_contrib)
                 except Exception:
                     pass
+
+            is_child_match = (
+                dist_filter_obj is not None
+                and not dist_filter_obj.is_census_2011
+                and dist_filter_obj.parent_district_id == r[1]
+            )
+
+            d_id = dist_filter_obj.id if is_child_match else r[1]
+            d_name = dist_filter_obj.district_name if is_child_match else r[2]
+            s_id = dist_filter_obj.state_id if is_child_match else r[3]
+            parent_did = dist_filter_obj.parent_district_id if is_child_match else None
+            parent_dname = parent_filter_obj.district_name if (is_child_match and parent_filter_obj) else None
+            is_derived = True if is_child_match else False
+
             items.append({
                 "id": r[0],
-                "district_id": r[1],
-                "district_name": r[2],
-                "state_id": r[3],
+                "district_id": d_id,
+                "district_name": d_name,
+                "state_id": s_id,
                 "state_name": r[4],
                 "period_year": r[5],
                 "period_month": r[6],
@@ -533,6 +554,9 @@ class RiskRepository:
                 "factor_contributions": f_contrib,
                 "explanation_summary": r[21],
                 "generated_at": r[22].isoformat() if r[22] else None,
+                "parent_district_id": parent_did,
+                "parent_district_name": parent_dname,
+                "is_derived_from_parent": is_derived,
             })
 
         return items, total
@@ -547,6 +571,10 @@ class RiskRepository:
         score_type: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Retrieves complete explainable risk assessment profile for a specific district."""
+        dist_obj = db.query(District).filter(District.id == district_id).first()
+        if not dist_obj:
+            return None
+
         from backend.app.repositories.crime_repository import CrimeRepository
         filter_district_ids = CrimeRepository.resolve_filter_district_ids(
             db, district_id=district_id, geography_mode="current"
@@ -641,10 +669,26 @@ class RiskRepository:
             "trend_ratio": float(row[12]),
         }
 
+        is_child = not dist_obj.is_census_2011 and dist_obj.parent_district_id is not None
+        parent_obj = None
+        if is_child:
+            parent_obj = db.query(District).filter(District.id == dist_obj.parent_district_id).first()
+
+        parent_id = dist_obj.parent_district_id if is_child else None
+        parent_name = parent_obj.district_name if parent_obj else None
+        derived_note = (
+            f"Risk assessment profile dynamically derived from Census 2011 parent jurisdiction '{parent_name}' (#{parent_id})."
+            if is_child
+            else None
+        )
+        summary = row[23]
+        if is_child and derived_note:
+            summary = f"{derived_note} {summary or ''}".strip()
+
         return {
-            "district_id": row[1],
-            "district_name": row[2],
-            "state_id": row[3],
+            "district_id": dist_obj.id,
+            "district_name": dist_obj.district_name,
+            "state_id": dist_obj.state_id if is_child else row[3],
             "state_name": row[4],
             "census_2011_population": int(row[5]) if row[5] else 0,
             "period_year": row[6],
@@ -662,12 +706,16 @@ class RiskRepository:
             "factor_percentiles": percentiles,
             "factor_contributions": f_contrib,
             "strongest_driver": row[21] or "N/A",
-            "explanation_summary": row[23],
+            "explanation_summary": summary,
             "calculation_version": row[17],
             "model_version": row[18] or "N/A",
             "model_name": row[19] or "N/A",
             "forecast_origin_date": row[20].isoformat() if row[20] else None,
             "generated_at": row[24].isoformat() if row[24] else None,
+            "parent_district_id": parent_id,
+            "parent_district_name": parent_name,
+            "is_derived_from_parent": is_child,
+            "notes": derived_note,
         }
 
     @staticmethod

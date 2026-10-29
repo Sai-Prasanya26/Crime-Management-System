@@ -24,6 +24,9 @@ from backend.app.schemas.predictions import (
     ActualVsPredictedPoint,
     TrainTriggerResponse,
     GenerateTriggerResponse,
+    PredictionBreakdownResponse,
+    CategoryForecastItem,
+    CrimeTypeForecastItem,
 )
 from backend.app.schemas.common import StandardListResponse
 from ml.feature_engineering.feature_pipeline import FEATURE_COLUMNS
@@ -100,6 +103,10 @@ class PredictionService:
             district_name=data["district_name"],
             state_id=data["state_id"],
             state_name=data["state_name"],
+            parent_district_id=data.get("parent_district_id"),
+            parent_district_name=data.get("parent_district_name"),
+            is_derived_from_parent=data.get("is_derived_from_parent", False),
+            notes=data.get("notes"),
             series=[PredictionItemResponse(**item) for item in data["series"]],
         )
 
@@ -241,6 +248,10 @@ class PredictionService:
             district_id=data["district_id"],
             district_name=data["district_name"],
             state_name=data["state_name"],
+            parent_district_id=data.get("parent_district_id"),
+            parent_district_name=data.get("parent_district_name"),
+            is_derived_from_parent=data.get("is_derived_from_parent", False),
+            notes=data.get("notes"),
             comparison_points=[ActualVsPredictedPoint(**pt) for pt in data["comparison_points"]],
             overall_mae=data["overall_mae"],
             overall_rmse=data["overall_rmse"],
@@ -274,6 +285,34 @@ class PredictionService:
             )
 
         return DistrictMonthPredictionResponse(**data)
+
+    @staticmethod
+    def get_prediction_breakdown(
+        db: Session,
+        district_id: int,
+        year: int,
+        month: int,
+    ) -> PredictionBreakdownResponse:
+        """
+        Retrieves two-level hierarchical compositional crime category and crime type forecast breakdown,
+        verifying reconciliation consistency with the overall production forecast.
+        """
+        if month < 1 or month > 12:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid month {month}. Month must be between 1 and 12.",
+            )
+
+        data = PredictionRepository.get_prediction_breakdown(
+            db, district_id=district_id, year=year, month=month
+        )
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"District with ID {district_id} not found.",
+            )
+
+        return PredictionBreakdownResponse(**data)
 
     @staticmethod
     def trigger_train(db: Session, refit_production: bool = True) -> TrainTriggerResponse:

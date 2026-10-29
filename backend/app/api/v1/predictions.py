@@ -25,6 +25,7 @@ from backend.app.schemas.predictions import (
     TrainTriggerResponse,
     GenerateTriggerRequest,
     GenerateTriggerResponse,
+    PredictionBreakdownResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 from backend.app.services.prediction_service import PredictionService
@@ -215,6 +216,24 @@ def get_district_month_prediction(
     db: Session = Depends(get_db),
 ) -> DistrictMonthPredictionResponse:
     return PredictionService.get_district_month_prediction(
+        db, district_id=district_id, year=year, month=month
+    )
+
+
+@router.get(
+    "/breakdown",
+    response_model=PredictionBreakdownResponse,
+    summary="Get Category-Wise and Crime-Type-Wise Forecast Breakdown",
+    description="Retrieve two-level hierarchical compositional forecast breakdown across all 4 categories and all 21 crime types for a selected district and period.",
+)
+def get_prediction_breakdown(
+    district_id: int = Query(..., ge=1, description="Unique ID of the district"),
+    year: int = Query(..., ge=2000, le=2100, description="Calendar year"),
+    month: int = Query(..., ge=1, le=12, description="Calendar month (1 to 12)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PredictionBreakdownResponse:
+    return PredictionService.get_prediction_breakdown(
         db, district_id=district_id, year=year, month=month
     )
 
