@@ -29,9 +29,9 @@ from backend.app.schemas.optimization import (
 
 logger = logging.getLogger(__name__)
 
-# Default Institutional Planning Associations for all 21 Crime Types
+# Default Institutional Planning Associations for all 21 Crime Types (84 mappings: 21 crimes x 4 pools)
 DEFAULT_CRIME_MAPPINGS = [
-    # 1. Extortion (ID: 1, Cat: 2 Other Crime, Severity: HIGH)
+    # 1. Extortion (ID: 1, Cat: Other Crime, Severity: HIGH)
     {
         "crime_type_id": 1,
         "resource_type_id": 1,  # Police Officers
@@ -40,6 +40,15 @@ DEFAULT_CRIME_MAPPINGS = [
         "priority_weight": 1.25,
         "shared_pool_category": "PERSONNEL",
         "operational_rationale": "Covert physical surveillance, commercial corridor presence, and victim protection details.",
+    },
+    {
+        "crime_type_id": 1,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.20,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Mobile intercept units and rapid reaction patrols along commercial transit corridors.",
     },
     {
         "crime_type_id": 1,
@@ -52,14 +61,14 @@ DEFAULT_CRIME_MAPPINGS = [
     },
     {
         "crime_type_id": 1,
-        "resource_type_id": 20,  # Cyber Police Personnel
+        "resource_type_id": 95,  # District Intelligence Units
         "coefficient": 0.20,
         "min_demand_threshold": 0.05,
         "priority_weight": 1.20,
         "shared_pool_category": "SPECIALIZED",
-        "operational_rationale": "Digital communication interception and VoIP/messaging application tracing.",
+        "operational_rationale": "District intelligence tracking of organized gang communications and extortion syndicate networks.",
     },
-    # 2. Vandalism (ID: 2, Cat: 2 Other Crime, Severity: LOW)
+    # 2. Vandalism (ID: 2, Cat: Other Crime, Severity: LOW)
     {
         "crime_type_id": 2,
         "resource_type_id": 1,  # Police Officers
@@ -78,7 +87,25 @@ DEFAULT_CRIME_MAPPINGS = [
         "shared_pool_category": "MOBILITY",
         "operational_rationale": "Mobile patrol sweeps deterring public property defacement and facility intrusion.",
     },
-    # 3. Shoplifting (ID: 3, Cat: 2 Other Crime, Severity: LOW)
+    {
+        "crime_type_id": 2,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.75,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Station-level case documentation, CCTV footage recovery, and restitution processing.",
+    },
+    {
+        "crime_type_id": 2,
+        "resource_type_id": 105,  # Quick Reaction Teams (QRT)
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.70,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Quick reaction team standby during public unrest and coordinated vandalism flashpoints.",
+    },
+    # 3. Shoplifting (ID: 3, Cat: Other Crime, Severity: LOW)
     {
         "crime_type_id": 3,
         "resource_type_id": 1,  # Police Officers
@@ -88,7 +115,34 @@ DEFAULT_CRIME_MAPPINGS = [
         "shared_pool_category": "PERSONNEL",
         "operational_rationale": "High-visibility foot patrol in shopping corridors and commercial market complexes.",
     },
-    # 4. Traffic Violation (ID: 4, Cat: 3 Traffic Fatality, Severity: LOW)
+    {
+        "crime_type_id": 3,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.70,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Perimeter patrols and response sweeps around retail shopping hubs and suburban retail parks.",
+    },
+    {
+        "crime_type_id": 3,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.70,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Retail theft ring pattern identification, inventory loss forensics, and repeat offender filing.",
+    },
+    {
+        "crime_type_id": 3,
+        "resource_type_id": 95,  # District Intelligence Units
+        "coefficient": 0.02,
+        "min_demand_threshold": 0.15,
+        "priority_weight": 0.65,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Market intelligence gathering on organized retail shoplifting rings and stolen merchandise fences.",
+    },
+    # 4. Traffic Violation (ID: 4, Cat: Traffic Fatality, Severity: LOW)
     {
         "crime_type_id": 4,
         "resource_type_id": 19,  # Traffic Police Personnel
@@ -101,351 +155,549 @@ DEFAULT_CRIME_MAPPINGS = [
     {
         "crime_type_id": 4,
         "resource_type_id": 24,  # Highway Patrol Vehicles
-        "coefficient": 0.35,
+        "coefficient": 0.30,
         "min_demand_threshold": 0.05,
         "priority_weight": 1.00,
         "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Highway patrol interceptors managing arterial traffic flow and immediate crash response.",
-    },
-    # 5. Firearm Offense (ID: 5, Cat: 1 Fire Accident, Severity: HIGH)
-    {
-        "crime_type_id": 5,
-        "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.50,
-        "min_demand_threshold": 0.04,
-        "priority_weight": 1.30,
-        "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Armed quick-reaction patrols, cordon searches, and vehicle frisking at border sectors.",
+        "operational_rationale": "Highway interceptors and mobile patrol vehicles enforcing lane discipline and intercepting reckless driving.",
     },
     {
-        "crime_type_id": 5,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.25,
-        "min_demand_threshold": 0.04,
-        "priority_weight": 1.30,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Tactical patrol vehicles with protective gear for armed engagement readiness.",
-    },
-    {
-        "crime_type_id": 5,
+        "crime_type_id": 4,
         "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.20,
-        "min_demand_threshold": 0.04,
-        "priority_weight": 1.30,
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.75,
         "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Ballistic forensic tracing and illegal weapons trafficking network disruption.",
-    },
-    # 6. Sexual Assault (ID: 6, Cat: 4 Violent Crime, Severity: CRITICAL)
-    {
-        "crime_type_id": 6,
-        "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.60,
-        "min_demand_threshold": 0.02,
-        "priority_weight": 1.50,
-        "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Dedicated safety patrols in transit stations, isolated routes, and university clusters.",
+        "operational_rationale": "Accident reconstruction, collision liability investigation, and fatal crash forensics.",
     },
     {
-        "crime_type_id": 6,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.25,
-        "min_demand_threshold": 0.02,
-        "priority_weight": 1.50,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "All-women safety mobile response units with rapid dispatch capability.",
+        "crime_type_id": 4,
+        "resource_type_id": 96,  # Traffic Enforcement Specialized Units
+        "coefficient": 0.10,
+        "min_demand_threshold": 0.08,
+        "priority_weight": 0.85,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Specialized drunk-driving interdiction squads and automated electronic enforcement units.",
     },
+    # 5. Firearm Offense (ID: 5, Cat: Fire Accident, Severity: HIGH)
     {
-        "crime_type_id": 6,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.30,
-        "min_demand_threshold": 0.02,
-        "priority_weight": 1.50,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Specialized sexual offense investigation units ensuring victim support and prompt forensic kit processing.",
-    },
-    # 7. Assault (ID: 7, Cat: 4 Violent Crime, Severity: HIGH)
-    {
-        "crime_type_id": 7,
+        "crime_type_id": 5,
         "resource_type_id": 1,  # Police Officers
         "coefficient": 0.45,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.25,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.30,
         "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Emergency response officers de-escalating violent disputes in public spaces.",
+        "operational_rationale": "Intensive cordon-and-search operations and static armed checkpoints in high-risk zones.",
     },
     {
-        "crime_type_id": 7,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.20,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.20,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Motorized dispatch units ensuring under-10-minute response to violent altercations.",
-    },
-    {
-        "crime_type_id": 7,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.10,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.10,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Medico-legal documentation, crime scene witness interviewing, and evidentiary recording.",
-    },
-    # 8. Fraud (ID: 8, Cat: 2 Other Crime, Severity: MEDIUM)
-    {
-        "crime_type_id": 8,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.30,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Financial crime investigation officers handling forensic accounting and document audits.",
-    },
-    {
-        "crime_type_id": 8,
-        "resource_type_id": 20,  # Cyber Police Personnel
+        "crime_type_id": 5,
+        "resource_type_id": 36,  # Armoured Tactical Vehicles
         "coefficient": 0.25,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
-        "shared_pool_category": "SPECIALIZED",
-        "operational_rationale": "Banking portal transaction tracking and fraudulent payment gateway lien enforcement.",
-    },
-    # 9. Cybercrime (ID: 9, Cat: 2 Other Crime, Severity: MEDIUM)
-    {
-        "crime_type_id": 9,
-        "resource_type_id": 20,  # Cyber Police Personnel
-        "coefficient": 0.60,
-        "min_demand_threshold": 0.03,
-        "priority_weight": 1.10,
-        "shared_pool_category": "SPECIALIZED",
-        "operational_rationale": "Technical analysts monitoring digital fraud operations, phishing campaigns, and mule accounts.",
-    },
-    {
-        "crime_type_id": 9,
-        "resource_type_id": 52,  # Cyber Crime Units
-        "coefficient": 0.35,
-        "min_demand_threshold": 0.03,
-        "priority_weight": 1.10,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Digital forensics teams handling server analysis, device imaging, and transaction freezing.",
-    },
-    # 10. Homicide (ID: 10, Cat: 2 Other Crime, Severity: CRITICAL)
-    {
-        "crime_type_id": 10,
-        "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.70,
-        "min_demand_threshold": 0.01,
-        "priority_weight": 1.50,
-        "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Area cordons and preventive deployment in high-tension factional or gang corridors.",
-    },
-    {
-        "crime_type_id": 10,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.30,
-        "min_demand_threshold": 0.01,
-        "priority_weight": 1.50,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Perimeter containment and rapid deployment transport for tactical reserve units.",
-    },
-    {
-        "crime_type_id": 10,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.40,
-        "min_demand_threshold": 0.01,
-        "priority_weight": 1.50,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Homicide investigation detectives with specialized forensic science laboratory support.",
-    },
-    # 11. Counterfeiting (ID: 11, Cat: 2 Other Crime, Severity: MEDIUM)
-    {
-        "crime_type_id": 11,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.35,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Counterfeit currency interdiction, printing press detection, and distribution network raids.",
-    },
-    # 12. Arson (ID: 12, Cat: 1 Fire Accident, Severity: CRITICAL)
-    {
-        "crime_type_id": 12,
-        "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.40,
-        "min_demand_threshold": 0.02,
-        "priority_weight": 1.40,
-        "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Crowd control, evacuation cordon enforcement, and critical asset protection during fire incidents.",
-    },
-    {
-        "crime_type_id": 12,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.20,
-        "min_demand_threshold": 0.02,
+        "min_demand_threshold": 0.04,
         "priority_weight": 1.30,
         "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Emergency response transport coordinating with municipal fire service departments.",
+        "operational_rationale": "Armored tactical vehicles and rapid response interceptor patrols for armed confrontation deterrence.",
+    },
+    {
+        "crime_type_id": 5,
+        "resource_type_id": 47,  # Special Investigation Teams (SIT)
+        "coefficient": 0.30,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.35,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Ballistic tracking, illicit arms supply chain tracing, and forensic weapon provenance examination.",
+    },
+    {
+        "crime_type_id": 5,
+        "resource_type_id": 103,  # Special Task Force (STF)
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.40,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Special Task Force tactical interdiction and covert weapon cache recovery operations.",
+    },
+    # 6. Sexual Assault (ID: 6, Cat: Violent Crime, Severity: CRITICAL)
+    {
+        "crime_type_id": 6,
+        "resource_type_id": 18,  # Women Police Personnel
+        "coefficient": 0.50,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Dedicated women safety foot patrols, transit hubs, and institutional corridor surveillance.",
+    },
+    {
+        "crime_type_id": 6,
+        "resource_type_id": 25,  # PCR Vans
+        "coefficient": 0.30,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.40,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Emergency response PCR mobile units dedicated to prompt distress call interception.",
+    },
+    {
+        "crime_type_id": 6,
+        "resource_type_id": 59,  # Women & Children Protection Units
+        "coefficient": 0.45,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Women and child protection units providing specialized trauma-informed forensic investigation.",
+    },
+    {
+        "crime_type_id": 6,
+        "resource_type_id": 97,  # Women Safety & SHE Teams
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Undercover SHE teams, anti-harassment squads, and vulnerable transit route patrols.",
+    },
+    # 7. Assault (ID: 7, Cat: Violent Crime, Severity: HIGH)
+    {
+        "crime_type_id": 7,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.40,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.20,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Deterrent beat policing in high-density gathering areas, night entertainment hubs, and hotspots.",
+    },
+    {
+        "crime_type_id": 7,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.25,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.15,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Rapid response motorized patrol sweeps reducing confrontation escalation times.",
+    },
+    {
+        "crime_type_id": 7,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.15,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Station investigation officers processing injury documentation, CCTV, and witness statements.",
+    },
+    {
+        "crime_type_id": 7,
+        "resource_type_id": 105,  # Quick Reaction Teams (QRT)
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.10,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Quick Reaction Teams positioned for rapid de-escalation of violent public confrontations.",
+    },
+    # 8. Fraud (ID: 8, Cat: Other Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 8,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.90,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Verification visits, notice services, and banking district liaison personnel.",
+    },
+    {
+        "crime_type_id": 8,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.08,
+        "min_demand_threshold": 0.08,
+        "priority_weight": 0.80,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Administrative transport for evidence seizure and suspect summons delivery.",
+    },
+    {
+        "crime_type_id": 8,
+        "resource_type_id": 55,  # Financial Crime Investigation Units
+        "coefficient": 0.40,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.15,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Financial crime investigation units analyzing paper trails, shell entities, and ledger audits.",
+    },
+    {
+        "crime_type_id": 8,
+        "resource_type_id": 102,  # Economic Offences Special Investigation Wings
+        "coefficient": 0.25,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.10,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Economic Offences Wings coordinating multi-jurisdictional financial fraud and asset freezing.",
+    },
+    # 9. Cybercrime (ID: 9, Cat: Other Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 9,
+        "resource_type_id": 20,  # Cyber Police Personnel
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.10,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Cyber awareness desk officers and victim complaint intake specialists at police stations.",
+    },
+    {
+        "crime_type_id": 9,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.08,
+        "min_demand_threshold": 0.08,
+        "priority_weight": 0.80,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Technical field inspection vehicles and digital evidence transit transport.",
+    },
+    {
+        "crime_type_id": 9,
+        "resource_type_id": 52,  # Cyber Crime Investigation Units
+        "coefficient": 0.45,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.25,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Digital forensics, IP log tracing, phishing infrastructure teardown, and dark web analysis.",
+    },
+    {
+        "crime_type_id": 9,
+        "resource_type_id": 92,  # Specialized Cyber Crime Units
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.30,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Advanced technical cyber defense, ransomware tracking, and financial mule intercept units.",
+    },
+    # 10. Homicide (ID: 10, Cat: Other Crime, Severity: CRITICAL)
+    {
+        "crime_type_id": 10,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.55,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Crime scene perimeter security, cordon operations, and round-the-clock witness security.",
+    },
+    {
+        "crime_type_id": 10,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.30,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.40,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "High-mobility pursuit vehicles and tactical perimeter interdiction checkpoints.",
+    },
+    {
+        "crime_type_id": 10,
+        "resource_type_id": 47,  # Special Investigation Teams (SIT)
+        "coefficient": 0.50,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Special Investigation Teams and forensic experts conducting comprehensive evidence processing.",
+    },
+    {
+        "crime_type_id": 10,
+        "resource_type_id": 93,  # Crime Branch Specialized Units
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.45,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Specialized homicide squad intelligence, offender profiling, and fugitive tracking.",
+    },
+    # 11. Counterfeiting (ID: 11, Cat: Other Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 11,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.85,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Marketplace raids, commercial printing press inspections, and merchant alert sweeps.",
+    },
+    {
+        "crime_type_id": 11,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.10,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.80,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Transport support for seized counterfeit currency, dies, and printing equipment.",
+    },
+    {
+        "crime_type_id": 11,
+        "resource_type_id": 55,  # Financial Crime Investigation Units
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.10,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Financial crime investigation units tracing forged currency distribution networks.",
+    },
+    {
+        "crime_type_id": 11,
+        "resource_type_id": 102,  # Economic Offences Special Investigation Wings
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 1.05,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Economic Offences Wings inter-state counterfeit network disruption and intelligence analysis.",
+    },
+    # 12. Arson (ID: 12, Cat: Fire Accident, Severity: CRITICAL)
+    {
+        "crime_type_id": 12,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.40,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.35,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Evacuation perimeter cordons, fire scene security, and public order preservation.",
     },
     {
         "crime_type_id": 12,
-        "resource_type_id": 3,  # Investigation Teams
+        "resource_type_id": 2,  # Patrol Vehicles
         "coefficient": 0.25,
-        "min_demand_threshold": 0.02,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.30,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Emergency mobile units coordinating perimeter access and fire emergency services liaison.",
+    },
+    {
+        "crime_type_id": 12,
+        "resource_type_id": 49,  # Forensic Crime Scene Teams
+        "coefficient": 0.40,
+        "min_demand_threshold": 0.03,
         "priority_weight": 1.40,
         "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Arson investigation teams with chemical residue and accelerant forensic analysis kits.",
+        "operational_rationale": "Forensic science teams investigating accelerant traces, point-of-origin, and burn dynamics.",
     },
-    # 13. Kidnapping (ID: 13, Cat: 2 Other Crime, Severity: CRITICAL)
+    {
+        "crime_type_id": 12,
+        "resource_type_id": 106,  # Bomb Detection & Disposal Squads (BDDS)
+        "coefficient": 0.25,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.35,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Bomb detection and chemical hazard disposal squads screening for incendiary devices.",
+    },
+    # 13. Kidnapping (ID: 13, Cat: Other Crime, Severity: CRITICAL)
     {
         "crime_type_id": 13,
         "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.65,
-        "min_demand_threshold": 0.01,
+        "coefficient": 0.50,
+        "min_demand_threshold": 0.02,
         "priority_weight": 1.50,
         "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Immediate perimeter roadblocks, highway toll checking, and border sealing operations.",
+        "operational_rationale": "City-wide road blockade checks, border surveillance, and transit terminal seals.",
     },
     {
         "crime_type_id": 13,
-        "resource_type_id": 2,  # Patrol Vehicles
+        "resource_type_id": 28,  # Police Sedans & Interceptors
         "coefficient": 0.35,
-        "min_demand_threshold": 0.01,
-        "priority_weight": 1.50,
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.45,
         "shared_pool_category": "MOBILITY",
-        "operational_rationale": "High-speed pursuit vehicles and mobile electronic surveillance vans.",
+        "operational_rationale": "High-speed police interceptors and mobile cordon teams sealing exit routes.",
     },
     {
         "crime_type_id": 13,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.35,
-        "min_demand_threshold": 0.01,
+        "resource_type_id": 47,  # Special Investigation Teams (SIT)
+        "coefficient": 0.50,
+        "min_demand_threshold": 0.02,
         "priority_weight": 1.50,
         "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Anti-kidnapping technical squads with cellular triangulation and hostage negotiation units.",
+        "operational_rationale": "Dedicated anti-kidnapping investigation squads, technical call triangulation, and hostage rescue.",
     },
-    # 14. Vehicle - Stolen (ID: 14, Cat: 4 Violent Crime, Severity: MEDIUM)
     {
-        "crime_type_id": 14,
-        "resource_type_id": 1,  # Police Officers
+        "crime_type_id": 13,
+        "resource_type_id": 100,  # Anti-Human Trafficking Units (AHTU)
         "coefficient": 0.35,
-        "min_demand_threshold": 0.06,
-        "priority_weight": 1.00,
-        "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "City entry/exit checking posts and parking zone verification patrols.",
+        "min_demand_threshold": 0.02,
+        "priority_weight": 1.50,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Anti-Human Trafficking Units (AHTU) and tactical rescue units executing search operations.",
     },
+    # 14. Vehicle - Stolen (ID: 14, Cat: Violent Crime, Severity: MEDIUM)
     {
         "crime_type_id": 14,
-        "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.30,
-        "min_demand_threshold": 0.06,
-        "priority_weight": 1.10,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "ANPR-equipped patrol cars scanning traffic streams for flagged stolen vehicle plates.",
-    },
-    {
-        "crime_type_id": 14,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.10,
-        "min_demand_threshold": 0.06,
-        "priority_weight": 1.00,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Specialized auto-theft squads raiding illegal dismantling garages and forged title rings.",
-    },
-    # 15. Burglary (ID: 15, Cat: 2 Other Crime, Severity: MEDIUM)
-    {
-        "crime_type_id": 15,
         "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.40,
+        "coefficient": 0.25,
         "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
+        "priority_weight": 0.95,
         "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Residential night patrols and beat constabulary presence in quiet suburban neighborhoods.",
+        "operational_rationale": "Fixed choke-point checks, toll booth verifications, and parking surveillance beats.",
     },
     {
-        "crime_type_id": 15,
+        "crime_type_id": 14,
         "resource_type_id": 2,  # Patrol Vehicles
         "coefficient": 0.20,
         "min_demand_threshold": 0.05,
         "priority_weight": 1.00,
         "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Roving sector patrol vehicles providing deterrence and quick response to burglary alarms.",
+        "operational_rationale": "Mobile interceptor patrols equipped with real-time ANPR reader integration.",
+    },
+    {
+        "crime_type_id": 14,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 0.95,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Auto-theft investigation cells tracing chop shops, altered VINs, and cross-border transport.",
+    },
+    {
+        "crime_type_id": 14,
+        "resource_type_id": 93,  # Crime Branch Specialized Units
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.95,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Crime Branch auto-theft squad intelligence targeting inter-state vehicle theft syndicates.",
+    },
+    # 15. Burglary (ID: 15, Cat: Other Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 15,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.05,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Night beat patrols in residential layouts, gated communities, and locked-premise monitoring.",
     },
     {
         "crime_type_id": 15,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.10,
-        "min_demand_threshold": 0.05,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.04,
         "priority_weight": 1.00,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Crime scene fingerprint lifting, tool-mark analysis, and pawn shop stolen property tracking.",
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Visible motorized patrolling through residential sectors during peak burglary hours.",
     },
-    # 16. Domestic Violence (ID: 16, Cat: 4 Violent Crime, Severity: HIGH)
+    {
+        "crime_type_id": 15,
+        "resource_type_id": 49,  # Forensic Crime Scene Teams
+        "coefficient": 0.25,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.05,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Forensic crime scene teams gathering latent fingerprints, entry toolmarks, and physical traces.",
+    },
+    {
+        "crime_type_id": 15,
+        "resource_type_id": 107,  # Police Canine & Tracker Dog Squads
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.05,
+        "priority_weight": 0.95,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Police canine tracker dog squads deployed for immediate scent trailing at burglary scenes.",
+    },
+    # 16. Domestic Violence (ID: 16, Cat: Violent Crime, Severity: HIGH)
     {
         "crime_type_id": 16,
-        "resource_type_id": 1,  # Police Officers
+        "resource_type_id": 18,  # Women Police Personnel
         "coefficient": 0.40,
-        "min_demand_threshold": 0.04,
+        "min_demand_threshold": 0.03,
         "priority_weight": 1.25,
         "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Trained dispute resolution officers and specialized Women Police Desk personnel.",
+        "operational_rationale": "Station-level women assistance desks and immediate welfare verification visits.",
     },
     {
         "crime_type_id": 16,
-        "resource_type_id": 2,  # Patrol Vehicles
+        "resource_type_id": 25,  # PCR Vans
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.20,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "PCR vans providing swift on-scene emergency intervention to distress calls.",
+    },
+    {
+        "crime_type_id": 16,
+        "resource_type_id": 59,  # Women & Children Protection Units
+        "coefficient": 0.30,
+        "min_demand_threshold": 0.03,
+        "priority_weight": 1.25,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Women & Children Protection Units handling domestic incident reports and victim protection orders.",
+    },
+    {
+        "crime_type_id": 16,
+        "resource_type_id": 97,  # Women Safety & SHE Teams
         "coefficient": 0.20,
         "min_demand_threshold": 0.04,
         "priority_weight": 1.20,
-        "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Rapid response patrol cars dispatched immediately to domestic emergency SOS calls.",
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Specialized Women Safety & SHE Teams providing family counseling and protective surveillance.",
     },
-    # 17. Drug Offense (ID: 17, Cat: 2 Other Crime, Severity: MEDIUM)
+    # 17. Drug Offense (ID: 17, Cat: Other Crime, Severity: MEDIUM)
     {
         "crime_type_id": 17,
         "resource_type_id": 1,  # Police Officers
-        "coefficient": 0.40,
-        "min_demand_threshold": 0.05,
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.04,
         "priority_weight": 1.10,
         "shared_pool_category": "PERSONNEL",
-        "operational_rationale": "Patrol operations near academic institutions, transit hubs, and nightlife clusters.",
+        "operational_rationale": "Targeted searches around educational institutions, youth venues, and known peddler points.",
     },
     {
         "crime_type_id": 17,
         "resource_type_id": 2,  # Patrol Vehicles
-        "coefficient": 0.20,
+        "coefficient": 0.15,
         "min_demand_threshold": 0.05,
-        "priority_weight": 1.10,
+        "priority_weight": 1.00,
         "shared_pool_category": "MOBILITY",
-        "operational_rationale": "Highway and state-border interdiction vehicles inspecting suspected contraband transports.",
+        "operational_rationale": "Rapid intercept sweeps at transit stations and inter-district transport terminals.",
     },
     {
         "crime_type_id": 17,
-        "resource_type_id": 3,  # Investigation Teams
+        "resource_type_id": 57,  # Anti-Narcotics Intelligence Units
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.20,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Anti-Narcotics intelligence units tracking narcotics supply chains and financial links.",
+    },
+    {
+        "crime_type_id": 17,
+        "resource_type_id": 99,  # Anti-Narcotics Special Task Cells
+        "coefficient": 0.25,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.25,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Specialized Anti-Narcotics task cells conducting targeted drug interdiction operations.",
+    },
+    # 18. Identity Theft (ID: 18, Cat: Violent Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 18,
+        "resource_type_id": 1,  # Police Officers
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.85,
+        "shared_pool_category": "PERSONNEL",
+        "operational_rationale": "Verification checks at SIM card vendors, biometric centers, and document kiosks.",
+    },
+    {
+        "crime_type_id": 18,
+        "resource_type_id": 2,  # Patrol Vehicles
+        "coefficient": 0.08,
+        "min_demand_threshold": 0.08,
+        "priority_weight": 0.75,
+        "shared_pool_category": "MOBILITY",
+        "operational_rationale": "Field inspection transport for verifying suspected fraudulent documentation addresses.",
+    },
+    {
+        "crime_type_id": 18,
+        "resource_type_id": 52,  # Cyber Crime Investigation Units
+        "coefficient": 0.35,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.15,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Cyber crime units investigating digital identity fraud, forged KYC, and credential compromise.",
+    },
+    {
+        "crime_type_id": 18,
+        "resource_type_id": 92,  # Specialized Cyber Crime Units
         "coefficient": 0.25,
         "min_demand_threshold": 0.05,
         "priority_weight": 1.15,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Anti-narcotics task force tracking wholesale supply syndicates and precursor chemicals.",
-    },
-    # 18. Identity Theft (ID: 18, Cat: 4 Violent Crime, Severity: MEDIUM)
-    {
-        "crime_type_id": 18,
-        "resource_type_id": 20,  # Cyber Police Personnel
-        "coefficient": 0.40,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
         "shared_pool_category": "SPECIALIZED",
-        "operational_rationale": "Cyber analysts auditing compromised databases, SIM-swap rings, and forged credential portals.",
+        "operational_rationale": "Specialized cyber units handling deepfake detection and synthetic identity network disruption.",
     },
-    {
-        "crime_type_id": 18,
-        "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.20,
-        "min_demand_threshold": 0.05,
-        "priority_weight": 1.00,
-        "shared_pool_category": "INVESTIGATION",
-        "operational_rationale": "Evidence collection on identity spoofing, unauthorized loans, and credit bureau fraud.",
-    },
-    # 19. Robbery (ID: 19, Cat: 4 Violent Crime, Severity: HIGH)
+    # 19. Robbery (ID: 19, Cat: Violent Crime, Severity: HIGH)
     {
         "crime_type_id": 19,
         "resource_type_id": 1,  # Police Officers
@@ -467,13 +719,22 @@ DEFAULT_CRIME_MAPPINGS = [
     {
         "crime_type_id": 19,
         "resource_type_id": 3,  # Investigation Teams
-        "coefficient": 0.15,
+        "coefficient": 0.25,
         "min_demand_threshold": 0.03,
         "priority_weight": 1.20,
         "shared_pool_category": "INVESTIGATION",
         "operational_rationale": "Robbery investigation units checking habitual offenders, surveillance CCTV, and fence networks.",
     },
-    # 20. Illegal Possession (ID: 20, Cat: 2 Other Crime, Severity: MEDIUM)
+    {
+        "crime_type_id": 19,
+        "resource_type_id": 105,  # Quick Reaction Teams (QRT)
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.04,
+        "priority_weight": 1.25,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Quick Reaction Teams strategically stationed near commercial zones prone to armed robberies.",
+    },
+    # 20. Illegal Possession (ID: 20, Cat: Other Crime, Severity: MEDIUM)
     {
         "crime_type_id": 20,
         "resource_type_id": 1,  # Police Officers
@@ -492,7 +753,25 @@ DEFAULT_CRIME_MAPPINGS = [
         "shared_pool_category": "MOBILITY",
         "operational_rationale": "Mobile patrol stop-and-search operations at key checkpoints.",
     },
-    # 21. Public Intoxication (ID: 21, Cat: 2 Other Crime, Severity: LOW)
+    {
+        "crime_type_id": 20,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.20,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.95,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Contraband source tracing, forensic asset verification, and licensee ledger audits.",
+    },
+    {
+        "crime_type_id": 20,
+        "resource_type_id": 107,  # Police Canine & Tracker Dog Squads
+        "coefficient": 0.15,
+        "min_demand_threshold": 0.06,
+        "priority_weight": 0.95,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Canine contraband detection units screening transit hubs, freight, and vehicle storage yards.",
+    },
+    # 21. Public Intoxication (ID: 21, Cat: Other Crime, Severity: LOW)
     {
         "crime_type_id": 21,
         "resource_type_id": 1,  # Police Officers
@@ -511,6 +790,24 @@ DEFAULT_CRIME_MAPPINGS = [
         "shared_pool_category": "MOBILITY",
         "operational_rationale": "Transport support for detained disorderly individuals to medical checkups and police stations.",
     },
+    {
+        "crime_type_id": 21,
+        "resource_type_id": 3,  # Investigation Teams
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.65,
+        "shared_pool_category": "INVESTIGATION",
+        "operational_rationale": "Station case documentation, breathalyzer compliance records, and public nuisance tracking.",
+    },
+    {
+        "crime_type_id": 21,
+        "resource_type_id": 96,  # Traffic Enforcement Specialized Units
+        "coefficient": 0.05,
+        "min_demand_threshold": 0.10,
+        "priority_weight": 0.65,
+        "shared_pool_category": "SPECIALIZED",
+        "operational_rationale": "Specialized traffic & public safety squads conducting targeted breathalyzer checkpoints.",
+    },
 ]
 
 
@@ -519,8 +816,12 @@ class CrimeMappingService:
     def seed_default_mappings(db: Session) -> int:
         """Seeds institutional crime-to-resource mappings for all 21 crime types if not already seeded."""
         existing_count = db.query(CrimeResourceMapping).count()
-        if existing_count > 0:
+        if existing_count == len(DEFAULT_CRIME_MAPPINGS):
             return existing_count
+        if existing_count > 0:
+            logger.info(f"Existing mappings count {existing_count} differs from {len(DEFAULT_CRIME_MAPPINGS)}. Upgrading...")
+            db.query(CrimeResourceMapping).delete()
+            db.commit()
 
         created = 0
         for m in DEFAULT_CRIME_MAPPINGS:

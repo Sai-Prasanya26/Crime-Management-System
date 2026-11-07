@@ -488,6 +488,18 @@ export interface CrimeDemandBreakdownItem {
   operational_rationale?: string | null;
 }
 
+export interface CrimeTypeMatrixItem {
+  crime_type_id: number;
+  crime_code: string;
+  crime_name: string;
+  category_name: string;
+  severity_level: string;
+  predicted_count: number;
+  coefficients: Record<string, number>;
+  raw_demands: Record<string, number>;
+  rationales: Record<string, string>;
+}
+
 export interface DistrictCrimeDemandResponse {
   district_id: number;
   district_name: string;
@@ -499,6 +511,7 @@ export interface DistrictCrimeDemandResponse {
   district_risk_level: string;
   resource_demands: Record<string, number>;
   crime_breakdowns: CrimeDemandBreakdownItem[];
+  crime_matrix?: CrimeTypeMatrixItem[];
   calculation_notes: string;
 }
 
@@ -532,6 +545,21 @@ export interface DistrictCrimeAllocationItem {
   coverage_percentage: number;
   status: string;
   recommendation_rationale: string;
+  crime_explanations?: Array<{
+    crime_type_id: number;
+    crime_code: string;
+    crime_name: string;
+    category_name: string;
+    severity_level: string;
+    severity_weight: number;
+    predicted_count: number;
+    resource_coefficient: number;
+    calculated_demand: number;
+    proportional_allocation: number;
+    operational_rationale: string;
+    pool_available_capacity: number;
+    recommended_district_allocation: number;
+  }>;
 }
 
 export interface CrimeSpecificOptimizationResponse {

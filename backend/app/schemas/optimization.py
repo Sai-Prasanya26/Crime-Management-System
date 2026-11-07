@@ -209,6 +209,18 @@ class CrimeDemandBreakdownItem(BaseModel):
     operational_rationale: Optional[str] = None
 
 
+class CrimeTypeMatrixItem(BaseModel):
+    crime_type_id: int
+    crime_code: str
+    crime_name: str
+    category_name: str
+    severity_level: str
+    predicted_count: float
+    coefficients: Dict[str, float]
+    raw_demands: Dict[str, float]
+    rationales: Dict[str, str]
+
+
 class DistrictCrimeDemandResponse(BaseModel):
     district_id: int
     district_name: str
@@ -220,6 +232,7 @@ class DistrictCrimeDemandResponse(BaseModel):
     district_risk_level: str
     resource_demands: Dict[str, int]
     crime_breakdowns: List[CrimeDemandBreakdownItem]
+    crime_matrix: Optional[List[CrimeTypeMatrixItem]] = None
     calculation_notes: str
 
 
@@ -253,6 +266,7 @@ class DistrictCrimeAllocationItem(BaseModel):
     coverage_percentage: float
     status: str
     recommendation_rationale: str
+    crime_explanations: Optional[List[Dict[str, Any]]] = None
 
 
 class CrimeSpecificOptimizationResponse(BaseModel):

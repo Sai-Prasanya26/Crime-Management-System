@@ -64,7 +64,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         cls.officer_headers = {"Authorization": f"Bearer {cls.officer_token}"}
 
     def test_01_crime_mapping_master_retrieval(self):
-        """1. Verifies Crime-to-Resource Mapping Master covers all 21 crime types across 4 pools."""
+        """1. Verifies Crime-to-Resource Mapping Master covers all 21 crime types across 4 pools (84 mappings total)."""
         resp = client.get(
             "/api/v1/optimization/crime-mappings",
             headers=self.analyst_headers,
@@ -72,15 +72,24 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
-        self.assertGreaterEqual(data["total"], 21)
+        self.assertEqual(data["total"], 84, f"Expected 84 mappings (21 crimes x 4 pools), got {data['total']}")
         items = data["items"]
 
         # Check that all 4 shared pools are covered
         pools = {item["shared_pool_category"] for item in items}
-        self.assertIn("PERSONNEL", pools)
-        self.assertIn("MOBILITY", pools)
-        self.assertIn("INVESTIGATION", pools)
-        self.assertIn("SPECIALIZED", pools)
+        self.assertEqual(pools, {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"})
+
+        # Verify that all 21 crime types have exactly 4 mappings each across the 4 pools
+        crimes_map = {}
+        for item in items:
+            crimes_map.setdefault(item["crime_type_id"], set()).add(item["shared_pool_category"])
+        self.assertEqual(len(crimes_map), 21, f"Expected 21 distinct crime types, got {len(crimes_map)}")
+        for c_id, c_pools in crimes_map.items():
+            self.assertEqual(
+                c_pools,
+                {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"},
+                f"Crime ID {c_id} is missing resource pools: {c_pools}",
+            )
 
         # Validate attributes of each mapping
         for item in items:
@@ -200,6 +209,16 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertIn("operational_rationale", item)
             self.assertGreaterEqual(item["raw_demand"], 0.0)
 
+        # Check full 21-crime matrix
+        self.assertIn("crime_matrix", data)
+        self.assertIsNotNone(data["crime_matrix"])
+        self.assertEqual(len(data["crime_matrix"]), 21, "Expected full matrix of 21 crime types")
+        for cm in data["crime_matrix"]:
+            self.assertIn("coefficients", cm)
+            self.assertIn("raw_demands", cm)
+            self.assertIn("rationales", cm)
+            self.assertEqual(set(cm["coefficients"].keys()), {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"})
+
     def test_05_crime_specific_milp_optimization_conservation(self):
         """5. Verifies Scipy integer MILP solver guarantees strict capacity conservation and whole numbers."""
         resp = client.post(
@@ -237,6 +256,15 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertEqual(dist["shortage"], max(0, dist["demanded_quantity"] - dist["allocated_quantity"]))
             # Verify plain-language rationale exists
             self.assertTrue(len(dist["recommendation_rationale"]) > 10)
+            # Verify crime-wise explanations are populated
+            self.assertIn("crime_explanations", dist)
+            self.assertIsNotNone(dist["crime_explanations"])
+            for exp in dist["crime_explanations"]:
+                self.assertIn("crime_name", exp)
+                self.assertIn("resource_coefficient", exp)
+                self.assertIn("calculated_demand", exp)
+                self.assertIn("proportional_allocation", exp)
+                self.assertIn("operational_rationale", exp)
 
     def test_06_scarcity_triage_and_prioritization(self):
         """6. Verifies that under severe capacity scarcity, high-risk districts are prioritized."""
@@ -450,6 +478,62 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertEqual(total_districts, 813, "Total districts count mutated!")
         finally:
             db.close()
+
+    def test_13_complete_21_crimes_matrix_and_explanations(self):
+        """13. Verifies that all 21 predicted crime types map across all 4 resource pools and produce full explanations."""
+        resp = client.get(
+            "/api/v1/optimization/crime-demand?district_id=1&year=2026&month=11",
+            headers=self.analyst_headers,
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+
+        # Full 21-crime matrix validation
+        matrix = data["crime_matrix"]
+        self.assertEqual(len(matrix), 21)
+
+        expected_pools = {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"}
+        for item in matrix:
+            self.assertIn("crime_name", item)
+            self.assertIn("predicted_count", item)
+            self.assertEqual(set(item["coefficients"].keys()), expected_pools)
+            self.assertEqual(set(item["raw_demands"].keys()), expected_pools)
+            self.assertEqual(set(item["rationales"].keys()), expected_pools)
+            for pool in expected_pools:
+                self.assertGreater(item["coefficients"][pool], 0.0)
+                self.assertGreaterEqual(item["raw_demands"][pool], 0.0)
+                self.assertTrue(len(item["rationales"][pool]) > 5)
+
+        # Optimization run crime explanation validation
+        opt_resp = client.post(
+            "/api/v1/optimization/crime-optimize",
+            json={
+                "state_id": 2,
+                "assessment_period": "2026-11-01",
+                "scenario_type": "CRIME_SPECIFIC_OPTIMAL",
+                "is_simulation": False,
+            },
+            headers=self.analyst_headers,
+        )
+        self.assertEqual(opt_resp.status_code, 200)
+        opt_data = opt_resp.json()
+
+        for alloc in opt_data["allocations"]:
+            exps = alloc.get("crime_explanations")
+            self.assertIsNotNone(exps)
+            self.assertGreater(len(exps), 0)
+            for exp in exps:
+                self.assertIn("crime_name", exp)
+                self.assertIn("predicted_count", exp)
+                self.assertIn("resource_coefficient", exp)
+                self.assertIn("calculated_demand", exp)
+                self.assertIn("proportional_allocation", exp)
+                self.assertIn("pool_available_capacity", exp)
+                self.assertIn("recommended_district_allocation", exp)
+                self.assertIn("operational_rationale", exp)
+                self.assertGreater(exp["resource_coefficient"], 0.0)
+                self.assertGreaterEqual(exp["calculated_demand"], 0.0)
+                self.assertGreaterEqual(exp["proportional_allocation"], 0.0)
 
 
 if __name__ == "__main__":

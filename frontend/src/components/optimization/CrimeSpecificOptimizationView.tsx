@@ -80,6 +80,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictCrimeAllocationItem | null>(null);
   const [districtDemandDetail, setDistrictDemandDetail] = useState<DistrictCrimeDemandResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+  const [drillDownTab, setDrillDownTab] = useState<'EXPLANATION' | 'MATRIX'>('EXPLANATION');
 
   // Mapping Master State
   const [mappings, setMappings] = useState<CrimeResourceMappingItem[]>([]);
@@ -1293,67 +1294,214 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 </div>
               </div>
 
-              {/* Phase 8 Crime Forecast & Mapping Breakdown */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-slate-700" />
-                  Phase 8 Predicted Crime Types &amp; Resource Demand Formula Breakdown
-                </h4>
-                {isLoadingDetail ? (
-                  <div className="py-6 text-center text-slate-600">
-                    <RotateCcw className="h-4 w-4 animate-spin inline mr-1" />
-                    Calculating exact demand breakdown...
-                  </div>
-                ) : districtDemandDetail && districtDemandDetail.crime_breakdowns ? (
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                    <table className="w-full text-left text-[11px] text-slate-700">
-                      <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
-                        <tr>
-                          <th className="px-2.5 py-2">Predicted Crime Type</th>
-                          <th className="px-2.5 py-2 text-right">Predicted Count</th>
-                          <th className="px-2.5 py-2 text-center">Severity</th>
-                          <th className="px-2.5 py-2">Mapped Pool</th>
-                          <th className="px-2.5 py-2 text-right">Coeff</th>
-                          <th className="px-2.5 py-2 text-right">Raw Demand</th>
-                          <th className="px-2.5 py-2">Preventive Rationale</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {districtDemandDetail.crime_breakdowns.map((cb, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="px-2.5 py-2 font-medium text-slate-900">
-                              {cb.crime_name}
-                              <span className="block text-[9px] text-slate-600">{cb.category_name}</span>
-                            </td>
-                            <td className="px-2.5 py-2 text-right font-bold text-slate-800">
-                              {cb.predicted_crime_count.toFixed(1)}
-                            </td>
-                            <td className="px-2.5 py-2 text-center">
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
-                                {cb.severity_level}
-                              </span>
-                            </td>
-                            <td className="px-2.5 py-2 font-semibold text-indigo-700">
-                              {cb.shared_pool_category}
-                            </td>
-                            <td className="px-2.5 py-2 text-right text-slate-600">
-                              {cb.coefficient.toFixed(2)}
-                            </td>
-                            <td className="px-2.5 py-2 text-right font-medium text-slate-700">
-                              {cb.raw_demand.toFixed(2)}
-                            </td>
-                            <td className="px-2.5 py-2 text-[10px] text-slate-600 max-w-xs truncate">
-                              {cb.operational_rationale}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-slate-600">No crime breakdown available for this district.</p>
-                )}
+              {/* Tab Selector inside Modal */}
+              <div className="flex border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setDrillDownTab('EXPLANATION')}
+                  className={`px-3.5 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    drillDownTab === 'EXPLANATION'
+                      ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {selectedDistrict.resource_category} Allocation Explanation ({selectedDistrict.allocated_quantity} of {selectedDistrict.demanded_quantity} Allocated)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrillDownTab('MATRIX')}
+                  className={`px-3.5 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    drillDownTab === 'MATRIX'
+                      ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Complete 21-Crime Demand Matrix (All 4 Pools)
+                </button>
               </div>
+
+              {/* TAB 1: CRIME-WISE EXPLANATION FOR SELECTED RESOURCE POOL */}
+              {drillDownTab === 'EXPLANATION' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-700" />
+                      Detailed Crime Explanation for {selectedDistrict.resource_category} Pool
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      State Available: {selectedDistrict.crime_explanations?.[0]?.pool_available_capacity ?? 'N/A'} | District Demanded: {selectedDistrict.demanded_quantity} | Allocated: {selectedDistrict.allocated_quantity}
+                    </span>
+                  </div>
+
+                  {selectedDistrict.crime_explanations && selectedDistrict.crime_explanations.length > 0 ? (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-[11px] text-slate-700">
+                        <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
+                          <tr>
+                            <th className="px-2.5 py-2">Predicted Crime Type</th>
+                            <th className="px-2.5 py-2 text-center">Severity</th>
+                            <th className="px-2.5 py-2 text-right">Forecast (&ycirc;)</th>
+                            <th className="px-2.5 py-2 text-right">Planning Coeff (&alpha;)</th>
+                            <th className="px-2.5 py-2 text-right">Physical Demand</th>
+                            <th className="px-2.5 py-2 text-right font-bold text-indigo-700">Allocated Share</th>
+                            <th className="px-2.5 py-2">Operational Preventive Rationale</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {selectedDistrict.crime_explanations.map((exp, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 font-medium text-slate-900">
+                                {exp.crime_name}
+                                <span className="block text-[9px] text-slate-500">{exp.category_name}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-center">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                  {exp.severity_level}
+                                </span>
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-bold text-slate-800">
+                                {exp.predicted_count.toFixed(1)}
+                              </td>
+                              <td className="px-2.5 py-2 text-right text-slate-600 font-mono">
+                                {exp.resource_coefficient.toFixed(2)}
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-semibold text-slate-700">
+                                {exp.calculated_demand.toFixed(2)}
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-bold text-indigo-700">
+                                {exp.proportional_allocation.toFixed(2)}
+                              </td>
+                              <td className="px-2.5 py-2 text-[10px] text-slate-600 max-w-xs">
+                                {exp.operational_rationale}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 py-4 text-center">No crime explanation records found for this pool.</p>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: COMPLETE 21-CRIME MATRIX (ALL 4 POOLS) */}
+              {drillDownTab === 'MATRIX' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-slate-700" />
+                      All 21 Predicted Crime Types &times; 4 Resource Pools Matrix
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      Coefficients &amp; Raw Demands across Personnel, Mobility, Investigation &amp; Specialized
+                    </span>
+                  </div>
+
+                  {isLoadingDetail ? (
+                    <div className="py-6 text-center text-slate-600">
+                      <RotateCcw className="h-4 w-4 animate-spin inline mr-1" />
+                      Loading complete 21-crime demand matrix...
+                    </div>
+                  ) : districtDemandDetail && districtDemandDetail.crime_matrix ? (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-[11px] text-slate-700">
+                        <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
+                          <tr>
+                            <th className="px-2.5 py-2">Crime Type</th>
+                            <th className="px-2.5 py-2 text-center">Severity</th>
+                            <th className="px-2.5 py-2 text-right">Predicted (&ycirc;)</th>
+                            <th className="px-2.5 py-2 text-center">Personnel (Coeff / Dem)</th>
+                            <th className="px-2.5 py-2 text-center">Mobility (Coeff / Dem)</th>
+                            <th className="px-2.5 py-2 text-center">Investigation (Coeff / Dem)</th>
+                            <th className="px-2.5 py-2 text-center">Specialized (Coeff / Dem)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {districtDemandDetail.crime_matrix.map((cm, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 font-medium text-slate-900">
+                                {cm.crime_name}
+                                <span className="block text-[9px] text-slate-500">{cm.category_name}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-center">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                  {cm.severity_level}
+                                </span>
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-bold text-slate-800">
+                                {cm.predicted_count.toFixed(1)}
+                              </td>
+                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['PERSONNEL']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['PERSONNEL']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['MOBILITY']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['MOBILITY']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['INVESTIGATION']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['INVESTIGATION']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['SPECIALIZED']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['SPECIALIZED']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : districtDemandDetail && districtDemandDetail.crime_breakdowns ? (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-[11px] text-slate-700">
+                        <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
+                          <tr>
+                            <th className="px-2.5 py-2">Predicted Crime Type</th>
+                            <th className="px-2.5 py-2 text-right">Predicted Count</th>
+                            <th className="px-2.5 py-2 text-center">Severity</th>
+                            <th className="px-2.5 py-2">Mapped Pool</th>
+                            <th className="px-2.5 py-2 text-right">Coeff</th>
+                            <th className="px-2.5 py-2 text-right">Raw Demand</th>
+                            <th className="px-2.5 py-2">Preventive Rationale</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {districtDemandDetail.crime_breakdowns.map((cb, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 font-medium text-slate-900">
+                                {cb.crime_name}
+                                <span className="block text-[9px] text-slate-600">{cb.category_name}</span>
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-bold text-slate-800">
+                                {cb.predicted_crime_count.toFixed(1)}
+                              </td>
+                              <td className="px-2.5 py-2 text-center">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                  {cb.severity_level}
+                                </span>
+                              </td>
+                              <td className="px-2.5 py-2 font-semibold text-indigo-700">
+                                {cb.shared_pool_category}
+                              </td>
+                              <td className="px-2.5 py-2 text-right text-slate-600">
+                                {cb.coefficient.toFixed(2)}
+                              </td>
+                              <td className="px-2.5 py-2 text-right font-medium text-slate-700">
+                                {cb.raw_demand.toFixed(2)}
+                              </td>
+                              <td className="px-2.5 py-2 text-[10px] text-slate-600 max-w-xs truncate">
+                                {cb.operational_rationale}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">No crime breakdown available for this district.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}

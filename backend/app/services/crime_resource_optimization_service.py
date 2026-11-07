@@ -41,6 +41,7 @@ from backend.app.services.crime_mapping_service import CrimeMappingService
 from backend.app.schemas.optimization import (
     DistrictCrimeDemandResponse,
     CrimeDemandBreakdownItem,
+    CrimeTypeMatrixItem,
     CrimeSpecificOptimizationRequest,
     CrimeSpecificOptimizationResponse,
     DistrictCrimeAllocationItem,
@@ -105,8 +106,9 @@ class CrimeResourceOptimizationService:
         for m in mappings:
             mappings_by_crime.setdefault(m.crime_type_id, []).append(m)
 
-        # 5. Calculate Crime-Specific Demand Items
+        # 5. Calculate Crime-Specific Demand Items and 21-Crime Matrix
         demand_breakdowns: List[CrimeDemandBreakdownItem] = []
+        crime_matrix: List[CrimeTypeMatrixItem] = []
         raw_demands_by_pool: Dict[str, float] = {
             "PERSONNEL": 0.0,
             "MOBILITY": 0.0,
@@ -130,10 +132,19 @@ class CrimeResourceOptimizationService:
             else:
                 sev_multiplier = 0.80
 
+            ct_coeffs: Dict[str, float] = {}
+            ct_raw_demands: Dict[str, float] = {}
+            ct_rationales: Dict[str, str] = {}
+
             for m in ct_maps:
+                pool = m.shared_pool_category.upper()
+                ct_coeffs[pool] = m.coefficient
+                ct_rationales[pool] = m.operational_rationale or ""
+
                 if p_count >= m.min_demand_threshold:
-                    raw_req = p_count * m.coefficient * m.priority_weight * sev_multiplier
-                    pool = m.shared_pool_category.upper()
+                    # Physical resource demand (uninflated: crime forecast * planning coefficient)
+                    raw_req = p_count * m.coefficient
+                    ct_raw_demands[pool] = round(raw_req, 3)
                     raw_demands_by_pool[pool] = raw_demands_by_pool.get(pool, 0.0) + raw_req
 
                     demand_breakdowns.append(
@@ -154,6 +165,22 @@ class CrimeResourceOptimizationService:
                             operational_rationale=m.operational_rationale,
                         )
                     )
+                else:
+                    ct_raw_demands[pool] = 0.0
+
+            crime_matrix.append(
+                CrimeTypeMatrixItem(
+                    crime_type_id=ct.crime_type_id,
+                    crime_code=ct.crime_code,
+                    crime_name=ct.crime_name,
+                    category_name=ct.category_name,
+                    severity_level=ct.severity_level,
+                    predicted_count=round(p_count, 3),
+                    coefficients=ct_coeffs,
+                    raw_demands=ct_raw_demands,
+                    rationales=ct_rationales,
+                )
+            )
 
         # Integer shared capacity demand: ceil(raw_demand)
         integer_demands: Dict[str, int] = {
@@ -178,6 +205,7 @@ class CrimeResourceOptimizationService:
             district_risk_level=risk_level,
             resource_demands=integer_demands,
             crime_breakdowns=demand_breakdowns,
+            crime_matrix=crime_matrix,
             calculation_notes=calc_notes,
         )
 
@@ -280,18 +308,26 @@ class CrimeResourceOptimizationService:
             cat_demand_sum = int(np.sum(demands))
             total_demand_all += cat_demand_sum
 
-            # Priority weights vector: based on Phase 9 risk score and scenario type
-            risk_scores = np.array([dem.district_risk_score for dem in district_demands], dtype=float)
+            # Priority weights vector: based on demand-weighted crime severity, Phase 9 risk score, and scenario type
+            weights = np.zeros(n_districts, dtype=float)
+            for i, dem in enumerate(district_demands):
+                cat_breakdowns = [b for b in dem.crime_breakdowns if b.shared_pool_category == cat]
+                total_cat_raw = sum(b.raw_demand for b in cat_breakdowns)
+                if total_cat_raw > 0:
+                    weighted_sev = sum(b.raw_demand * b.severity_weight for b in cat_breakdowns) / total_cat_raw
+                else:
+                    weighted_sev = 1.0
 
-            if req.scenario_type == "HIGH_SEVERITY_PRIORITY":
-                weights = 1.0 + (risk_scores / 50.0)
-            elif req.scenario_type == "CYBER_SPECIALIZED" and cat == "SPECIALIZED":
-                weights = 1.5 + (risk_scores / 40.0)
-            elif req.scenario_type == "HIGHWAY_SAFETY" and cat == "MOBILITY":
-                weights = 1.5 + (risk_scores / 40.0)
-            else:
-                # Balanced CRIME_SPECIFIC_OPTIMAL
-                weights = 1.0 + (risk_scores / 100.0)
+                r_score = dem.district_risk_score
+                if req.scenario_type == "HIGH_SEVERITY_PRIORITY":
+                    weights[i] = weighted_sev * (1.0 + (r_score / 50.0))
+                elif req.scenario_type == "CYBER_SPECIALIZED" and cat == "SPECIALIZED":
+                    weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
+                elif req.scenario_type == "HIGHWAY_SAFETY" and cat == "MOBILITY":
+                    weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
+                else:
+                    # Balanced CRIME_SPECIFIC_OPTIMAL
+                    weights[i] = weighted_sev * (1.0 + (r_score / 100.0))
 
             # -----------------------------------------------------------------
             # MILP Formulation using scipy.optimize.milp
@@ -383,9 +419,10 @@ class CrimeResourceOptimizationService:
                         "risk_level": dem.district_risk_level,
                     })
 
-                # Top predicted crime types for this district
+                # Top predicted crime types and detailed crime explanations for this district and category
+                cat_breakdowns = [b for b in dem.crime_breakdowns if b.shared_pool_category == cat]
                 top_crimes = sorted(
-                    [b for b in dem.crime_breakdowns if b.shared_pool_category == cat],
+                    cat_breakdowns,
                     key=lambda x: x.predicted_crime_count,
                     reverse=True,
                 )[:3]
@@ -397,6 +434,26 @@ class CrimeResourceOptimizationService:
                     }
                     for tc in top_crimes
                 ]
+
+                # Detailed crime-wise explanation showing prediction, coefficient, calculated demand, and allocation
+                crime_exps = []
+                for b in cat_breakdowns:
+                    prop_share = round((b.raw_demand / d_demand) * d_alloc, 2) if d_demand > 0 else 0.0
+                    crime_exps.append({
+                        "crime_type_id": b.crime_type_id,
+                        "crime_code": b.crime_code,
+                        "crime_name": b.crime_name,
+                        "category_name": b.category_name,
+                        "severity_level": b.severity_level,
+                        "severity_weight": b.severity_weight,
+                        "predicted_count": b.predicted_crime_count,
+                        "resource_coefficient": b.coefficient,
+                        "calculated_demand": b.raw_demand,
+                        "proportional_allocation": prop_share,
+                        "operational_rationale": b.operational_rationale,
+                        "pool_available_capacity": capacity,
+                        "recommended_district_allocation": d_alloc,
+                    })
 
                 # Rationale formulation
                 if d_demand == 0:
@@ -432,6 +489,7 @@ class CrimeResourceOptimizationService:
                     coverage_percentage=d_cov,
                     status=status_str,
                     recommendation_rationale=rationale,
+                    crime_explanations=crime_exps,
                 )
                 all_allocations.append(item)
 
