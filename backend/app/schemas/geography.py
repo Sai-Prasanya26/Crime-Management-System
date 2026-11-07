@@ -19,6 +19,28 @@ class StateListResponse(BaseModel):
     items: List[StateItem]
 
 
+class StateCrimeSummaryItem(BaseModel):
+    state_id: int
+    state_name: str
+    state_code: Optional[str] = None
+    entity_type: str = "STATE"
+    district_count: int
+    incident_count: int
+    total_population: Optional[int] = None
+    crime_rate_per_100k: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StateCrimeSummaryResponse(BaseModel):
+    total_states: int
+    total_incidents: int
+    view: str = "current"
+    items: List[StateCrimeSummaryItem]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class DistrictItem(BaseModel):
     id: int
     state_id: int

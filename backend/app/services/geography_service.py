@@ -6,6 +6,8 @@ from backend.app.repositories.geography_repository import GeographyRepository
 from backend.app.schemas.geography import (
     StateListResponse,
     StateItem,
+    StateCrimeSummaryResponse,
+    StateCrimeSummaryItem,
     DistrictListResponse,
     DistrictItem,
     DistrictDetailResponse,
@@ -31,6 +33,79 @@ class GeographyService:
             for s in states
         ]
         return StateListResponse(total=len(items), view=view, items=items)
+
+    @staticmethod
+    def get_states_crime_summary(
+        db: Session,
+        view: str = "current",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category_id: Optional[int] = None,
+    ) -> StateCrimeSummaryResponse:
+        from backend.app.models.geography import State, District
+        from backend.app.models.demographics import DistrictDemographics
+        from backend.app.models.crime import CrimeIncident, CrimeType
+        from backend.app.repositories.crime_repository import CrimeRepository
+        from sqlalchemy import func, text
+
+        states = GeographyRepository.get_all_states(db, view=view)
+        items = []
+        total_incidents = 0
+
+        for s in states:
+            filter_ids = CrimeRepository.resolve_filter_district_ids(db, state_id=s.id, geography_mode=view)
+
+            inc_query = db.query(func.count(CrimeIncident.id))
+            if filter_ids:
+                inc_query = inc_query.filter(CrimeIncident.district_id.in_(filter_ids))
+            else:
+                inc_query = inc_query.filter(text("1=0"))
+
+            if start_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date >= start_date)
+            if end_date is not None:
+                inc_query = inc_query.filter(CrimeIncident.incident_date <= end_date)
+            if category_id is not None:
+                inc_query = inc_query.join(CrimeType, CrimeIncident.crime_type_id == CrimeType.id).filter(
+                    CrimeType.category_id == category_id
+                )
+
+            inc_count = inc_query.scalar() or 0
+            total_incidents += inc_count
+
+            pop_sum = (
+                db.query(func.sum(DistrictDemographics.total_population))
+                .filter(DistrictDemographics.district_id.in_(filter_ids))
+                .scalar()
+                if filter_ids
+                else None
+            )
+            pop = int(pop_sum) if pop_sum is not None else None
+
+            dist_filter = District.is_census_2011 == True if view == "historical" else District.is_current_admin == True
+            d_count = db.query(func.count(District.id)).filter(District.state_id == s.id, dist_filter).scalar() or 0
+
+            rate = round((inc_count * 100000.0 / float(pop)), 2) if pop and pop > 0 else None
+
+            items.append(
+                StateCrimeSummaryItem(
+                    state_id=s.id,
+                    state_name=s.state_name,
+                    state_code=s.state_code,
+                    entity_type=s.entity_type or "STATE",
+                    district_count=d_count,
+                    incident_count=inc_count,
+                    total_population=pop,
+                    crime_rate_per_100k=rate,
+                )
+            )
+
+        return StateCrimeSummaryResponse(
+            total_states=len(items),
+            total_incidents=total_incidents,
+            view=view,
+            items=items,
+        )
 
     @staticmethod
     def get_districts(

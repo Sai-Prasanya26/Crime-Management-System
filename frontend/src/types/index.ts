@@ -94,6 +94,24 @@ export interface StateListResponse {
   items: StateItem[];
 }
 
+export interface StateCrimeSummaryItem {
+  state_id: number;
+  state_name: string;
+  state_code?: string | null;
+  entity_type: string;
+  district_count: number;
+  incident_count: number;
+  total_population?: number | null;
+  crime_rate_per_100k?: number | null;
+}
+
+export interface StateCrimeSummaryResponse {
+  total_states: number;
+  total_incidents: number;
+  view: string;
+  items: StateCrimeSummaryItem[];
+}
+
 export interface DistrictItem {
   id: number;
   state_id: number;
@@ -131,6 +149,9 @@ export interface DistrictDetailResponse {
   is_census_2011?: boolean;
   is_current_admin?: boolean;
   parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
+  notes?: string | null;
   demographics?: DistrictDemographicsData | null;
 }
 

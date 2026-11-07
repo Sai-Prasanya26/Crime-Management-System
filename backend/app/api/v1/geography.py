@@ -6,6 +6,7 @@ from backend.app.database.session import get_db
 from backend.app.services.geography_service import GeographyService
 from backend.app.schemas.geography import (
     StateListResponse,
+    StateCrimeSummaryResponse,
     DistrictListResponse,
     DistrictDetailResponse,
     DistrictGeographyMappingListResponse,
@@ -31,6 +32,28 @@ def get_states(
     db: Session = Depends(get_db),
 ) -> StateListResponse:
     return GeographyService.get_states(db, view=view)
+
+
+@router.get(
+    "/states/crime-summary",
+    response_model=StateCrimeSummaryResponse,
+    summary="Get Crime Summary Across All States",
+    description="Retrieve nationwide state-level crime summary including incident volume, population, crime rate, and district counts for choropleth mapping.",
+)
+def get_states_crime_summary(
+    view: str = Query("current", pattern="^(current|historical)$", description="Geographic layer: 'current' (36 States/UTs) or 'historical' (Census 2011 35 entities)"),
+    start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
+    category_id: Optional[int] = Query(None, description="Filter by Crime Category ID"),
+    db: Session = Depends(get_db),
+) -> StateCrimeSummaryResponse:
+    return GeographyService.get_states_crime_summary(
+        db,
+        view=view,
+        start_date=start_date,
+        end_date=end_date,
+        category_id=category_id,
+    )
 
 
 @router.get(

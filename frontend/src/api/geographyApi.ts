@@ -1,6 +1,7 @@
 import apiClient from './client';
 import type {
   StateListResponse,
+  StateCrimeSummaryResponse,
   DistrictListResponse,
   DistrictDetailResponse,
   DistrictGeographyMappingListResponse,
@@ -15,6 +16,21 @@ export const geographyApi = {
   getStates: async (view: 'current' | 'historical' = 'current'): Promise<StateListResponse> => {
     const response = await apiClient.get<StateListResponse>('/geography/states', {
       params: { view },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch nationwide state-level crime summary for choropleth mapping.
+   */
+  getStateCrimeSummary: async (params?: {
+    view?: 'current' | 'historical';
+    start_date?: string;
+    end_date?: string;
+    category_id?: number;
+  }): Promise<StateCrimeSummaryResponse> => {
+    const response = await apiClient.get<StateCrimeSummaryResponse>('/geography/states/crime-summary', {
+      params,
     });
     return response.data;
   },

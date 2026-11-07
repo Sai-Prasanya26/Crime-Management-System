@@ -249,6 +249,7 @@ class CrimeAnalyticsService:
         geography_mode: str = "current",
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
+        category_id: Optional[int] = None,
     ) -> TopDistrictsResponse:
         p_id, p_name, is_derived, note = CrimeAnalyticsService._get_district_provenance(db, district_id)
         rows = CrimeRepository.get_top_districts(
@@ -260,6 +261,7 @@ class CrimeAnalyticsService:
             geography_mode=geography_mode,
             start_date=start_date,
             end_date=end_date,
+            category_id=category_id,
         )
         items = [TopDistrictItem(**r) for r in rows]
         return TopDistrictsResponse(

@@ -106,6 +106,7 @@ export const analyticsApi = {
     limit?: number;
     state_id?: number;
     district_id?: number;
+    category_id?: number;
     geography_mode?: 'current' | 'historical';
     start_date?: string;
     end_date?: string;

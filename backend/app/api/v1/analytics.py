@@ -177,9 +177,10 @@ def get_weapons(
 )
 def get_top_districts(
     metric: str = Query("volume", pattern="^(volume|rate)$", description="Ranking metric: 'volume' (absolute count) or 'rate' (crimes per 100k)"),
-    limit: int = Query(10, ge=1, le=100, description="Number of districts to return"),
+    limit: int = Query(10, ge=1, le=1000, description="Number of districts to return"),
     state_id: Optional[int] = Query(None, description="Filter within State ID"),
     district_id: Optional[int] = Query(None, description="Filter within District ID"),
+    category_id: Optional[int] = Query(None, description="Filter by Crime Category ID"),
     geography_mode: str = Query("current", pattern="^(current|historical)$", description="Geographic framework: 'current' (36 States/UTs) or 'historical' (Census 2011 35 States)"),
     start_date: Optional[date] = Query(None, description="Filter incidents starting from (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Filter incidents up to (YYYY-MM-DD)"),
@@ -194,4 +195,5 @@ def get_top_districts(
         geography_mode=geography_mode,
         start_date=start_date,
         end_date=end_date,
+        category_id=category_id,
     )

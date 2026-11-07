@@ -9,9 +9,15 @@ import {
   AlertTriangle,
   Building,
   RefreshCw,
+  Users,
+  Info,
+  GitBranch,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
+import CrimeCategoryChart from '../components/charts/CrimeCategoryChart';
+import CrimeTrendChart from '../components/charts/CrimeTrendChart';
+import IndiaInteractiveMap from '../components/geography/IndiaInteractiveMap';
 import DateRangeFilter from '../components/filters/DateRangeFilter';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
@@ -22,11 +28,16 @@ import type {
   DistrictItem,
   DistrictDetailResponse,
   JurisdictionProfileResponse,
+  StateCrimeSummaryItem,
+  CategoryBreakdownItem,
+  TrendItem,
 } from '../types';
 
 export const DistrictsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const geographyMode = (searchParams.get('geography_mode') || searchParams.get('view') || 'current') as 'current' | 'historical';
+  const geographyMode = (searchParams.get('geography_mode') || searchParams.get('view') || 'current') as
+    | 'current'
+    | 'historical';
 
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(() => {
     const sId = searchParams.get('state_id');
@@ -53,10 +64,22 @@ export const DistrictsPage: React.FC = () => {
     return undefined;
   });
 
+  // Table & Map Metric and Category state
+  const [rankingMetric, setRankingMetric] = useState<'volume' | 'rate'>('volume');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
+  const [trendInterval, setTrendInterval] = useState<'year' | 'month' | 'day'>('month');
+
+  // Master Data State
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [districtDetail, setDistrictDetail] = useState<DistrictDetailResponse | null>(null);
   const [topDistricts, setTopDistricts] = useState<TopDistrictsResponse | null>(null);
+  const [stateSummaries, setStateSummaries] = useState<StateCrimeSummaryItem[]>([]);
+
+  // State Crime Analysis Data (Category breakdown & Trends)
+  const [stateCategories, setStateCategories] = useState<CategoryBreakdownItem[]>([]);
+  const [stateTrends, setStateTrends] = useState<TrendItem[]>([]);
+  const [loadingStateAnalysis, setLoadingStateAnalysis] = useState<boolean>(false);
 
   // Jurisdiction Profile State
   const [jurisdictionProfile, setJurisdictionProfile] = useState<JurisdictionProfileResponse | null>(null);
@@ -90,7 +113,7 @@ export const DistrictsPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Load States and apply initial state param if present
+  // Load States list
   useEffect(() => {
     let isMounted = true;
     const loadStates = async () => {
@@ -119,7 +142,7 @@ export const DistrictsPage: React.FC = () => {
     };
   }, [searchParams, geographyMode]);
 
-  // Load Districts when state changes and apply district param if present
+  // Load Districts when state changes
   useEffect(() => {
     let isMounted = true;
     const loadDistricts = async () => {
@@ -169,7 +192,26 @@ export const DistrictsPage: React.FC = () => {
     loadDetail();
   }, [selectedDistrictId]);
 
-  // Fetch Jurisdiction Profile (National, State Overview, or District Profile)
+  // Fetch Nationwide State Summaries for Choropleth Map
+  const fetchStateSummaries = useCallback(async () => {
+    try {
+      const res = await geographyApi.getStateCrimeSummary({
+        view: geographyMode,
+        start_date: startDate,
+        end_date: endDate,
+        category_id: selectedCategoryId,
+      });
+      setStateSummaries(res.items);
+    } catch (err) {
+      console.error('Failed to load state crime summaries:', err);
+    }
+  }, [geographyMode, startDate, endDate, selectedCategoryId]);
+
+  useEffect(() => {
+    fetchStateSummaries();
+  }, [fetchStateSummaries]);
+
+  // Fetch Jurisdiction Profile
   const fetchJurisdictionProfile = useCallback(async () => {
     setLoadingProfile(true);
     setProfileError(null);
@@ -198,35 +240,109 @@ export const DistrictsPage: React.FC = () => {
     fetchJurisdictionProfile();
   }, [fetchJurisdictionProfile]);
 
-  // Load Top Districts ranking
-  const fetchTopDistricts = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-    setError(null);
-    try {
-      const data = await analyticsApi.getTopDistricts({
-        metric: 'volume',
-        limit: 15,
-        state_id: selectedStateId,
-        geography_mode: geographyMode,
-        start_date: startDate,
-        end_date: endDate,
-      });
-      setTopDistricts(data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load geographic crime data.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [selectedStateId, geographyMode, startDate, endDate]);
+  // Load Top Districts ranking (State-level or National)
+  const fetchTopDistricts = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
+      try {
+        const data = await analyticsApi.getTopDistricts({
+          metric: rankingMetric,
+          limit: selectedStateId ? 100 : 25,
+          state_id: selectedStateId,
+          category_id: selectedCategoryId,
+          geography_mode: geographyMode,
+          start_date: startDate,
+          end_date: endDate,
+        });
+        setTopDistricts(data);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load geographic crime data.');
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [selectedStateId, rankingMetric, selectedCategoryId, geographyMode, startDate, endDate]
+  );
 
   useEffect(() => {
     fetchTopDistricts();
   }, [fetchTopDistricts]);
+
+  // Fetch State-Wise Crime Analysis (Categories & Trends) when a state is selected
+  useEffect(() => {
+    if (!selectedStateId) {
+      setStateCategories([]);
+      setStateTrends([]);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchStateAnalysis = async () => {
+      setLoadingStateAnalysis(true);
+      try {
+        const [catRes, trendRes] = await Promise.all([
+          analyticsApi.getByCategory({
+            state_id: selectedStateId,
+            geography_mode: geographyMode,
+            start_date: startDate,
+            end_date: endDate,
+          }),
+          analyticsApi.getTrends(trendInterval, {
+            state_id: selectedStateId,
+            geography_mode: geographyMode,
+            start_date: startDate,
+            end_date: endDate,
+          }),
+        ]);
+
+        if (isMounted) {
+          setStateCategories(catRes.items);
+          setStateTrends(trendRes.items);
+        }
+      } catch (err) {
+        console.error('Failed to load state crime breakdown analysis:', err);
+      } finally {
+        if (isMounted) setLoadingStateAnalysis(false);
+      }
+    };
+
+    fetchStateAnalysis();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedStateId, geographyMode, startDate, endDate, trendInterval]);
+
+  // Construct map of district statistics for selected state
+  const districtStatsMap = useMemo(() => {
+    const map: Record<
+      number,
+      {
+        incident_count: number;
+        total_population?: number | null;
+        crime_rate_per_100k?: number | null;
+        is_census_2011?: boolean;
+      }
+    > = {};
+
+    if (topDistricts?.items) {
+      topDistricts.items.forEach((item) => {
+        map[item.district_id] = {
+          incident_count: item.incident_count,
+          total_population: item.total_population,
+          crime_rate_per_100k: item.crime_rate_per_100k,
+          is_census_2011: !item.is_derived_from_parent,
+        };
+      });
+    }
+
+    return map;
+  }, [topDistricts]);
 
   const selectedStateName = useMemo(() => {
     if (!selectedStateId) return null;
@@ -257,8 +373,6 @@ export const DistrictsPage: React.FC = () => {
   const handleStateChange = (stateId?: number) => {
     setSelectedStateId(stateId);
     setSelectedDistrictId(undefined);
-    setStartDate(undefined);
-    setEndDate(undefined);
     setDistrictDetail(null);
     setJurisdictionProfile(null);
     setProfileError(null);
@@ -271,16 +385,11 @@ export const DistrictsPage: React.FC = () => {
     nextParams.delete('district_id');
     nextParams.delete('state');
     nextParams.delete('district');
-    nextParams.delete('start_date');
-    nextParams.delete('end_date');
-    nextParams.delete('year');
     setSearchParams(nextParams, { replace: true });
   };
 
   const handleDistrictChange = (districtId?: number) => {
     setSelectedDistrictId(districtId);
-    setStartDate(undefined);
-    setEndDate(undefined);
     setDistrictDetail(null);
     setJurisdictionProfile(null);
     setProfileError(null);
@@ -291,9 +400,6 @@ export const DistrictsPage: React.FC = () => {
       nextParams.delete('district_id');
     }
     nextParams.delete('district');
-    nextParams.delete('start_date');
-    nextParams.delete('end_date');
-    nextParams.delete('year');
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -318,6 +424,7 @@ export const DistrictsPage: React.FC = () => {
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
+    setSelectedCategoryId(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
     setDistrictDetail(null);
@@ -337,6 +444,7 @@ export const DistrictsPage: React.FC = () => {
   const hasActiveFilters = Boolean(
     selectedStateId !== undefined ||
     selectedDistrictId !== undefined ||
+    selectedCategoryId !== undefined ||
     startDate !== undefined ||
     endDate !== undefined
   );
@@ -349,6 +457,7 @@ export const DistrictsPage: React.FC = () => {
       onRefresh={() => {
         fetchTopDistricts(true);
         fetchJurisdictionProfile();
+        fetchStateSummaries();
       }}
       isRefreshing={isRefreshing}
     >
@@ -358,9 +467,10 @@ export const DistrictsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
             <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
               <Compass className="h-3.5 w-3.5 text-[#1769AA]" />
-              <span>Filter:</span>
+              <span>Jurisdiction:</span>
             </div>
 
+            {/* State Selector */}
             <select
               value={selectedStateId || ''}
               onChange={(e) => {
@@ -369,7 +479,7 @@ export const DistrictsPage: React.FC = () => {
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">Select State / UT</option>
+              <option value="">All States / UTs (National)</option>
               {states.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.state_name}
@@ -377,6 +487,7 @@ export const DistrictsPage: React.FC = () => {
               ))}
             </select>
 
+            {/* District Selector (Visible when State selected) */}
             {selectedStateId && (
               <select
                 value={selectedDistrictId || ''}
@@ -386,25 +497,25 @@ export const DistrictsPage: React.FC = () => {
                 }}
                 className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
-                <option value="">Select District</option>
+                <option value="">All Districts in State</option>
                 {districts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.district_name}
+                    {d.district_name} {!d.is_census_2011 ? '(Carved)' : ''}
                   </option>
                 ))}
               </select>
             )}
 
-            {selectedDistrictId && (
-              <DateRangeFilter
-                startDate={startDate}
-                endDate={endDate}
-                onChange={handleDateChange}
-                disabled={isLoading}
-              />
-            )}
+            {/* Universal Date Range Filter */}
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onChange={handleDateChange}
+              disabled={isLoading}
+            />
           </div>
 
+          {/* Reset Filters Action */}
           {hasActiveFilters && (
             <button
               type="button"
@@ -432,39 +543,22 @@ export const DistrictsPage: React.FC = () => {
         />
       )}
 
-      {!isLoading && !error && topDistricts && (
+      {!isLoading && !error && (
         <div className="space-y-4">
-          {/* SECTION 1: Tactical Geographic Overview (Expanded Panel) */}
-          <div className="w-full rounded-lg border border-[#D9E1EA] bg-white overflow-hidden shadow-2xs flex flex-col justify-between">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
-                  <Layers className="h-4 w-4" />
-                </div>
-                <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                  Geographic Crime Distribution
-                </h3>
-              </div>
-            </div>
-
-            {/* GIS Photographic Visualization */}
-            <div className="relative h-[260px] sm:h-[300px] bg-[#0B1F3A] overflow-hidden">
-              <img
-                src="/images/geographic-intelligence.jpg"
-                alt="Geographic Crime Map"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A]/85 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-3 right-3 text-white text-[11px]">
-                <span className="bg-[#0B1F3A]/80 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 text-[#1D7FE2]">
-                  {geographyMode === 'historical' ? '640 Monitored Jurisdictions' : '789 Monitored Jurisdictions'}
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* SECTION 1: Interactive GIS India Choropleth Map */}
+          <IndiaInteractiveMap
+            stateData={stateSummaries}
+            selectedStateId={selectedStateId}
+            onSelectState={handleStateChange}
+            selectedDistrictId={selectedDistrictId}
+            onSelectDistrict={handleDistrictChange}
+            stateDistricts={districts}
+            districtStatsMap={districtStatsMap}
+            geographyMode={geographyMode}
+            isLoading={isRefreshing}
+            metric={rankingMetric}
+            onMetricChange={setRankingMetric}
+          />
 
           {/* SECTION 2: Jurisdiction Profile Section */}
           <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs transition-all">
@@ -505,21 +599,27 @@ export const DistrictsPage: React.FC = () => {
                       Total Crime Incidents
                     </span>
                     <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
-                      {jurisdictionProfile.reported_incidents !== null && jurisdictionProfile.reported_incidents !== undefined
+                      {jurisdictionProfile.reported_incidents !== null &&
+                      jurisdictionProfile.reported_incidents !== undefined
                         ? jurisdictionProfile.reported_incidents.toLocaleString()
                         : 'Not available'}
                     </p>
                   </div>
 
-                  {/* Metric 2: Total Population */}
+                  {/* Metric 2: Total Population (Census 2011) */}
                   <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Total Population
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        Total Population
+                      </span>
+                      <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                        Census 2011
+                      </span>
+                    </div>
                     <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
                       {jurisdictionProfile.population !== null && jurisdictionProfile.population !== undefined
                         ? jurisdictionProfile.population.toLocaleString()
-                        : 'Not available'}
+                        : 'N/A'}
                     </p>
                   </div>
 
@@ -529,9 +629,10 @@ export const DistrictsPage: React.FC = () => {
                       Crime Rate per 100,000 People
                     </span>
                     <p className="mt-1 text-xl font-bold font-mono text-[#1769AA]">
-                      {jurisdictionProfile.crime_rate_per_100k !== null && jurisdictionProfile.crime_rate_per_100k !== undefined
+                      {jurisdictionProfile.crime_rate_per_100k !== null &&
+                      jurisdictionProfile.crime_rate_per_100k !== undefined
                         ? jurisdictionProfile.crime_rate_per_100k.toFixed(1)
-                        : 'Not available'}
+                        : 'N/A'}
                     </p>
                   </div>
 
@@ -544,43 +645,216 @@ export const DistrictsPage: React.FC = () => {
                       {jurisdictionProfile.risk_level === 'CRITICAL' ? (
                         <span className="inline-flex items-center gap-1 rounded bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold border border-red-200">
                           <AlertTriangle className="h-3 w-3" />
-                          Critical Risk Hotspot {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          Critical Risk Hotspot{' '}
+                          {jurisdictionProfile.risk_score
+                            ? `(${jurisdictionProfile.risk_score.toFixed(1)})`
+                            : ''}
                         </span>
                       ) : jurisdictionProfile.risk_level === 'HIGH' ? (
                         <span className="inline-flex items-center gap-1 rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold border border-amber-200">
                           <AlertTriangle className="h-3 w-3" />
-                          High Risk Hotspot {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          High Risk Hotspot{' '}
+                          {jurisdictionProfile.risk_score
+                            ? `(${jurisdictionProfile.risk_score.toFixed(1)})`
+                            : ''}
                         </span>
                       ) : jurisdictionProfile.risk_level === 'MODERATE' ? (
                         <span className="inline-flex items-center gap-1 rounded bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-bold border border-blue-200">
                           <ShieldAlert className="h-3 w-3" />
-                          Moderate Crime Zone {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          Moderate Crime Zone{' '}
+                          {jurisdictionProfile.risk_score
+                            ? `(${jurisdictionProfile.risk_score.toFixed(1)})`
+                            : ''}
                         </span>
                       ) : jurisdictionProfile.risk_level === 'LOW' ? (
                         <span className="inline-flex items-center gap-1 rounded bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold border border-emerald-200">
-                          Low Incidence Area {jurisdictionProfile.risk_score ? `(${jurisdictionProfile.risk_score.toFixed(1)})` : ''}
+                          Low Incidence Area{' '}
+                          {jurisdictionProfile.risk_score
+                            ? `(${jurisdictionProfile.risk_score.toFixed(1)})`
+                            : ''}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs font-semibold border border-slate-200">
-                          Not available
+                          {jurisdictionProfile.risk_label || 'Not available'}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
+
+                {/* Explanatory Lineage Notes */}
+                {jurisdictionProfile.notes && (
+                  <div className="mt-2.5 flex items-start gap-1.5 text-[11px] text-[#5D6878] bg-white/70 p-2 rounded border border-blue-100">
+                    <Info className="h-3.5 w-3.5 text-[#1769AA] shrink-0 mt-0.5" />
+                    <span>{jurisdictionProfile.notes}</span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="py-6 text-center text-xs text-slate-500">
-                No profile statistics available for this jurisdiction.
-              </div>
-            )}
+            ) : null}
           </div>
 
-          {/* SECTION 3: Jurisdiction Comparison (Top Districts Table) */}
-          <TopDistrictsTable
-            districts={topDistricts.items}
-            isLoading={isRefreshing}
-          />
+          {/* SECTION 3: State-Wise Crime Analysis (Visible when a State is Selected) */}
+          {selectedStateId && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                    {selectedStateName} — State Crime Analysis & Temporal Dynamics
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 font-mono">
+                  State ID #{selectedStateId}
+                </span>
+              </div>
+
+              {loadingStateAnalysis ? (
+                <div className="p-8 bg-white rounded-lg border border-[#D9E1EA]">
+                  <LoadingState message={`Aggregating crime categories and longitudinal trends for ${selectedStateName}...`} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  {/* Category Breakdown Donut */}
+                  <div className="lg:col-span-5">
+                    <CrimeCategoryChart
+                      data={stateCategories}
+                      totalIncidents={stateCategories.reduce((acc, c) => acc + c.incident_count, 0)}
+                    />
+                  </div>
+
+                  {/* Longitudinal Trend Chart */}
+                  <div className="lg:col-span-7">
+                    <CrimeTrendChart
+                      data={stateTrends}
+                      interval={trendInterval}
+                      onIntervalChange={(newInt) => setTrendInterval(newInt)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SECTION 4: District Demographic Profile (Visible when a District is Selected) */}
+          {selectedDistrictId && districtDetail && (
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-[#1769AA]" />
+                  <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                    Census 2011 Demographic Profile: {districtDetail.district_name}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    Census Year: 2011 Baseline
+                  </span>
+                  {districtDetail.is_derived_from_parent && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                      <GitBranch className="h-3 w-3" />
+                      Derived Lineage
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {districtDetail.demographics ? (
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-2.5 rounded bg-[#F8FAFC] border border-[#D9E1EA]">
+                    <span className="text-slate-500 uppercase text-[10px]">Total Population</span>
+                    <p className="font-mono font-bold text-base text-[#0B1F3A] mt-0.5">
+                      {districtDetail.demographics.total_population.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#F8FAFC] border border-[#D9E1EA]">
+                    <span className="text-slate-500 uppercase text-[10px]">Gender Distribution</span>
+                    <p className="font-mono text-[11px] text-[#0B1F3A] mt-0.5">
+                      Male: {districtDetail.demographics.male_population.toLocaleString()} (
+                      {(
+                        (districtDetail.demographics.male_population /
+                          districtDetail.demographics.total_population) *
+                        100
+                      ).toFixed(1)}
+                      %)
+                    </p>
+                    <p className="font-mono text-[11px] text-[#0B1F3A]">
+                      Female: {districtDetail.demographics.female_population.toLocaleString()} (
+                      {(
+                        (districtDetail.demographics.female_population /
+                          districtDetail.demographics.total_population) *
+                        100
+                      ).toFixed(1)}
+                      %)
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#F8FAFC] border border-[#D9E1EA]">
+                    <span className="text-slate-500 uppercase text-[10px]">Literate Population</span>
+                    <p className="font-mono font-bold text-base text-[#1769AA] mt-0.5">
+                      {districtDetail.demographics.literate_population.toLocaleString()}
+                    </p>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Literacy Rate:{' '}
+                      {(
+                        (districtDetail.demographics.literate_population /
+                          districtDetail.demographics.total_population) *
+                        100
+                      ).toFixed(1)}
+                      %
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#F8FAFC] border border-[#D9E1EA]">
+                    <span className="text-slate-500 uppercase text-[10px]">Total Workforce</span>
+                    <p className="font-mono font-bold text-base text-[#0B1F3A] mt-0.5">
+                      {districtDetail.demographics.total_workers.toLocaleString()}
+                    </p>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Work Participation:{' '}
+                      {(
+                        (districtDetail.demographics.total_workers /
+                          districtDetail.demographics.total_population) *
+                        100
+                      ).toFixed(1)}
+                      %
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 rounded bg-amber-50/70 border border-amber-200 text-xs text-amber-800">
+                  <p className="font-semibold">Census 2011 Standalone Demographics Unavailable</p>
+                  <p className="text-[11px] mt-0.5 text-amber-700">
+                    {districtDetail.notes ||
+                      `This modern carved administrative district does not have an independent Census 2011 enumeration record. Lineage is mapped to parent jurisdiction #${districtDetail.parent_district_id}. Standalone enumeration awaits upcoming decennial Census.`}
+                  </p>
+                </div>
+              )}
+
+              {/* Urban / Rural Demographics Specification Note */}
+              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>
+                  <strong>Urban / Rural Disaggregation:</strong> N/A (Census 2011 administrative baseline does not separate urban/rural aggregates at district table level).
+                </span>
+                <span className="font-mono text-[10px]">
+                  LGD Code: {districtDetail.lgd_code || 'N/A'} | Census Code: {districtDetail.census_district_code || 'N/A'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 5: District Crime Comparison & Ranking Table */}
+          {topDistricts && (
+            <TopDistrictsTable
+              districts={topDistricts.items}
+              metric={rankingMetric}
+              onMetricChange={setRankingMetric}
+              selectedCategoryId={selectedCategoryId}
+              onCategoryChange={setSelectedCategoryId}
+              isLoading={isRefreshing}
+              selectedDistrictId={selectedDistrictId}
+              onSelectDistrict={handleDistrictChange}
+            />
+          )}
         </div>
       )}
     </DashboardLayout>
