@@ -65,7 +65,139 @@ DEFAULT_RESOURCE_TYPES = [
 ]
 
 
-def run_pipeline(truncate_first: bool = True):
+def check_protected_data_exists(db) -> dict:
+    """
+    Checks whether the database contains modern dual-layer geography, post-2011
+    carved administrative entities, or generated machine learning predictions.
+    """
+    try:
+        carved_count = db.execute(text("SELECT COUNT(*) FROM districts WHERE is_census_2011 = 0")).scalar() or 0
+    except Exception:
+        carved_count = 0
+
+    try:
+        mapping_count = db.execute(text("SELECT COUNT(*) FROM district_geography_mapping")).scalar() or 0
+    except Exception:
+        mapping_count = 0
+
+    try:
+        prediction_count = db.execute(text("SELECT COUNT(*) FROM crime_predictions")).scalar() or 0
+    except Exception:
+        prediction_count = 0
+
+    try:
+        risk_count = db.execute(text("SELECT COUNT(*) FROM crime_risk_scores")).scalar() or 0
+    except Exception:
+        risk_count = 0
+
+    return {
+        "carved_districts": carved_count,
+        "geography_mappings": mapping_count,
+        "crime_predictions": prediction_count,
+        "risk_scores": risk_count,
+    }
+
+
+def ingest_incidents_from_csv(db, district_id_map, crime_type_id_map, batch_size: int = 5000) -> int:
+    """Ingests historical crime incidents from CSV with deduplication."""
+    total_new = 0
+    seen_reports = set(r[0] for r in db.execute(text("SELECT report_number FROM crime_incidents")).fetchall())
+    batch = []
+
+    with open(CRIME_CSV_PATH, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader):
+            report_num = row["Report Number"].strip()
+            if report_num in seen_reports:
+                continue  # Deduplication safety
+            seen_reports.add(report_num)
+
+            st = row["State name"].strip().upper()
+            dt = row["District name"].strip().title()
+            dt_id = district_id_map.get((st, dt))
+            if not dt_id:
+                continue
+
+            code = row["Crime Code"].strip()
+            ct_id = crime_type_id_map.get(code)
+            if not ct_id:
+                continue
+
+            # Parse Dates and Times
+            inc_date = datetime.strptime(row["Date of Occurrence"].strip(), "%Y-%m-%d").date()
+            rep_date = datetime.strptime(row["Date Reported"].strip(), "%Y-%m-%d").date()
+            inc_time_str = row["Time of Occurrence"].strip()
+            try:
+                inc_time = datetime.strptime(inc_time_str, "%H:%M:%S").time()
+            except ValueError:
+                inc_time = datetime.strptime(inc_time_str[:5], "%H:%M").time()
+
+            # Victim Age
+            age_val = row["Victim Age"].strip()
+            victim_age = int(age_val) if age_val and age_val.isdigit() and 0 <= int(age_val) <= 120 else None
+
+            # Victim Gender
+            gender_raw = row["Victim Gender"].strip().upper()
+            victim_gender = gender_raw if gender_raw in ("M", "F", "OTHER") else "UNKNOWN"
+
+            # Weapon Used
+            wp_raw = row["Weapon Used"].strip().upper()
+            weapon_used = wp_raw if wp_raw else None
+
+            # Police Deployed Count
+            pd_raw = row["Police Deployed"].strip()
+            police_count = int(pd_raw) if pd_raw and pd_raw.isdigit() else 0
+
+            # Case Closed & Closed Date
+            case_closed_raw = row["Case Closed"].strip().upper()
+            case_status = "CLOSED" if case_closed_raw in ("YES", "Y", "CLOSED") else "OPEN"
+            
+            closed_date_raw = row.get("Date Case Closed", "").strip()
+            closed_date = None
+            if case_status == "CLOSED" and closed_date_raw:
+                try:
+                    closed_date = datetime.strptime(closed_date_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    closed_date = None
+
+            record = {
+                "report_number": report_num,
+                "district_id": dt_id,
+                "crime_type_id": ct_id,
+                "incident_date": inc_date,
+                "incident_time": inc_time,
+                "reported_date": rep_date,
+                "victim_age": victim_age,
+                "victim_gender": victim_gender,
+                "weapon_used": weapon_used,
+                "police_deployed_count": police_count,
+                "case_status": case_status,
+                "closed_date": closed_date,
+                "created_at": datetime.now(),
+            }
+            batch.append(record)
+
+            if len(batch) >= batch_size:
+                db.bulk_insert_mappings(CrimeIncident, batch)
+                db.commit()
+                total_new += len(batch)
+                batch = []
+                print(f"  Processed {total_new:,} incidents...", end="\r")
+
+        if batch:
+            db.bulk_insert_mappings(CrimeIncident, batch)
+            db.commit()
+            total_new += len(batch)
+            print(f"  Processed {total_new:,} incidents.")
+
+    return total_new
+
+
+def run_pipeline(
+    truncate_first: bool = False,
+    force_truncate: bool = False,
+    allow_protected_destruction: bool = False,
+):
     print("=" * 70)
     print("PHASE 3B: DATA CLEANING, TRANSFORMATION & DATABASE IMPORT PIPELINE")
     print("=" * 70)
@@ -80,7 +212,25 @@ def run_pipeline(truncate_first: bool = True):
 
     try:
         if truncate_first:
-            print("\n[Step 1/6] Cleaning existing data in dependency order...")
+            # SAFETY GUARD 1: Require explicit authorization flag
+            if not force_truncate:
+                raise ValueError(
+                    "Destructive truncation blocked: Default invocation prevents table truncation. "
+                    "To force destructive execution, explicitly pass force_truncate=True or the '--force-truncate' CLI flag."
+                )
+
+            # SAFETY GUARD 2: Refuse destructive execution when database contains modern carved districts or protected mappings
+            protected_stats = check_protected_data_exists(db)
+            has_protected_data = any(v > 0 for v in protected_stats.values())
+            if has_protected_data and not allow_protected_destruction:
+                raise RuntimeError(
+                    f"Destructive truncation blocked by safety guardrails: The database contains protected administrative data "
+                    f"({protected_stats}). Truncating would cause catastrophic loss of post-2011 administrative layers "
+                    f"(171 carved districts, Telangana, Ladakh), dual-layer geography mappings, and ML model predictions. "
+                    f"To override this safeguard, explicitly pass allow_protected_destruction=True or '--allow-protected-data-destruction'."
+                )
+
+            print("\n[Step 1/6] Cleaning existing data in dependency order (EXPLICITLY AUTHORIZED)...")
             # Disable foreign keys during cleanup
             db.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
             for tbl in [
@@ -97,6 +247,8 @@ def run_pipeline(truncate_first: bool = True):
             db.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
             db.commit()
             print("Existing tables truncated cleanly.")
+        else:
+            print("\n[Step 1/6] Safe mode enabled: Existing tables will be preserved (no truncation).")
 
         # ---------------------------------------------------------
         # STEP 2: Geography Ingestion (States and Districts)
@@ -125,44 +277,56 @@ def run_pipeline(truncate_first: bool = True):
                 states_set.add(st)
                 districts_set.add((st, dt))
 
-        # Insert States
-        state_id_map = {}
+        # Insert States (Idempotent: preserve existing)
+        existing_states = {s.state_name: s.id for s in db.query(State).all()}
+        new_states_count = 0
         for st_name in sorted(states_set):
-            state_obj = State(state_name=st_name, state_code=None)
-            db.add(state_obj)
-        db.commit()
+            if st_name not in existing_states:
+                state_obj = State(state_name=st_name, state_code=None)
+                db.add(state_obj)
+                new_states_count += 1
+        if new_states_count > 0:
+            db.commit()
 
         # Build State lookup map
         all_states = db.query(State).all()
-        for s in all_states:
-            state_id_map[s.state_name] = s.id
-        print(f" -> Inserted {len(all_states)} States.")
+        state_id_map = {s.state_name: s.id for s in all_states}
+        print(f" -> States verified: {len(all_states)} total ({new_states_count} newly inserted).")
 
-        # Insert Districts
+        # Insert Districts (Idempotent: preserve existing)
+        existing_districts = set(
+            db.execute(text("SELECT s.state_name, d.district_name FROM districts d JOIN states s ON d.state_id = s.id")).fetchall()
+        )
+        new_districts_count = 0
         for st_name, dt_name in sorted(districts_set):
-            st_id = state_id_map[st_name]
-            census_code = census_code_map.get((st_name, dt_name))
-            dt_obj = District(
-                state_id=st_id,
-                district_name=dt_name,
-                census_district_code=census_code,
-            )
-            db.add(dt_obj)
-        db.commit()
+            if (st_name, dt_name) not in existing_districts:
+                st_id = state_id_map[st_name]
+                census_code = census_code_map.get((st_name, dt_name))
+                dt_obj = District(
+                    state_id=st_id,
+                    district_name=dt_name,
+                    census_district_code=census_code,
+                )
+                db.add(dt_obj)
+                new_districts_count += 1
+        if new_districts_count > 0:
+            db.commit()
 
         # Build District lookup map: (State.UPPER(), District.TITLE()) -> district_id
         district_id_map = {}
         all_districts = db.query(District).all()
         for d in all_districts:
             # Reconstruct (st_name, dt_name) key
-            st_name = next(k for k, v in state_id_map.items() if v == d.state_id)
-            district_id_map[(st_name, d.district_name)] = d.id
-        print(f" -> Inserted {len(all_districts)} Districts (with Census codes mapped).")
+            st_name = next((k for k, v in state_id_map.items() if v == d.state_id), None)
+            if st_name:
+                district_id_map[(st_name, d.district_name)] = d.id
+        print(f" -> Districts verified: {len(all_districts)} total ({new_districts_count} newly inserted).")
 
         # ---------------------------------------------------------
         # STEP 3: Census Demographics Ingestion
         # ---------------------------------------------------------
         print("\n[Step 3/6] Ingesting Census 2011 Demographics...")
+        existing_demographics = set(r[0] for r in db.execute(text("SELECT district_id FROM district_demographics")).fetchall())
         demographics_inserted = 0
         with open(CENSUS_CSV_PATH, "r", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader(f)
@@ -170,7 +334,7 @@ def run_pipeline(truncate_first: bool = True):
                 st = row["State name"].strip().upper()
                 dt = row["District name"].strip().title()
                 dt_id = district_id_map.get((st, dt))
-                if dt_id:
+                if dt_id and dt_id not in existing_demographics:
                     demo = DistrictDemographics(
                         district_id=dt_id,
                         census_year=2011,
@@ -181,9 +345,11 @@ def run_pipeline(truncate_first: bool = True):
                         total_workers=int(row["Workers"]),
                     )
                     db.add(demo)
+                    existing_demographics.add(dt_id)
                     demographics_inserted += 1
-        db.commit()
-        print(f" -> Inserted {demographics_inserted} District Demographic profiles.")
+        if demographics_inserted > 0:
+            db.commit()
+        print(f" -> Demographics verified: {len(existing_demographics)} profiles ({demographics_inserted} newly inserted).")
 
         # ---------------------------------------------------------
         # STEP 4: Crime Categories & Types Master Ingestion
@@ -206,69 +372,88 @@ def run_pipeline(truncate_first: bool = True):
                 else:
                     code_meta[code] = {"desc": desc, "domain": dom}
 
-        # Insert Categories
-        category_id_map = {}
+        # Insert Categories (Idempotent)
+        existing_categories = {c.category_name: c.id for c in db.query(CrimeCategory).all()}
+        new_cats = 0
         for cat_name in sorted(unique_categories):
-            weight = CATEGORY_SEVERITY_WEIGHTS.get(cat_name, 1.00)
-            cat_obj = CrimeCategory(category_name=cat_name, severity_weight=weight)
-            db.add(cat_obj)
-        db.commit()
+            if cat_name not in existing_categories:
+                weight = CATEGORY_SEVERITY_WEIGHTS.get(cat_name, 1.00)
+                cat_obj = CrimeCategory(category_name=cat_name, severity_weight=weight)
+                db.add(cat_obj)
+                new_cats += 1
+        if new_cats > 0:
+            db.commit()
 
-        for c in db.query(CrimeCategory).all():
-            category_id_map[c.category_name] = c.id
-        print(f" -> Inserted {len(category_id_map)} Crime Categories with project severity weights.")
+        category_id_map = {c.category_name: c.id for c in db.query(CrimeCategory).all()}
+        print(f" -> Crime Categories verified: {len(category_id_map)} total ({new_cats} newly inserted).")
 
-        # Insert Crime Types
-        crime_type_id_map = {}
+        # Insert Crime Types (Idempotent)
+        existing_crime_types = {ct.crime_code: ct.id for ct in db.query(CrimeType).all()}
+        new_types = 0
         for code, meta in sorted(code_meta.items(), key=lambda x: int(x[0]) if x[0].isdigit() else x[0]):
-            cat_id = category_id_map[meta["domain"]]
-            sev = CRIME_TYPE_SEVERITY_LEVELS.get(code, "MEDIUM")
-            ct_obj = CrimeType(
-                category_id=cat_id,
-                crime_code=code,
-                crime_name=meta["desc"],
-                severity_level=sev,
-            )
-            db.add(ct_obj)
-        db.commit()
+            if code not in existing_crime_types:
+                cat_id = category_id_map[meta["domain"]]
+                sev = CRIME_TYPE_SEVERITY_LEVELS.get(code, "MEDIUM")
+                ct_obj = CrimeType(
+                    category_id=cat_id,
+                    crime_code=code,
+                    crime_name=meta["desc"],
+                    severity_level=sev,
+                )
+                db.add(ct_obj)
+                new_types += 1
+        if new_types > 0:
+            db.commit()
 
-        for ct in db.query(CrimeType).all():
-            crime_type_id_map[ct.crime_code] = ct.id
-        print(f" -> Inserted {len(crime_type_id_map)} Crime Types with legal codes and severity tiers.")
+        crime_type_id_map = {ct.crime_code: ct.id for ct in db.query(CrimeType).all()}
+        print(f" -> Crime Types verified: {len(crime_type_id_map)} total ({new_types} newly inserted).")
 
         # ---------------------------------------------------------
         # STEP 5: Police Resource Types & Baseline Costs (Config Catalog)
         # ---------------------------------------------------------
         print("\n[Step 5/6] Ingesting Police Resource Types & Baseline Cost Schedules...")
+        existing_rts = {rt.resource_name: rt.id for rt in db.query(ResourceType).all()}
+        new_rts = 0
         for r_spec in DEFAULT_RESOURCE_TYPES:
-            rt_obj = ResourceType(
-                resource_name=r_spec["name"],
-                unit_of_measure=r_spec["unit"],
-                description=r_spec["desc"],
-                is_active=True,
-            )
-            db.add(rt_obj)
-            db.flush()
+            if r_spec["name"] not in existing_rts:
+                rt_obj = ResourceType(
+                    resource_name=r_spec["name"],
+                    unit_of_measure=r_spec["unit"],
+                    description=r_spec["desc"],
+                    is_active=True,
+                )
+                db.add(rt_obj)
+                db.flush()
 
-            cost_obj = ResourceCost(
-                resource_type_id=rt_obj.id,
-                unit_cost=r_spec["cost"],
-                effective_from=datetime.strptime("2020-01-01", "%Y-%m-%d").date(),
-                effective_to=None,
-                is_active=True,
-            )
-            db.add(cost_obj)
-        db.commit()
-        print(f" -> Inserted {len(DEFAULT_RESOURCE_TYPES)} standard Resource Types and Cost policies.")
+                cost_obj = ResourceCost(
+                    resource_type_id=rt_obj.id,
+                    unit_cost=r_spec["cost"],
+                    effective_from=datetime.strptime("2020-01-01", "%Y-%m-%d").date(),
+                    effective_to=None,
+                    is_active=True,
+                )
+                db.add(cost_obj)
+                new_rts += 1
+        if new_rts > 0:
+            db.commit()
+        print(f" -> Resource Types verified: {len(db.query(ResourceType).all())} total ({new_rts} newly inserted).")
 
         # ---------------------------------------------------------
         # STEP 6: Historical Crime Incidents Ingestion (Batched)
         # ---------------------------------------------------------
         print("\n[Step 6/6] Ingesting Historical Crime Incidents (191,679 records)...")
-        batch_size = 5000
-        batch = []
-        total_incidents = 0
-        seen_reports = set()
+        existing_incidents_count = db.execute(text("SELECT COUNT(*) FROM crime_incidents")).scalar() or 0
+        if existing_incidents_count >= 191679:
+            print(f" -> Incidents already populated: {existing_incidents_count:,} records in database (skipping duplicate import).")
+            total_incidents = existing_incidents_count
+            # Skip ingestion when already fully populated
+            seen_reports = set()
+            batch = []
+        else:
+            batch_size = 5000
+            batch = []
+            total_incidents = 0
+            seen_reports = set()
 
         with open(CRIME_CSV_PATH, "r", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader(f)
@@ -384,4 +569,27 @@ def run_pipeline(truncate_first: bool = True):
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Data Cleaning, Transformation & Database Import Pipeline (Protected)"
+    )
+    parser.add_argument(
+        "--force-truncate",
+        action="store_true",
+        default=False,
+        help="Authorize destructive truncation of existing core tables before ingestion.",
+    )
+    parser.add_argument(
+        "--allow-protected-data-destruction",
+        action="store_true",
+        default=False,
+        help="Override safety guardrails when database contains modern carved districts or dual-layer geography mappings.",
+    )
+    args = parser.parse_args()
+
+    run_pipeline(
+        truncate_first=args.force_truncate,
+        force_truncate=args.force_truncate,
+        allow_protected_destruction=args.allow_protected_data_destruction,
+    )

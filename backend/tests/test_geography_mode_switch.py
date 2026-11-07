@@ -25,17 +25,17 @@ client = TestClient(app)
 
 class TestGeographyModeSwitch(unittest.TestCase):
     def test_national_overview_current_mode(self):
-        """Current mode: 36 administrative entities (28 States + 8 UTs), 797 modern districts."""
+        """Current mode: 36 administrative entities (28 States + 8 UTs), 790 modern districts."""
         resp = client.get("/api/v1/analytics/overview?geography_mode=current")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["total_incidents"], 191679)
         self.assertEqual(data["total_states"], 36)
-        self.assertEqual(data["total_districts"], 797)
+        self.assertEqual(data["total_districts"], 790)
         self.assertEqual(data["geography_mode"], "current")
         self.assertEqual(data["jurisdiction_label"], "Administrative Entities")
         self.assertEqual(data["jurisdiction_value"], "36 States & UTs")
-        self.assertEqual(data["jurisdiction_subtext"], "797 Modern Administrative Districts (28 States, 8 UTs)")
+        self.assertEqual(data["jurisdiction_subtext"], "790 Modern Administrative Districts (28 States, 8 UTs)")
 
     def test_national_overview_historical_mode(self):
         """Historical mode: 35 Census 2011 states/UTs, 640 Census 2011 districts."""
@@ -57,7 +57,7 @@ class TestGeographyModeSwitch(unittest.TestCase):
         data = resp.json()
         self.assertEqual(data["total_incidents"], 191679)
         self.assertEqual(data["total_states"], 36)
-        self.assertEqual(data["total_districts"], 797)
+        self.assertEqual(data["total_districts"], 790)
         self.assertEqual(data["geography_mode"], "current")
 
     def test_ap_bifurcation_and_telangana_resolution(self):

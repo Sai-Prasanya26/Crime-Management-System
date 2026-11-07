@@ -37,11 +37,11 @@ def get_states(
     "/districts",
     response_model=DistrictListResponse,
     summary="Get Districts",
-    description="Retrieve administrative districts with optional state_id filtering. Defaults to current administrative layer (787 districts). Set view=historical for Census 2011 (640 districts).",
+    description="Retrieve administrative districts with optional state_id filtering. Defaults to current administrative layer (790 districts). Set view=historical for Census 2011 (640 districts).",
 )
 def get_districts(
     state_id: Optional[int] = Query(None, description="Filter districts by State ID"),
-    view: str = Query("current", description="Geographic layer: 'current' (787 districts) or 'historical' (640 districts)"),
+    view: str = Query("current", description="Geographic layer: 'current' (790 districts) or 'historical' (640 districts)"),
     db: Session = Depends(get_db),
 ) -> DistrictListResponse:
     return GeographyService.get_districts(db, state_id=state_id, view=view)

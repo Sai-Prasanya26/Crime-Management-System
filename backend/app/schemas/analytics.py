@@ -26,7 +26,7 @@ class CrimeOverviewResponse(BaseModel):
     geography_mode: str = "current"
     jurisdiction_label: str = "Administrative Entities"
     jurisdiction_value: str = "36 States & UTs"
-    jurisdiction_subtext: str = "797 Modern Administrative Districts"
+    jurisdiction_subtext: str = "790 Modern Administrative Districts"
 
 
 class TrendItem(BaseModel):

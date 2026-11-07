@@ -287,12 +287,13 @@ export const PredictionsPage: React.FC = () => {
   const chartPoints = useMemo(() => {
     return (actualVsPred?.comparison_points || []).map((pt) => {
       const p = pt.period.substring(0, 7);
-      const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined && p <= '2025-12';
+      const histVal = pt.actual_count ?? pt.parent_baseline_count;
+      const isHistoricalActual = histVal !== null && histVal !== undefined && p <= '2025-12';
       const isModelPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined && p >= '2026-01';
 
       return {
         period: p,
-        actual: isHistoricalActual ? pt.actual_count : undefined,
+        actual: isHistoricalActual ? histVal : undefined,
         current_future: isModelPrediction ? pt.predicted_count : undefined,
       };
     });
@@ -587,7 +588,11 @@ export const PredictionsPage: React.FC = () => {
                       {/* 1. Predicted Incidents */}
                       <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
                         <span className="text-xs font-medium text-[#5D6878]">
-                          {predictionResult.is_historical ? 'Confirmed Incidents' : 'Predicted Incidents'}
+                          {predictionResult.is_historical
+                            ? (predictionResult.is_derived_from_parent
+                                ? 'Parent Baseline Incidents'
+                                : 'Confirmed Incidents')
+                            : 'Predicted Incidents'}
                         </span>
                         <div className="mt-1">
                           <span className="text-2xl font-bold font-mono text-[#1769AA]">

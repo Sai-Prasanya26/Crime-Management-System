@@ -61,11 +61,11 @@ def test_geography_states():
 
 
 def test_geography_districts():
-    # 1. All Current Administrative Districts: 797 districts
+    # 1. All Current Administrative Districts: 790 districts
     resp = client.get("/api/v1/geography/districts")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 797, f"Expected 797 current districts, got {data['total']}"
+    assert data["total"] == 790, f"Expected 790 current districts, got {data['total']}"
     print(f"[PASS] GET /api/v1/geography/districts (current layer): PASS ({data['total']} districts)")
 
     # 2. All Historical Census 2011 Districts: 640 districts
@@ -208,8 +208,8 @@ def test_phase7c_state_coverage_api():
     assert data["states_count"] == 28, f"Expected 28 States, got {data['states_count']}"
     # 3. Exactly 8 UTs
     assert data["uts_count"] == 8, f"Expected 8 UTs, got {data['uts_count']}"
-    # 4. Total current districts nationwide is 797
-    assert data["total_current_districts"] == 797, f"Expected 797 current districts, got {data['total_current_districts']}"
+    # 4. Total current districts nationwide is 790
+    assert data["total_current_districts"] == 790, f"Expected 790 current districts, got {data['total_current_districts']}"
     # 5. Historical incident count across all states is exactly 191,679
     assert data["total_historical_incidents"] == 191679, f"Expected 191679 incidents, got {data['total_historical_incidents']}"
 
@@ -240,7 +240,7 @@ def test_phase7c_state_coverage_api():
     assert "LADAKH" in items_by_name
     la = items_by_name["LADAKH"]
     assert la["entity_type"] == "UT"
-    assert la["district_count"] == 7, f"Expected 7 Ladakh districts, got {la['district_count']}"
+    assert la["district_count"] == 8, f"Expected 8 Ladakh districts, got {la['district_count']}"
     assert la["official_data_available"] is True
 
     # Check that every entity has valid coverage_status
@@ -249,7 +249,7 @@ def test_phase7c_state_coverage_api():
         assert item["data_source"] is not None
         assert item["data_freshness"] is not None
 
-    print(f"[PASS] Phase 7C Coverage API: PASS (36 entities: 28 States, 8 UTs, 797 districts, 191,679 incidents, all COMPLETE)")
+    print(f"[PASS] Phase 7C Coverage API: PASS (36 entities: 28 States, 8 UTs, 790 districts, 191,679 incidents, all COMPLETE)")
 
 
 def test_phase7c_data_freshness_api():
@@ -269,7 +269,7 @@ def test_phase7c_data_freshness_api():
     assert "2024" in str(data["latest_official_nationwide_year"])
     assert data["total_active_states"] == 28
     assert data["total_active_uts"] == 8
-    assert data["total_current_districts"] == 797
+    assert data["total_current_districts"] == 790
     assert data["total_census_2011_districts"] == 640
     assert data["total_historical_incidents"] == 191679
     assert data["total_official_records"] >= 50

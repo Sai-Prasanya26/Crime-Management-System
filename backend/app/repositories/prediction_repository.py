@@ -11,7 +11,7 @@ from sqlalchemy import text, func, desc, asc
 from datetime import date
 
 from backend.app.models.ml import MLModel, CrimePrediction
-from backend.app.models.geography import District, State
+from backend.app.models.geography import District, State, DistrictGeographyMapping
 
 
 class PredictionRepository:
@@ -196,8 +196,33 @@ class PredictionRepository:
             .join(MLModel, CrimePrediction.model_id == MLModel.id)
         )
 
+        target_state = None
         if state_id is not None:
-            query = query.filter(District.state_id == state_id)
+            target_state = db.query(State).filter(State.id == state_id).first()
+            # Boundary mappings to resolve historical district IDs for current states
+            mapped_hist_ids = (
+                db.query(DistrictGeographyMapping.historical_district_id)
+                .join(District, DistrictGeographyMapping.current_district_id == District.id)
+                .filter(District.state_id == state_id)
+                .distinct()
+                .all()
+            )
+            if mapped_hist_ids:
+                hist_ids = [r[0] for r in mapped_hist_ids]
+            else:
+                # Fallback to Census 2011 districts for states without post-2011 reorganization mappings
+                census_dists = (
+                    db.query(District.id)
+                    .filter(District.is_census_2011 == True, District.state_id == state_id)
+                    .all()
+                )
+                hist_ids = [r[0] for r in census_dists]
+
+            if hist_ids:
+                query = query.filter(CrimePrediction.district_id.in_(hist_ids))
+            else:
+                query = query.filter(text("1=0"))
+
         dist_obj = None
         if district_id is not None:
             dist_obj = db.query(District).filter(District.id == district_id).first()
@@ -235,13 +260,53 @@ class PredictionRepository:
             else None
         )
 
-        items = [
-            {
+        # Resolve modern state mappings for returned historical districts
+        modern_state_map: Dict[int, Tuple[int, str]] = {}
+        if rows and not is_child and target_state is None:
+            hist_dids = list({r.district_id for r in rows})
+            m_rows = (
+                db.query(
+                    DistrictGeographyMapping.historical_district_id,
+                    District.state_id,
+                    State.state_name,
+                )
+                .join(District, DistrictGeographyMapping.current_district_id == District.id)
+                .join(State, District.state_id == State.id)
+                .filter(
+                    DistrictGeographyMapping.historical_district_id.in_(hist_dids),
+                    State.is_active == True,
+                )
+                .distinct()
+                .all()
+            )
+            for hid, sid, sname in m_rows:
+                modern_state_map[hid] = (sid, sname)
+
+        items = []
+        for r in rows:
+            if is_child and dist_obj:
+                item_did = dist_obj.id
+                item_dname = dist_obj.district_name
+                item_sid = dist_obj.state_id
+                item_sname = dist_obj.state.state_name if dist_obj.state else r.state_name
+            else:
+                item_did = r.district_id
+                item_dname = r.district_name
+                if target_state:
+                    item_sid = target_state.id
+                    item_sname = target_state.state_name
+                elif r.district_id in modern_state_map:
+                    item_sid, item_sname = modern_state_map[r.district_id]
+                else:
+                    item_sid = r.state_id
+                    item_sname = r.state_name
+
+            items.append({
                 "id": r.id,
-                "district_id": dist_obj.id if is_child else r.district_id,
-                "district_name": dist_obj.district_name if is_child else r.district_name,
-                "state_id": dist_obj.state_id if is_child else r.state_id,
-                "state_name": r.state_name,
+                "district_id": item_did,
+                "district_name": item_dname,
+                "state_id": item_sid,
+                "state_name": item_sname,
                 "forecast_period": str(r.prediction_date),
                 "predicted_crime_count": float(r.predicted_crime_count),
                 "prediction_interval_lower": float(r.prediction_interval_lower) if r.prediction_interval_lower is not None else None,
@@ -257,9 +322,7 @@ class PredictionRepository:
                 "parent_district_id": dist_obj.parent_district_id if is_child else None,
                 "parent_district_name": parent_dist.district_name if (is_child and parent_dist) else None,
                 "is_derived_from_parent": is_child,
-            }
-            for r in rows
-        ]
+            })
 
         return items, total
 
@@ -468,21 +531,42 @@ class PredictionRepository:
                 sq_errors.append((act - pred) ** 2)
                 sum_actual += act
 
+            if is_child:
+                point_actual = None
+                parent_base = act
+                point_status = (
+                    "DERIVED_HISTORICAL_BASELINE"
+                    if status_val in ("HISTORICAL_ACTUAL", "HISTORICAL_EVALUATION")
+                    else status_val
+                )
+                point_error = None
+            else:
+                point_actual = act
+                parent_base = None
+                point_status = status_val
+                point_error = err
+
             points.append({
                 "period": p,
-                "actual_count": act,
+                "actual_count": point_actual,
+                "parent_baseline_count": parent_base,
                 "predicted_count": pred,
                 "prediction_interval_lower": low,
                 "prediction_interval_upper": up,
                 "confidence_lower": low,
                 "confidence_upper": up,
-                "forecast_status": status_val,
-                "error": err,
+                "forecast_status": point_status,
+                "error": point_error,
             })
 
-        overall_mae = round(float(sum(abs_errors) / len(abs_errors)), 4) if abs_errors else None
-        overall_rmse = round(float((sum(sq_errors) / len(sq_errors)) ** 0.5), 4) if sq_errors else None
-        overall_wape = round(float(sum(abs_errors) / sum_actual * 100), 2) if sum_actual > 0 else None
+        if is_child:
+            overall_mae = None
+            overall_rmse = None
+            overall_wape = None
+        else:
+            overall_mae = round(float(sum(abs_errors) / len(abs_errors)), 4) if abs_errors else None
+            overall_rmse = round(float((sum(sq_errors) / len(sq_errors)) ** 0.5), 4) if sq_errors else None
+            overall_wape = round(float(sum(abs_errors) / sum_actual * 100), 2) if sum_actual > 0 else None
 
         district_info = None
         if district_id:
@@ -585,6 +669,7 @@ class PredictionRepository:
                 "display_value": None,
                 "predicted_count": None,
                 "actual_count": None,
+                "parent_baseline_count": None,
                 "prediction_interval_lower": None,
                 "prediction_interval_upper": None,
                 "has_baseline": False,
@@ -645,6 +730,7 @@ class PredictionRepository:
                 "display_value": None,
                 "predicted_count": None,
                 "actual_count": None,
+                "parent_baseline_count": None,
                 "prediction_interval_lower": None,
                 "prediction_interval_upper": None,
                 "has_baseline": True,
@@ -663,18 +749,29 @@ class PredictionRepository:
             }
 
         # Determine value and type
+        parent_baseline_val = None
         if is_historical:
-            data_type = "HISTORICAL_ACTUAL"
-            is_forecast = False
-            display_val = float(actual_cnt)
-            pred_val = float(pred_row[0]) if pred_row else None
-            act_val = int(actual_cnt)
+            if is_derived_from_parent:
+                data_type = "DERIVED_HISTORICAL_BASELINE"
+                is_forecast = False
+                display_val = float(actual_cnt)
+                pred_val = float(pred_row[0]) if pred_row else None
+                act_val = None  # Strict null: carved district established post-2011, no independent actuals
+                parent_baseline_val = float(actual_cnt)
+            else:
+                data_type = "HISTORICAL_ACTUAL"
+                is_forecast = False
+                display_val = float(actual_cnt)
+                pred_val = float(pred_row[0]) if pred_row else None
+                act_val = int(actual_cnt)
+                parent_baseline_val = None
         else:
             data_type = "FORECAST"
             is_forecast = True
             display_val = float(pred_row[0])
             pred_val = display_val
             act_val = None
+            parent_baseline_val = None
 
         # 4. Determine baseline comparison
         if year >= 2026:
@@ -748,10 +845,18 @@ class PredictionRepository:
                 f"This estimated crime level is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
                 f"representing an expected change of {change_txt}."
             )
+        elif is_derived_from_parent:
+            change_txt = f"{abs(num_change):.0f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.0f} incidents"
+            explanation = (
+                f"In {month_name}, modern carved district '{dname}' had no independent actual incident records (administrative boundary established post-2011). "
+                f"Analytics resolve to Census 2011 parent jurisdiction '{parent_district_name}', which recorded {int(actual_cnt)} confirmed incidents as a derived reference baseline. "
+                f"This parent baseline volume is classified as '{level}' compared to previous benchmark ({base_label}: {baseline_val:.2f} incidents), "
+                f"representing a difference of {change_txt}."
+            )
         else:
             change_txt = f"{abs(num_change):.0f} incidents ({'+' if (pct_change or 0) >= 0 else ''}{pct_change}%)" if pct_change is not None else f"{abs(num_change):.0f} incidents"
             explanation = (
-                f"In {month_name}, {dname}{jurisdiction_note} recorded {act_val} confirmed incidents. "
+                f"In {month_name}, {dname} recorded {act_val} confirmed incidents. "
                 f"This incident volume is classified as '{level}' compared to the baseline ({base_label}: {baseline_val:.2f} incidents), "
                 f"representing a difference of {change_txt}."
             )
@@ -774,6 +879,7 @@ class PredictionRepository:
             "display_value": display_val,
             "predicted_count": pred_val,
             "actual_count": act_val,
+            "parent_baseline_count": parent_baseline_val,
             "prediction_interval_lower": float(pred_row[2]) if (pred_row and pred_row[2] is not None) else None,
             "prediction_interval_upper": float(pred_row[3]) if (pred_row and pred_row[3] is not None) else None,
             "has_baseline": True,
@@ -856,6 +962,7 @@ class PredictionRepository:
                 "is_historical": False,
                 "total_predicted_count": 0.0,
                 "total_actual_count": None,
+                "parent_baseline_count": None,
                 "reconciliation_difference": 0.0,
                 "methodology": "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)",
                 "categories": [],
@@ -867,6 +974,7 @@ class PredictionRepository:
 
         total_predicted = float(overall_pred["predicted_count"] if overall_pred["predicted_count"] is not None else (overall_pred["display_value"] or 0.0))
         total_actual = overall_pred["actual_count"]
+        parent_baseline_count = overall_pred.get("parent_baseline_count")
         data_type = overall_pred["data_type"]
         is_forecast = overall_pred["is_forecast"]
         is_historical = overall_pred["is_historical"]
@@ -1208,6 +1316,7 @@ class PredictionRepository:
             "is_historical": is_historical,
             "total_predicted_count": round(total_predicted, 2),
             "total_actual_count": total_actual,
+            "parent_baseline_count": parent_baseline_count,
             "reconciliation_difference": 0.0,
             "methodology": "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)",
             "categories": category_items,

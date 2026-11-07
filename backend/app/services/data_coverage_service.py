@@ -1,7 +1,7 @@
 """
 Phase 3: Data Coverage & Lineage Classification Service.
 
-Inspects database records and lineage mappings across all 797 districts to determine
+Inspects database records and lineage mappings across all 790 districts to determine
 the exact provenance tier (DIRECT_OBSERVATION, PARENT_DERIVED, UNAVAILABLE, SIMULATED_TEST)
 for every functional domain.
 """

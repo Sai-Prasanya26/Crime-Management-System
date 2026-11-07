@@ -107,6 +107,7 @@ class EvaluationComparisonResponse(BaseModel):
 class ActualVsPredictedPoint(BaseModel):
     period: str
     actual_count: Optional[float] = None
+    parent_baseline_count: Optional[float] = None
     predicted_count: Optional[float] = None
     prediction_interval_lower: Optional[float] = None
     prediction_interval_upper: Optional[float] = None
@@ -174,12 +175,13 @@ class DistrictMonthPredictionResponse(BaseModel):
     month: int
     period: str
     is_available: bool
-    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", or "UNAVAILABLE"
+    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", "DERIVED_HISTORICAL_BASELINE", or "UNAVAILABLE"
     is_forecast: bool
     is_historical: bool
     display_value: Optional[float] = None
     predicted_count: Optional[float] = None
     actual_count: Optional[int] = None
+    parent_baseline_count: Optional[float] = None
     prediction_interval_lower: Optional[float] = None
     prediction_interval_upper: Optional[float] = None
     has_baseline: bool
@@ -240,11 +242,12 @@ class PredictionBreakdownResponse(BaseModel):
     year: int
     month: int
     period: str
-    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", or "UNAVAILABLE"
+    data_type: str  # "FORECAST", "HISTORICAL_ACTUAL", "DERIVED_HISTORICAL_BASELINE", or "UNAVAILABLE"
     is_forecast: bool
     is_historical: bool
     total_predicted_count: float
     total_actual_count: Optional[int] = None
+    parent_baseline_count: Optional[float] = None
     reconciliation_difference: float = 0.0
     methodology: str = "Two-Level Hierarchical Compositional Forecasting (Empirical Bayes + HGBR)"
     categories: List[CategoryForecastItem]

@@ -80,7 +80,7 @@ class CrimeAnalyticsService:
             geography_mode=data.get("geography_mode", geography_mode),
             jurisdiction_label=data.get("jurisdiction_label", "Administrative Entities"),
             jurisdiction_value=data.get("jurisdiction_value", "36 States & UTs"),
-            jurisdiction_subtext=data.get("jurisdiction_subtext", "797 Modern Administrative Districts"),
+            jurisdiction_subtext=data.get("jurisdiction_subtext", "790 Modern Administrative Districts"),
         )
 
     @staticmethod

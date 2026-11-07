@@ -87,6 +87,7 @@ export interface EvaluationComparison {
 export interface ActualVsPredictedPoint {
   period: string;
   actual_count?: number | null;
+  parent_baseline_count?: number | null;
   predicted_count?: number | null;
   prediction_interval_lower?: number | null;
   prediction_interval_upper?: number | null;
@@ -118,12 +119,13 @@ export interface DistrictMonthPrediction {
   month: number;
   period: string;
   is_available: boolean;
-  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'UNAVAILABLE';
+  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'DERIVED_HISTORICAL_BASELINE' | 'UNAVAILABLE';
   is_forecast: boolean;
   is_historical: boolean;
   display_value?: number | null;
   predicted_count?: number | null;
   actual_count?: number | null;
+  parent_baseline_count?: number | null;
   prediction_interval_lower?: number | null;
   prediction_interval_upper?: number | null;
   has_baseline: boolean;
@@ -184,11 +186,12 @@ export interface PredictionBreakdownResponse {
   year: number;
   month: number;
   period: string;
-  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'UNAVAILABLE';
+  data_type: 'FORECAST' | 'HISTORICAL_ACTUAL' | 'DERIVED_HISTORICAL_BASELINE' | 'UNAVAILABLE';
   is_forecast: boolean;
   is_historical: boolean;
   total_predicted_count: number;
   total_actual_count?: number | null;
+  parent_baseline_count?: number | null;
   reconciliation_difference: number;
   methodology: string;
   categories: CategoryForecastItem[];

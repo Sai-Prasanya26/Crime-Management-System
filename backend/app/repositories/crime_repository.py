@@ -155,7 +155,7 @@ class CrimeRepository:
             # Nationwide Overview
             if geography_mode == "current":
                 total_states = 36
-                total_districts = db.query(District).filter(District.is_current_admin == True).count() or 797
+                total_districts = db.query(District).filter(District.is_current_admin == True).count() or 790
                 jurisdiction_label = "Administrative Entities"
                 jurisdiction_value = "36 States & UTs"
                 jurisdiction_subtext = f"{total_districts} Modern Administrative Districts (28 States, 8 UTs)"

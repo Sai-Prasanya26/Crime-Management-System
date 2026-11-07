@@ -261,7 +261,7 @@ class TestNewDistrictsLineage(unittest.TestCase):
         summary_resp = client.get("/api/v1/geography/data-coverage/summary")
         self.assertEqual(summary_resp.status_code, 200)
         summary = summary_resp.json()
-        self.assertGreaterEqual(summary["total_districts"], 797)
+        self.assertGreaterEqual(summary["total_districts"], 790)
         self.assertEqual(summary["census_2011_districts"], 640)
         self.assertIn("tier_breakdown", summary)
 
