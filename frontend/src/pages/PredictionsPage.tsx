@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   TrendingUp,
   Activity,
@@ -19,9 +20,22 @@ import {
   ChevronDown,
   ChevronUp,
   GitBranch,
+  Sliders,
+  Users,
+  ExternalLink,
+  Camera,
+  Microscope,
+  Laptop,
+  HeartPulse,
+  Radio,
+  Gauge,
+  FileSearch,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   ComposedChart,
+  BarChart,
+  Bar,
   Area,
   Line,
   XAxis,
@@ -30,34 +44,36 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Cell,
 } from 'recharts';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
-import { predictionApi, geographyApi } from '../api';
+import { predictionApi, geographyApi, optimizationApi } from '../api';
 import type {
-  ActualVsPredictedData,
-  DistrictMonthPrediction,
-  PredictionBreakdownResponse,
   PredictionOverview,
   EvaluationComparison,
   PredictionItem,
 } from '../api/predictionApi';
-import type { StateItem, DistrictItem } from '../types';
+import type {
+  DistrictPipelineForecastResponse,
+  StateItem,
+  DistrictItem,
+} from '../types';
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+const FORECAST_PERIOD_OPTIONS = [
+  { value: '2026-11', label: 'November 2026 (Active Forecast)', year: 2026, month: 11 },
+  { value: '2026-12', label: 'December 2026 (Active Forecast)', year: 2026, month: 12 },
+  { value: '2027-01', label: 'January 2027 (Active Forecast)', year: 2027, month: 1 },
+  { value: '2027-02', label: 'February 2027 (Active Forecast)', year: 2027, month: 2 },
+  { value: '2027-03', label: 'March 2027 (Active Forecast)', year: 2027, month: 3 },
+  { value: '2027-04', label: 'April 2027 (Active Forecast)', year: 2027, month: 4 },
+  { value: '2027-05', label: 'May 2027 (Active Forecast)', year: 2027, month: 5 },
+  { value: '2027-06', label: 'June 2027 (Active Forecast)', year: 2027, month: 6 },
+  { value: '2027-07', label: 'July 2027 (Active Forecast)', year: 2027, month: 7 },
+  { value: '2027-08', label: 'August 2027 (Active Forecast)', year: 2027, month: 8 },
+  { value: '2027-09', label: 'September 2027 (Active Forecast)', year: 2027, month: 9 },
+  { value: '2027-10', label: 'October 2027 (Active Forecast)', year: 2027, month: 10 },
 ];
 
 const CATEGORY_STYLES: Record<
@@ -94,23 +110,135 @@ const CATEGORY_STYLES: Record<
   },
 };
 
-const SEVERITY_BADGES: Record<string, { bg: string; text: string; border: string }> = {
+const PRIORITY_BADGES: Record<string, { bg: string; text: string; border: string }> = {
   CRITICAL: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
   HIGH: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
   MEDIUM: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
 };
 
-const TYPE_COMPACT_LIMIT = 5;
+const POOL_METADATA: Record<
+  string,
+  {
+    name: string;
+    unit: string;
+    icon: typeof Users;
+    color: string;
+    badgeBg: string;
+    badgeText: string;
+    badgeBorder: string;
+  }
+> = {
+  PERSONNEL: {
+    name: 'Police Personnel',
+    unit: 'Personnel',
+    icon: Users,
+    color: 'text-blue-600',
+    badgeBg: 'bg-blue-50',
+    badgeText: 'text-blue-700',
+    badgeBorder: 'border-blue-200',
+  },
+  MOBILITY: {
+    name: 'Mobility Fleet',
+    unit: 'Vehicles',
+    icon: Car,
+    color: 'text-indigo-600',
+    badgeBg: 'bg-indigo-50',
+    badgeText: 'text-indigo-700',
+    badgeBorder: 'border-indigo-200',
+  },
+  INVESTIGATION: {
+    name: 'Investigation Teams',
+    unit: 'Teams',
+    icon: FileSearch,
+    color: 'text-amber-600',
+    badgeBg: 'bg-amber-50',
+    badgeText: 'text-amber-700',
+    badgeBorder: 'border-amber-200',
+  },
+  SPECIALIZED: {
+    name: 'Specialized Units',
+    unit: 'Units',
+    icon: ShieldAlert,
+    color: 'text-purple-600',
+    badgeBg: 'bg-purple-50',
+    badgeText: 'text-purple-700',
+    badgeBorder: 'border-purple-200',
+  },
+  SURVEILLANCE: {
+    name: 'Surveillance CCTV',
+    unit: 'Cameras',
+    icon: Camera,
+    color: 'text-cyan-600',
+    badgeBg: 'bg-cyan-50',
+    badgeText: 'text-cyan-700',
+    badgeBorder: 'border-cyan-200',
+  },
+  FORENSIC: {
+    name: 'Forensic Lab Capacity',
+    unit: 'Tests/Month',
+    icon: Microscope,
+    color: 'text-teal-600',
+    badgeBg: 'bg-teal-50',
+    badgeText: 'text-teal-700',
+    badgeBorder: 'border-teal-200',
+  },
+  CYBER_TECHNOLOGY: {
+    name: 'Cyber Workstations',
+    unit: 'Workstations',
+    icon: Laptop,
+    color: 'text-emerald-600',
+    badgeBg: 'bg-emerald-50',
+    badgeText: 'text-emerald-700',
+    badgeBorder: 'border-emerald-200',
+  },
+  EMERGENCY_RESPONSE: {
+    name: 'EMS Ambulances',
+    unit: 'Ambulances',
+    icon: HeartPulse,
+    color: 'text-rose-600',
+    badgeBg: 'bg-rose-50',
+    badgeText: 'text-rose-700',
+    badgeBorder: 'border-rose-200',
+  },
+  COMMUNICATION: {
+    name: 'Radio & Dispatch',
+    unit: 'Channels',
+    icon: Radio,
+    color: 'text-sky-600',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    badgeBorder: 'border-sky-200',
+  },
+  TRAFFIC_SAFETY: {
+    name: 'Traffic Safety Devices',
+    unit: 'Devices',
+    icon: Gauge,
+    color: 'text-orange-600',
+    badgeBg: 'bg-orange-50',
+    badgeText: 'text-orange-700',
+    badgeBorder: 'border-orange-200',
+  },
+};
 
 export const PredictionsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Geographic and temporal controls
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
-  const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
+  const [selectedStateId, setSelectedStateId] = useState<number | undefined>(() => {
+    const s = searchParams.get('state_id');
+    return s ? Number(s) : undefined;
+  });
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(() => {
+    const d = searchParams.get('district_id');
+    return d ? Number(d) : undefined;
+  });
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
+    return searchParams.get('period') || '2026-11';
+  });
 
   // Overview and Model Evaluation data
   const [overview, setOverview] = useState<PredictionOverview | null>(null);
@@ -118,21 +246,18 @@ export const PredictionsPage: React.FC = () => {
   const [stateTopDistricts, setStateTopDistricts] = useState<PredictionItem[]>([]);
   const [showEvaluationReport, setShowEvaluationReport] = useState<boolean>(false);
 
-  // Prediction result and state
-  const [predictionResult, setPredictionResult] = useState<DistrictMonthPrediction | null>(null);
-  const [breakdownResult, setBreakdownResult] = useState<PredictionBreakdownResponse | null>(null);
+  // Integrated Pipeline Forecast Data (Predictions + Risk + 10-Pool Resources)
+  const [pipelineData, setPipelineData] = useState<DistrictPipelineForecastResponse | null>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [predictError, setPredictError] = useState<string | null>(null);
 
-  // Interactive selected category for side-by-side view
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  // Filter tabs for the 21-crime prediction table
+  const [crimeCategoryFilter, setCrimeCategoryFilter] = useState<string>('ALL');
+  const [resourcePoolFilter, setResourcePoolFilter] = useState<string>('ALL');
 
-  // View All expand/collapse toggles
-  const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
-  const [showAllTypes, setShowAllTypes] = useState<boolean>(false);
-
-  // Timeline chart state for selected district
-  const [actualVsPred, setActualVsPred] = useState<ActualVsPredictedData | null>(null);
+  // UI section expansion
+  const [showResourceSection, setShowResourceSection] = useState<boolean>(true);
+  const resourcesRef = useRef<HTMLDivElement | null>(null);
 
   // Page initialization loading/error
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -148,27 +273,37 @@ export const PredictionsPage: React.FC = () => {
         predictionApi.getOverview().catch(() => null),
         predictionApi.getEvaluation().catch(() => null),
       ]);
-      setStates(statesRes.items || []);
+      const stateList = statesRes.items || [];
+      setStates(stateList);
       setOverview(overviewRes);
       setEvaluation(evalRes);
 
-      setSelectedStateId(undefined);
-      setDistricts([]);
-      setSelectedDistrictId(undefined);
-      setSelectedYear(undefined);
-      setSelectedMonth(undefined);
-      setActualVsPred(null);
-      setPredictionResult(null);
-      setBreakdownResult(null);
-      setSelectedCategoryId(null);
-      setShowAllCategories(false);
-      setShowAllTypes(false);
+      // Check URL parameters for pre-selected state/district
+      const paramStateId = searchParams.get('state_id') ? Number(searchParams.get('state_id')) : undefined;
+      const paramDistId = searchParams.get('district_id') ? Number(searchParams.get('district_id')) : undefined;
+      const paramPeriod = searchParams.get('period') || '2026-11';
+
+      if (paramStateId) {
+        setSelectedStateId(paramStateId);
+        const distsRes = await geographyApi.getDistricts(paramStateId, 'current');
+        const dItems = distsRes.items || [];
+        setDistricts(dItems);
+
+        if (paramDistId) {
+          setSelectedDistrictId(paramDistId);
+          const [yearStr, monthStr] = paramPeriod.split('-');
+          const y = Number(yearStr) || 2026;
+          const m = Number(monthStr) || 11;
+          // Auto-trigger prediction for URL-provided target
+          executePipelinePrediction(paramDistId, y, m);
+        }
+      }
     } catch (err: any) {
       setPageError(err?.message || 'Failed to initialize crime predictions.');
     } finally {
       setIsInitialLoading(false);
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     loadInitialData();
@@ -178,21 +313,17 @@ export const PredictionsPage: React.FC = () => {
   const handleStateChange = async (stateId: number | undefined) => {
     setSelectedStateId(stateId);
     setSelectedDistrictId(undefined);
-    setSelectedYear(undefined);
-    setSelectedMonth(undefined);
     setDistricts([]);
-    setActualVsPred(null);
-    setPredictionResult(null);
-    setBreakdownResult(null);
-    setSelectedCategoryId(null);
-    setShowAllCategories(false);
-    setShowAllTypes(false);
+    setPipelineData(null);
     setPredictError(null);
 
     if (!stateId) {
       setStateTopDistricts([]);
+      setSearchParams({});
       return;
     }
+
+    setSearchParams({ state_id: String(stateId), period: selectedPeriod });
 
     try {
       const [distsRes, predsRes] = await Promise.all([
@@ -214,209 +345,168 @@ export const PredictionsPage: React.FC = () => {
   // When District changes
   const handleDistrictChange = (districtId: number | undefined) => {
     setSelectedDistrictId(districtId);
-    setSelectedYear(undefined);
-    setSelectedMonth(undefined);
     setPredictError(null);
-    setPredictionResult(null);
-    setBreakdownResult(null);
-    setSelectedCategoryId(null);
-    setShowAllCategories(false);
-    setShowAllTypes(false);
-    setActualVsPred(null);
+    setPipelineData(null);
+
+    if (districtId && selectedStateId) {
+      setSearchParams({
+        state_id: String(selectedStateId),
+        district_id: String(districtId),
+        period: selectedPeriod,
+      });
+    }
   };
 
-  // When Year changes
-  const handleYearChange = (year: number | undefined) => {
-    setSelectedYear(year);
-    setSelectedMonth(undefined);
+  // When Period changes
+  const handlePeriodChange = (periodVal: string) => {
+    setSelectedPeriod(periodVal);
     setPredictError(null);
-    setPredictionResult(null);
-    setBreakdownResult(null);
-    setSelectedCategoryId(null);
-    setShowAllCategories(false);
-    setShowAllTypes(false);
-  };
-
-  // When Month changes
-  const handleMonthChange = (month: number | undefined) => {
-    setSelectedMonth(month);
-    setPredictError(null);
-    setPredictionResult(null);
-    setBreakdownResult(null);
-    setSelectedCategoryId(null);
-    setShowAllCategories(false);
-    setShowAllTypes(false);
+    if (selectedDistrictId) {
+      const [yStr, mStr] = periodVal.split('-');
+      executePipelinePrediction(selectedDistrictId, Number(yStr), Number(mStr));
+    }
   };
 
   // Reset Filters handler
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
-    setSelectedYear(undefined);
-    setSelectedMonth(undefined);
+    setSelectedPeriod('2026-11');
     setDistricts([]);
     setStateTopDistricts([]);
-    setPredictionResult(null);
-    setBreakdownResult(null);
-    setSelectedCategoryId(null);
-    setShowAllCategories(false);
-    setShowAllTypes(false);
-    setActualVsPred(null);
+    setPipelineData(null);
     setPredictError(null);
+    setSearchParams({});
   };
 
   const hasActiveFilters = Boolean(
     selectedStateId !== undefined ||
     selectedDistrictId !== undefined ||
-    selectedYear !== undefined ||
-    selectedMonth !== undefined
+    selectedPeriod !== '2026-11'
   );
 
-  // Run prediction when user clicks "Predict Crime" or selects from comparison table
-  const executePrediction = async (districtId: number, year: number, month: number) => {
+  // Execute integrated prediction & 10-pool optimization pipeline
+  const executePipelinePrediction = async (districtId: number, year: number, month: number) => {
     setIsPredicting(true);
     setPredictError(null);
     try {
-      const [predData, chartData, breakdownData] = await Promise.all([
-        predictionApi.getDistrictMonthPrediction(districtId, year, month),
-        predictionApi.getActualVsPredicted(districtId),
-        predictionApi.getPredictionBreakdown(districtId, year, month),
-      ]);
-      setPredictionResult(predData);
-      setActualVsPred(chartData);
-      setBreakdownResult(breakdownData);
-      if (breakdownData.categories && breakdownData.categories.length > 0) {
-        setSelectedCategoryId(breakdownData.categories[0].category_id);
-      } else {
-        setSelectedCategoryId(null);
-      }
-      setShowAllCategories(false);
-      setShowAllTypes(false);
+      const data = await optimizationApi.getDistrictPipelineForecast({
+        district_id: districtId,
+        year,
+        month,
+      });
+      setPipelineData(data);
+      setShowResourceSection(true);
     } catch (err: any) {
-      setPredictError(err?.response?.data?.detail || err?.message || 'Failed to estimate crime incidents.');
-      setPredictionResult(null);
-      setBreakdownResult(null);
-      setSelectedCategoryId(null);
-      setShowAllCategories(false);
-      setShowAllTypes(false);
+      setPredictError(
+        err?.response?.data?.detail ||
+          err?.message ||
+          'Failed to execute crime forecasting and resource optimization pipeline.'
+      );
+      setPipelineData(null);
     } finally {
       setIsPredicting(false);
     }
   };
 
-  const handlePredictCrime = () => {
-    if (!selectedDistrictId || !selectedYear || !selectedMonth) {
-      setPredictError('Please select state, district, year, and month to predict crime.');
+  const handlePredictClick = () => {
+    if (!selectedDistrictId) {
+      setPredictError('Please select a state and district to generate predictions.');
       return;
     }
-    executePrediction(selectedDistrictId, selectedYear, selectedMonth);
+    const [yStr, mStr] = selectedPeriod.split('-');
+    executePipelinePrediction(selectedDistrictId, Number(yStr), Number(mStr));
   };
 
-  // Quick select a district from the forecast comparison table
+  // Quick select a district from the comparison ranking table
   const handleQuickSelectDistrict = (item: PredictionItem) => {
     setSelectedStateId(item.state_id);
     setSelectedDistrictId(item.district_id);
-    setSelectedYear(2026);
-    setSelectedMonth(11);
-    executePrediction(item.district_id, 2026, 11);
+    setSelectedPeriod('2026-11');
+    if (item.state_id) {
+      geographyApi.getDistricts(item.state_id, 'current').then((res) => {
+        setDistricts(res.items || []);
+      });
+    }
+    executePipelinePrediction(item.district_id, 2026, 11);
   };
 
-  // Format chart data points (historical observed vs estimated future incidents)
-  const chartPoints = useMemo(() => {
-    return (actualVsPred?.comparison_points || []).map((pt) => {
-      const p = pt.period.substring(0, 7);
-      const histVal = pt.actual_count ?? pt.parent_baseline_count;
-      const isHistoricalActual = histVal !== null && histVal !== undefined && p <= '2025-12';
-      const isModelPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined && p >= '2026-01';
-
-      return {
-        period: p,
-        actual: isHistoricalActual ? histVal : undefined,
-        current_future: isModelPrediction ? pt.predicted_count : undefined,
-      };
-    });
-  }, [actualVsPred]);
-
-  // Trend mapping: Higher, Similar, Lower
-  const trendLabel = useMemo(() => {
-    if (!predictionResult || !predictionResult.is_available) return null;
-    if (predictionResult.crime_level === 'Moderate') return 'Similar';
-    return predictionResult.crime_level;
-  }, [predictionResult]);
-
-  // Dynamically identify the crime type with the highest predicted count across all categories
-  const topCrimeType = useMemo(() => {
-    if (!breakdownResult || !breakdownResult.crime_types || breakdownResult.crime_types.length === 0) {
-      return null;
+  // Scroll to Resource Optimization section
+  const handleScrollToResources = () => {
+    setShowResourceSection(true);
+    if (resourcesRef.current) {
+      resourcesRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-    const maxItem = breakdownResult.crime_types.reduce((max, curr) =>
-      curr.predicted_count > (max?.predicted_count ?? -1) ? curr : max,
-      breakdownResult.crime_types[0]
+  };
+
+  // Navigate to full Resource Optimization studio
+  const handleNavigateToStudio = () => {
+    if (!selectedDistrictId || !selectedStateId) return;
+    navigate(
+      `/resources?state_id=${selectedStateId}&district_id=${selectedDistrictId}&period=${selectedPeriod}&tab=ai_optimization`
     );
-    if (!maxItem || maxItem.predicted_count <= 0) {
-      return null;
-    }
-    return maxItem;
-  }, [breakdownResult]);
+  };
 
-  // Currently selected category object
-  const selectedCategory = useMemo(() => {
-    if (!breakdownResult || selectedCategoryId === null) return null;
-    return breakdownResult.categories.find((c) => c.category_id === selectedCategoryId) || null;
-  }, [breakdownResult, selectedCategoryId]);
+  // Filtered canonical crime predictions
+  const filteredCrimePredictions = useMemo(() => {
+    if (!pipelineData) return [];
+    if (crimeCategoryFilter === 'ALL') return pipelineData.canonical_crime_predictions;
+    return pipelineData.canonical_crime_predictions.filter(
+      (cp) => cp.category_name.toLowerCase() === crimeCategoryFilter.toLowerCase()
+    );
+  }, [pipelineData, crimeCategoryFilter]);
 
-  // Categories list supporting compact view (top 2) and expanded view (all 4)
-  const displayedCategories = useMemo(() => {
-    if (!breakdownResult) return [];
-    if (showAllCategories) return breakdownResult.categories;
-    const base = breakdownResult.categories.slice(0, 2);
-    if (selectedCategoryId && !base.some((c) => c.category_id === selectedCategoryId)) {
-      const active = breakdownResult.categories.find((c) => c.category_id === selectedCategoryId);
-      if (active) return [...base, active];
-    }
-    return base;
-  }, [breakdownResult, showAllCategories, selectedCategoryId]);
+  // Max predicted count for relative progress bars
+  const maxCrimeCount = useMemo(() => {
+    if (!pipelineData || pipelineData.canonical_crime_predictions.length === 0) return 1;
+    return Math.max(...pipelineData.canonical_crime_predictions.map((p) => p.predicted_count), 0.01);
+  }, [pipelineData]);
 
-  // All filtered crime types for the active category, sorted descending
-  const sortedCrimeTypes = useMemo(() => {
-    if (!breakdownResult) return [];
-    const pool =
-      selectedCategoryId !== null
-        ? breakdownResult.crime_types.filter((ct) => ct.category_id === selectedCategoryId)
-        : breakdownResult.crime_types;
+  // Top 8 predicted crime types for Bar Chart visualization
+  const topCrimesChartData = useMemo(() => {
+    if (!pipelineData) return [];
+    return pipelineData.canonical_crime_predictions
+      .filter((cp) => cp.predicted_count > 0)
+      .slice(0, 8)
+      .map((cp) => ({
+        name: cp.crime_name.length > 18 ? `${cp.crime_name.substring(0, 16)}...` : cp.crime_name,
+        fullName: cp.crime_name,
+        count: cp.predicted_count,
+        category: cp.category_name,
+        severity: cp.severity_level,
+      }));
+  }, [pipelineData]);
 
-    return [...pool].sort((a, b) => b.predicted_count - a.predicted_count);
-  }, [breakdownResult, selectedCategoryId]);
+  // Timeline chart formatting
+  const chartPoints = useMemo(() => {
+    if (!pipelineData || !pipelineData.timeline_points) return [];
+    return pipelineData.timeline_points.map((pt) => ({
+      period: pt.period,
+      actual: pt.actual !== null && pt.actual !== undefined ? pt.actual : undefined,
+      current_future: pt.predicted !== null && pt.predicted !== undefined ? pt.predicted : undefined,
+    }));
+  }, [pipelineData]);
 
-  // Displayed crime types supporting compact view (top 5) and View All view
-  const displayedCrimeTypes = useMemo(() => {
-    if (showAllTypes) return sortedCrimeTypes;
-    return sortedCrimeTypes.slice(0, TYPE_COMPACT_LIMIT);
-  }, [sortedCrimeTypes, showAllTypes]);
-
-  // Highest predicted count in the displayed crime types for relative bar sizing
-  const maxTypeCount = useMemo(() => {
-    if (sortedCrimeTypes.length === 0) return 1;
-    return Math.max(...sortedCrimeTypes.map((t) => t.predicted_count), 0.01);
-  }, [sortedCrimeTypes]);
-
-  // Comparison districts to display in ranking table
-  const displayedComparisonDistricts = useMemo(() => {
-    if (stateTopDistricts.length > 0) return stateTopDistricts;
-    return overview?.top_predicted_districts || [];
-  }, [stateTopDistricts, overview]);
+  // Filtered resource recommendations
+  const filteredResourceRecs = useMemo(() => {
+    if (!pipelineData) return [];
+    if (resourcePoolFilter === 'ALL') return pipelineData.resource_recommendations;
+    return pipelineData.resource_recommendations.filter(
+      (r) => r.resource_category === resourcePoolFilter
+    );
+  }, [pipelineData, resourcePoolFilter]);
 
   return (
     <DashboardLayout
       hideSidebar
       icon={Activity}
-      title="Crime Predictions"
+      title="Crime Predictions & Preventive Resource Optimization"
       onRefresh={loadInitialData}
       isRefreshing={isInitialLoading}
     >
       {isInitialLoading && (
         <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
-          <LoadingState message="Loading predictions..." />
+          <LoadingState message="Loading predictions and optimization pipeline..." />
         </div>
       )}
 
@@ -430,27 +520,27 @@ export const PredictionsPage: React.FC = () => {
 
       {!isInitialLoading && !pageError && (
         <div className="space-y-4">
-          {/* TOP SUMMARY KPI BAR: High-Level Forecasting Architecture Overview */}
+          {/* HIGH-LEVEL ARCHITECTURE & MODEL EVALUATION ACCORDION */}
           {overview && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-blue-200/60 pb-3 gap-2">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3.5 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-blue-200/60 pb-2.5 gap-2">
                 <div className="flex items-center gap-2">
                   <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-[15px] font-bold text-[#0B1F3A]">
-                      AI-Driven Crime Forecasting & Uncertainty Architecture
+                    <h3 className="text-sm font-bold text-[#0B1F3A]">
+                      AI Crime Prediction & 10-Pool Resource Optimization Pipeline
                     </h3>
                     <p className="text-[11px] text-[#5D6878]">
-                      Production Model: <span className="font-semibold text-[#1769AA]">{overview.active_model_name}</span> ({overview.algorithm} {overview.active_model_version})
+                      Production ML Model: <span className="font-semibold text-[#1769AA]">{overview.active_model_name}</span> ({overview.algorithm} {overview.active_model_version})
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded bg-white text-[#1769AA] border border-blue-200">
-                    Horizon: {overview.current_forecast_start || '2026-11'} to {overview.current_forecast_end || '2027-10'}
+                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-white text-[#1769AA] border border-blue-200">
+                    Active Horizon: {overview.current_forecast_start || '2026-11'} to {overview.current_forecast_end || '2027-10'}
                   </span>
                   <button
                     type="button"
@@ -464,67 +554,16 @@ export const PredictionsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 4 Overview KPI Cards */}
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Total Predictions Stored
-                  </span>
-                  <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
-                    {overview.total_predictions.toLocaleString()}
-                  </p>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    {overview.districts_covered} Monitored Districts
-                  </span>
-                </div>
-
-                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Test Out-of-Sample MAE
-                  </span>
-                  <p className="mt-1 text-xl font-bold font-mono text-[#1769AA]">
-                    1.6956
-                  </p>
-                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">
-                    -25.03% vs Seasonal Baseline
-                  </span>
-                </div>
-
-                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Model Accuracy (R² / WAPE)
-                  </span>
-                  <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
-                    R²: 0.6063
-                  </p>
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    WAPE: 36.84% (Zero-division safe)
-                  </span>
-                </div>
-
-                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Uncertainty Bounds
-                  </span>
-                  <p className="mt-1 text-base font-bold text-emerald-700">
-                    Split Conformal
-                  </p>
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    80% Nominal [79.74% Empirical]
-                  </span>
-                </div>
-              </div>
-
               {/* Expandable Model Evaluation Comparison Report */}
               {showEvaluationReport && evaluation && (
-                <div className="mt-4 pt-3 border-t border-blue-200/60 animate-in fade-in duration-150">
+                <div className="mt-3 pt-3 border-t border-blue-200/60 animate-in fade-in duration-150">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A] flex items-center gap-1.5">
                       <Award className="h-4 w-4 text-[#C98512]" />
-                      <span>Model Evaluation & Benchmark Comparison (Untouched 2025 Test Set)</span>
+                      <span>Model Evaluation (Evaluated on Untouched 2025 Test Observations)</span>
                     </h4>
-                    <span className="text-[11px] text-slate-500">
-                      Evaluated on 7,680 Out-of-Sample District-Month Observations
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      7,680 Test Observations | WAPE 36.84% | R² 0.6063
                     </span>
                   </div>
 
@@ -532,7 +571,7 @@ export const PredictionsPage: React.FC = () => {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[10px] font-semibold uppercase text-slate-500">
-                          <th className="py-2 px-3">Model / Architecture</th>
+                          <th className="py-2 px-3">Model Architecture</th>
                           <th className="py-2 px-3 text-right">MAE</th>
                           <th className="py-2 px-3 text-right">RMSE</th>
                           <th className="py-2 px-3 text-right">WAPE %</th>
@@ -553,11 +592,6 @@ export const PredictionsPage: React.FC = () => {
                                       Production Primary
                                     </span>
                                   )}
-                                  {name.includes('Naive') || name.includes('Average') ? (
-                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                                      Baseline Hurdle
-                                    </span>
-                                  ) : null}
                                 </div>
                               </td>
                               <td className="py-2 px-3 text-right">{m.MAE.toFixed(4)}</td>
@@ -577,35 +611,31 @@ export const PredictionsPage: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-
-                  <p className="mt-2 text-[10.5px] text-[#5D6878] italic">
-                    * Disclaimer: Crime predictions are statistical estimates based on historical patterns. They do not constitute actual confirmed crime incidents and must not be used as the sole determinant for punitive or tactical enforcement.
-                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* PROGRESSIVE SELECTION CONTROLS */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
-            <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
+          {/* PART 1 & PART 7: INTUITIVE CONTROL PANEL AT TOP */}
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
               <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
                 <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
-                  <Sparkles className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>Forecast Filters:</span>
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-[#1769AA]" />
+                  <span>Target Forecast:</span>
                 </div>
 
                 {/* 1. State / UT Selector */}
                 <select
-                  aria-label="State or Union Territory"
+                  aria-label="Select State"
                   value={selectedStateId || ''}
                   onChange={(e) => {
                     const val = e.target.value ? Number(e.target.value) : undefined;
                     handleStateChange(val);
                   }}
-                  className="h-10 w-full sm:w-auto sm:min-w-[190px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  className="h-10 w-full sm:w-auto sm:min-w-[200px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
-                  <option value="">All States / UTs (National)</option>
+                  <option value="">Select State / UT</option>
                   {states.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.state_name}
@@ -614,97 +644,59 @@ export const PredictionsPage: React.FC = () => {
                 </select>
 
                 {/* 2. District Selector */}
-                {Boolean(selectedStateId) && (
-                  <select
-                    aria-label="District"
-                    value={selectedDistrictId || ''}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : undefined;
-                      handleDistrictChange(val);
-                    }}
-                    className="h-10 w-full sm:w-auto sm:min-w-[170px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                  >
-                    <option value="">Select District</option>
-                    {districts.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.district_name} {!d.is_census_2011 ? '(Carved)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <select
+                  aria-label="Select District"
+                  value={selectedDistrictId || ''}
+                  disabled={!selectedStateId || districts.length === 0}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : undefined;
+                    handleDistrictChange(val);
+                  }}
+                  className="h-10 w-full sm:w-auto sm:min-w-[200px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="">
+                    {!selectedStateId ? 'First Choose State' : 'Select District'}
+                  </option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.district_name} {!d.is_census_2011 ? '(Carved)' : ''}
+                    </option>
+                  ))}
+                </select>
 
-                {/* 3. Year Selector */}
-                {Boolean(selectedDistrictId) && (
-                  <select
-                    aria-label="Year"
-                    value={selectedYear || ''}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : undefined;
-                      handleYearChange(val);
-                    }}
-                    className="h-10 w-full sm:w-auto sm:min-w-[160px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                  >
-                    <option value="">Select Year</option>
-                    <option value={2027}>2027 (Forecast)</option>
-                    <option value={2026}>2026 (Forecast)</option>
-                    <option value={2025}>2025 (Historical Actuals)</option>
-                    <option value={2024}>2024 (Historical Actuals)</option>
-                    <option value={2023}>2023 (Historical Actuals)</option>
-                    <option value={2022}>2022 (Historical Actuals)</option>
-                    <option value={2021}>2021 (Historical Actuals)</option>
-                    <option value={2020}>2020 (Historical Actuals)</option>
-                  </select>
-                )}
+                {/* 3. Forecast Month / Period Selector */}
+                <select
+                  aria-label="Forecast Month"
+                  value={selectedPeriod}
+                  onChange={(e) => handlePeriodChange(e.target.value)}
+                  className="h-10 w-full sm:w-auto sm:min-w-[210px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                >
+                  {FORECAST_PERIOD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
 
-                {/* 4. Month Selector */}
-                {Boolean(selectedYear) && (
-                  <select
-                    aria-label="Month"
-                    value={selectedMonth || ''}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : undefined;
-                      handleMonthChange(val);
-                    }}
-                    className="h-10 w-full sm:w-auto sm:min-w-[140px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-                  >
-                    <option value="">Select Month</option>
-                    {MONTH_NAMES.map((name, idx) => {
-                      const monthNum = idx + 1;
-                      const isBeyondHorizon = selectedYear === 2027 && monthNum > 10;
-                      return (
-                        <option
-                          key={monthNum}
-                          value={monthNum}
-                          disabled={isBeyondHorizon}
-                        >
-                          {name}{isBeyondHorizon ? ' (Beyond Horizon)' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
-
-                {/* 5. Predict Crime Button */}
-                {Boolean(selectedMonth) && (
-                  <button
-                    type="button"
-                    onClick={handlePredictCrime}
-                    disabled={isPredicting || !selectedStateId || !selectedDistrictId || !selectedYear || !selectedMonth}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded bg-[#1769AA] px-4 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer disabled:opacity-50 shrink-0"
-                  >
-                    {isPredicting ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Estimating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        <span>Predict Crime</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                {/* 4. Predict Button */}
+                <button
+                  type="button"
+                  onClick={handlePredictClick}
+                  disabled={isPredicting || !selectedDistrictId}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded bg-[#1769AA] px-5 text-[13px] font-semibold text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  {isPredicting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Generating ML Predictions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Predict Crime</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Reset Filter Button */}
@@ -713,10 +705,10 @@ export const PredictionsPage: React.FC = () => {
                   type="button"
                   onClick={handleResetFilters}
                   className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
-                  title="Reset all active filters"
+                  title="Reset filters"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Reset Filters</span>
+                  <span>Reset</span>
                 </button>
               )}
             </div>
@@ -729,8 +721,8 @@ export const PredictionsPage: React.FC = () => {
             )}
           </div>
 
-          {/* SECTION: DISTRICT-WISE FORECAST COMPARISON TABLE (Visible when no district predicted yet) */}
-          {!predictionResult && displayedComparisonDistricts.length > 0 && (
+          {/* STATE-LEVEL RANKING TABLE (Visible before district prediction is run) */}
+          {!pipelineData && !isPredicting && (
             <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                 <div className="flex items-center gap-2">
@@ -740,16 +732,16 @@ export const PredictionsPage: React.FC = () => {
                   <div>
                     <h3 className="text-[15px] font-bold text-[#0B1F3A]">
                       {selectedStateId
-                        ? `Projected Crime Caseload by District — ${states.find((s) => s.id === selectedStateId)?.state_name || 'Selected State'}`
-                        : 'Top Projected Jurisdictions (District Forecast Comparison)'}
+                        ? `District Forecast Ranking — ${states.find((s) => s.id === selectedStateId)?.state_name || 'Selected State'}`
+                        : 'Top Projected Jurisdictions (National Forecast Comparison)'}
                     </h3>
                     <p className="text-[11px] text-[#5D6878]">
-                      Machine learning projections for the upcoming period with split conformal uncertainty intervals
+                      Click &apos;Predict District&apos; to generate full crime-wise predictions and 10-pool preventive resource optimization.
                     </p>
                   </div>
                 </div>
                 <span className="text-xs text-slate-400 font-mono">
-                  {displayedComparisonDistricts.length} Jurisdictions Ranked
+                  {stateTopDistricts.length > 0 ? stateTopDistricts.length : overview?.top_predicted_districts?.length || 0} Districts Monitored
                 </span>
               </div>
 
@@ -760,14 +752,14 @@ export const PredictionsPage: React.FC = () => {
                       <th className="py-2.5 pl-3 w-14"># Rank</th>
                       <th className="py-2.5 px-3">District & Lineage</th>
                       <th className="py-2.5 px-3">State / UT</th>
-                      <th className="py-2.5 px-3">Period</th>
+                      <th className="py-2.5 px-3">Forecast Period</th>
                       <th className="py-2.5 px-3 text-right">Projected Crimes</th>
-                      <th className="py-2.5 px-3 text-right">80% Prediction Interval</th>
+                      <th className="py-2.5 px-3 text-right">80% Conformal Interval</th>
                       <th className="py-2.5 pr-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 whitespace-nowrap">
-                    {displayedComparisonDistricts.map((item, idx) => (
+                    {(stateTopDistricts.length > 0 ? stateTopDistricts : overview?.top_predicted_districts || []).map((item, idx) => (
                       <tr
                         key={item.id}
                         className="hover:bg-slate-50/80 transition-colors cursor-pointer"
@@ -819,9 +811,9 @@ export const PredictionsPage: React.FC = () => {
                               e.stopPropagation();
                               handleQuickSelectDistrict(item);
                             }}
-                            className="px-2 py-0.5 rounded text-[11px] font-semibold text-[#1769AA] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 rounded text-[11px] font-semibold text-[#1769AA] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
                           >
-                            Inspect Forecast
+                            Predict District
                           </button>
                         </td>
                       </tr>
@@ -832,384 +824,689 @@ export const PredictionsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Loading Indicator */}
+          {/* LOADING STATE */}
           {isPredicting && (
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-6 text-center shadow-2xs">
-              <div className="flex items-center justify-center gap-2 text-xs font-medium text-[#1769AA]">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Generating predictions...</span>
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 text-center shadow-2xs">
+              <div className="flex flex-col items-center justify-center gap-2 text-[#1769AA]">
+                <RefreshCw className="h-6 w-6 animate-spin text-[#1769AA]" />
+                <span className="text-sm font-semibold">Running Phase 8 ML Crime Prediction Pipeline...</span>
+                <span className="text-xs text-[#5D6878]">Generating 21 canonical crime types, risk scores, and 10-pool resource demands</span>
               </div>
             </div>
           )}
 
-          {/* PREDICTION DASHBOARD CONTAINER (When District is Selected & Predicted) */}
-          {!isPredicting && predictionResult && (
+          {/* PART 2: DISPLAY CRIME-WISE PREDICTIONS RESULTS */}
+          {!isPredicting && pipelineData && (
             <div className="space-y-4">
-              {/* SECTION 1: DISTRICT HEADER & OVERALL FORECAST */}
+              {/* SECTION A: PREDICTION SUMMARY KPI BAR */}
               <div className="rounded-lg border border-[#D9E1EA] bg-white shadow-2xs overflow-hidden">
-                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#D9E1EA]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r from-blue-50/60 to-white border-b border-[#D9E1EA]">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-[#1769AA] shrink-0" />
-                    <h2 className="text-sm font-bold text-[#0B1F3A]">
-                      {predictionResult.district_name}, {predictionResult.state_name}
+                    <h2 className="text-base font-bold text-[#0B1F3A]">
+                      {pipelineData.district_name}, {pipelineData.state_name}
                     </h2>
+                    {pipelineData.is_derived_from_parent && (
+                      <span className="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                        Derived from {pipelineData.parent_district_name}
+                      </span>
+                    )}
                   </div>
 
-                  {predictionResult.is_derived_from_parent && (
-                    <span className="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                      Derived from {predictionResult.parent_district_name}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-white text-[#1769AA] border border-blue-200">
+                      Forecast Period: {pipelineData.forecast_period.substring(0, 7)}
                     </span>
-                  )}
+                    <button
+                      type="button"
+                      onClick={handleScrollToResources}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold bg-[#1769AA] text-white hover:bg-[#12558a] shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Sliders className="h-3.5 w-3.5" />
+                      <span>Optimize Resources</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-4 sm:p-5 space-y-4">
-                  {predictionResult.is_available ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {/* 1. Predicted Incidents */}
-                      <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
-                        <span className="text-xs font-medium text-[#5D6878]">
-                          {predictionResult.is_historical
-                            ? (predictionResult.is_derived_from_parent
-                                ? 'Parent Baseline Incidents'
-                                : 'Confirmed Incidents')
-                            : 'Predicted Incidents'}
-                        </span>
-                        <div className="mt-1">
-                          <span className="text-2xl font-bold font-mono text-[#1769AA]">
-                            {predictionResult.display_value !== undefined && predictionResult.display_value !== null
-                              ? predictionResult.display_value.toFixed(2)
-                              : '—'}
+                {/* 4 Summary Cards */}
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* 1. Total Predicted Crime Incidents */}
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
+                    <span className="text-xs font-medium text-[#5D6878]">Total Predicted Incidents</span>
+                    <div className="mt-1">
+                      <span className="text-2xl font-bold font-mono text-[#1769AA]">
+                        {pipelineData.total_predicted_crimes.toFixed(2)}
+                      </span>
+                      {pipelineData.prediction_interval_lower !== null &&
+                        pipelineData.prediction_interval_lower !== undefined &&
+                        pipelineData.prediction_interval_upper !== null &&
+                        pipelineData.prediction_interval_upper !== undefined && (
+                          <span className="text-[11px] text-[#7C8796] block mt-0.5">
+                            80% CI: [{pipelineData.prediction_interval_lower.toFixed(2)} – {pipelineData.prediction_interval_upper.toFixed(2)}]
                           </span>
-                          {predictionResult.is_forecast &&
-                            predictionResult.prediction_interval_lower !== null &&
-                            predictionResult.prediction_interval_lower !== undefined &&
-                            predictionResult.prediction_interval_upper !== null &&
-                            predictionResult.prediction_interval_upper !== undefined && (
-                              <span className="text-[11px] text-[#7C8796] block mt-0.5">
-                                80% CI: [{predictionResult.prediction_interval_lower.toFixed(2)} – {predictionResult.prediction_interval_upper.toFixed(2)}]
-                              </span>
-                            )}
-                        </div>
-                      </div>
-
-                      {/* 2. Expected Trend */}
-                      <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
-                        <span className="text-xs font-medium text-[#5D6878]">Expected Trend</span>
-                        <div className="mt-1 flex items-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${
-                              trendLabel === 'Higher'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : trendLabel === 'Lower'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-blue-50 text-blue-700 border border-blue-200'
-                            }`}
-                          >
-                            {trendLabel === 'Higher' && <ArrowUpRight className="h-3.5 w-3.5" />}
-                            {trendLabel === 'Lower' && <ArrowDownRight className="h-3.5 w-3.5" />}
-                            {trendLabel === 'Similar' && <Minus className="h-3.5 w-3.5" />}
-                            {trendLabel}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 3. Top Predicted Crime Type */}
-                      <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
-                        <span className="text-xs font-medium text-[#5D6878]">Top Predicted Crime Type</span>
-                        {topCrimeType ? (
-                          <div className="mt-1 flex items-baseline justify-between gap-2">
-                            <span className="text-base font-bold text-[#0B1F3A] truncate" title={topCrimeType.crime_name}>
-                              {topCrimeType.crime_name}
-                            </span>
-                            <span className="text-2xl font-bold font-mono text-[#1769AA] shrink-0">
-                              {topCrimeType.predicted_count.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-xs text-[#7C8796]">
-                            No active crime types projected
-                          </div>
                         )}
-                      </div>
                     </div>
-                  ) : (
-                    <div className="rounded-md border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="font-bold text-amber-950">Prediction unavailable</h4>
-                          <p className="mt-1 text-amber-800">
-                            {predictionResult.explanation ||
-                              'No projection is available for the selected period.'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
 
-                  {/* Caseload Timeline Chart */}
-                  {actualVsPred && chartPoints.length > 0 && (
-                    <div className="rounded-lg border border-[#D9E1EA] bg-white p-4">
-                      <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2.5 mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-lg bg-[#EAF3FA] p-1.5 text-[#1769AA]">
-                            <TrendingUp className="h-4 w-4" />
-                          </div>
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
-                            Historical Actuals vs. Estimated Forecasts Timeline
-                          </h3>
-                        </div>
-                        <span className="text-[11px] text-slate-500 font-medium">
-                          Strict separation between historical actual observations (≤2025) and forward estimates (≥2026)
-                        </span>
-                      </div>
-
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={chartPoints} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                            <XAxis dataKey="period" stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 11 }} />
-                            <YAxis
-                              stroke="#CBD5E1"
-                              tick={{ fill: '#64748B', fontSize: 11 }}
-                              tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-                            />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: '#FFFFFF',
-                                borderColor: '#E2E8F0',
-                                borderRadius: '0.5rem',
-                                color: '#0B1F3A',
-                                fontSize: '0.75rem',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                              }}
-                              formatter={(val: any, name: any) => {
-                                if (name === 'actual') {
-                                  return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed Actual'];
-                                }
-                                if (name === 'current_future') {
-                                  return [val ? `${Number(val).toLocaleString()} estimated incidents` : '—', 'Model Projected Estimate'];
-                                }
-                                return [val, String(name)];
-                              }}
-                            />
-                            <Legend
-                              verticalAlign="top"
-                              height={32}
-                              formatter={(value) => {
-                                if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed Actual</span>;
-                                if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Model Projected Estimate</span>;
-                                return <span className="text-xs text-slate-500">{value}</span>;
-                              }}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="actual"
-                              name="actual"
-                              stroke="#1769AA"
-                              strokeWidth={2}
-                              fill="#1769AA"
-                              fillOpacity={0.12}
-                              connectNulls={false}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="current_future"
-                              name="current_future"
-                              stroke="#059669"
-                              strokeWidth={2.5}
-                              dot={{ r: 3, fill: '#059669' }}
-                              connectNulls={false}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
+                  {/* 2. Expected Trend */}
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
+                    <span className="text-xs font-medium text-[#5D6878]">Overall Forecast Trend</span>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${
+                          pipelineData.overall_trend === 'Higher'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : pipelineData.overall_trend === 'Lower'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}
+                      >
+                        {pipelineData.overall_trend === 'Higher' && <ArrowUpRight className="h-3.5 w-3.5" />}
+                        {pipelineData.overall_trend === 'Lower' && <ArrowDownRight className="h-3.5 w-3.5" />}
+                        {pipelineData.overall_trend === 'Similar' && <Minus className="h-3.5 w-3.5" />}
+                        {pipelineData.overall_trend}
+                      </span>
+                      <span className="text-[11px] text-[#7C8796] block mt-0.5">
+                        Compared to historical seasonal baseline
+                      </span>
                     </div>
-                  )}
+                  </div>
+
+                  {/* 3. District Risk Score (Phase 9) */}
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
+                    <span className="text-xs font-medium text-[#5D6878]">District Risk Score (Phase 9)</span>
+                    <div className="mt-1 flex items-baseline justify-between">
+                      <span className="text-2xl font-bold font-mono text-[#0B1F3A]">
+                        {pipelineData.district_risk_score.toFixed(1)} / 100
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                          PRIORITY_BADGES[pipelineData.district_risk_level]?.bg || 'bg-slate-50'
+                        } ${PRIORITY_BADGES[pipelineData.district_risk_level]?.text || 'text-slate-700'} ${
+                          PRIORITY_BADGES[pipelineData.district_risk_level]?.border || 'border-slate-200'
+                        }`}
+                      >
+                        {pipelineData.district_risk_level}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 4. Downstream 10-Pool Demand */}
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3.5 flex flex-col justify-between">
+                    <span className="text-xs font-medium text-[#5D6878]">Resource Demand Status</span>
+                    <div className="mt-1">
+                      <span className="text-xl font-bold font-mono text-emerald-700">
+                        10 Pools Active
+                      </span>
+                      <span className="text-[11px] text-[#7C8796] block mt-0.5">
+                        210 institutional mappings mapped
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* SECTION 2: INTERACTIVE SIDE-BY-SIDE BREAKDOWN */}
-              {breakdownResult && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                  {/* LEFT PANEL: 4 CATEGORY CARDS */}
-                  <div className="lg:col-span-5 space-y-2">
-                    <div className="flex items-center justify-between h-6 mb-1">
-                      <div className="flex items-center gap-2">
-                        <Layers className="h-4 w-4 text-[#1769AA]" />
-                        <h3 className="text-[13px] font-bold text-[#0B1F3A]">
-                          Predicted Crime Categories
-                        </h3>
-                      </div>
-                      {selectedCategoryId !== null && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCategoryId(null)}
-                          className="text-[11px] font-semibold text-[#1769AA] hover:underline cursor-pointer"
-                        >
-                          Show All (21)
-                        </button>
-                      )}
+              {/* SECTION B: INDIVIDUAL CRIME PREDICTIONS TABLE (21 CANONICAL CRIME TYPES) */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 mb-3 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                      <BarChart2 className="h-4 w-4" />
                     </div>
-
-                    <div className="space-y-2">
-                      {displayedCategories.map((cat) => {
-                        const style = CATEGORY_STYLES[cat.category_name] || CATEGORY_STYLES['Other Crime'];
-                        const Icon = style.icon;
-                        const isSelected = selectedCategoryId === cat.category_id;
-
-                        return (
-                          <div
-                            key={cat.category_id}
-                            onClick={() =>
-                              setSelectedCategoryId(isSelected ? null : cat.category_id)
-                            }
-                            className={`rounded-lg border px-3.5 py-3 transition-colors duration-150 cursor-pointer ${
-                              isSelected
-                                ? 'border-[#1769AA] bg-blue-50/50 shadow-xs'
-                                : 'border-[#D9E1EA] bg-white hover:border-[#BAC7D5] hover:bg-slate-50/60'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className={`rounded p-1 ${style.bg} ${style.text} border ${style.border} shrink-0`}>
-                                  <Icon className="h-3.5 w-3.5" />
-                                </div>
-                                <span className="text-[13px] font-bold text-[#0B1F3A] truncate">
-                                  {cat.category_name}
-                                </span>
-                                <span className="text-[11px] text-[#5D6878] shrink-0">
-                                  ({cat.crime_types_count} types)
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 font-mono text-[12px] shrink-0 ml-2">
-                                <span className="font-bold text-[#0B1F3A]">
-                                  {cat.predicted_count.toFixed(2)}
-                                </span>
-                                <span className="text-[#5D6878]">
-                                  ({cat.share_of_total_percent.toFixed(1)}%)
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-2">
-                              <div
-                                className={`h-full rounded-full ${style.bar}`}
-                                style={{ width: `${Math.min(cat.share_of_total_percent, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0B1F3A]">
+                        Individual Crime-Wise Predictions (All 21 Canonical Crime Types)
+                      </h3>
+                      <p className="text-xs text-[#5D6878]">
+                        Exact model predicted counts, trends, and Phase 9 risk-prioritized threat rankings
+                      </p>
                     </div>
-
-                    {breakdownResult.categories.length > 2 && (
-                      <div className="pt-1.5 border-t border-slate-100 flex items-center justify-end shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setShowAllCategories((prev) => !prev)}
-                          className="text-[12px] font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors cursor-pointer"
-                        >
-                          {showAllCategories ? 'Show Less' : 'View All'}
-                        </button>
-                      </div>
-                    )}
                   </div>
 
-                  {/* RIGHT PANEL: PREDICTED CRIME TYPES */}
-                  <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs min-h-[300px] flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5 shrink-0">
-                        <div className="flex items-center gap-2">
-                          <BarChart2 className="h-4 w-4 text-[#1769AA]" />
-                          <h3 className="text-[13px] font-bold text-[#0B1F3A]">
-                            {selectedCategory
-                              ? `Predicted Crime Types — ${selectedCategory.category_name}`
-                              : 'Predicted Crime Types — All Categories'}
-                          </h3>
-                        </div>
-                        <span className="text-xs text-[#5D6878] font-medium">
-                          {sortedCrimeTypes.length} {sortedCrimeTypes.length === 1 ? 'type' : 'types'}
-                        </span>
-                      </div>
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {['ALL', 'Violent Crime', 'Other Crime', 'Traffic Fatality', 'Fire Accident'].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCrimeCategoryFilter(cat)}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                          crimeCategoryFilter === cat
+                            ? 'bg-[#1769AA] text-white shadow-2xs'
+                            : 'bg-slate-100 text-[#5D6878] hover:bg-slate-200'
+                        }`}
+                      >
+                        {cat === 'ALL' ? 'All (21 Types)' : cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                      <div className="space-y-2 overflow-y-auto max-h-[360px] pr-1">
-                        {displayedCrimeTypes.map((t, idx) => {
-                          const pctOfMax = maxTypeCount > 0 ? (t.predicted_count / maxTypeCount) * 100 : 0;
-                          const sevBadge = SEVERITY_BADGES[t.severity_level] || SEVERITY_BADGES.LOW;
-                          const catStyle = CATEGORY_STYLES[t.category_name] || CATEGORY_STYLES['Other Crime'];
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[10px] font-semibold uppercase text-[#5D6878]">
+                        <th className="py-2.5 pl-3 w-12"># Rank</th>
+                        <th className="py-2.5 px-3">Crime Type</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-3 text-right">Predicted Incidents</th>
+                        <th className="py-2.5 px-3 w-36">Caseload Volume</th>
+                        <th className="py-2.5 px-3 text-right">Baseline Comparison</th>
+                        <th className="py-2.5 px-3 text-center">Trend</th>
+                        <th className="py-2.5 pr-3 text-center">Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 whitespace-nowrap">
+                      {filteredCrimePredictions.map((cp, idx) => {
+                        const pctOfMax = maxCrimeCount > 0 ? (cp.predicted_count / maxCrimeCount) * 100 : 0;
+                        const catStyle = CATEGORY_STYLES[cp.category_name] || CATEGORY_STYLES['Other Crime'];
+                        const prioBadge = PRIORITY_BADGES[cp.priority_level] || PRIORITY_BADGES.LOW;
 
-                          return (
-                            <div
-                              key={t.crime_type_id}
-                              className="group rounded-md border border-slate-100 p-2 hover:bg-slate-50/70 transition-colors duration-150"
-                            >
-                              <div className="flex items-center justify-between text-[12px] mb-1 gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="font-mono text-[11px] font-bold text-[#5D6878] w-5 shrink-0">
-                                    #{idx + 1}
+                        return (
+                          <tr key={cp.crime_type_id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-2.5 pl-3 font-mono font-bold text-slate-500">
+                              #{idx + 1}
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-[#0B1F3A]">
+                              <div className="flex items-center gap-1.5">
+                                <span>{cp.crime_name}</span>
+                                <span className="font-mono text-[9.5px] text-[#7C8796] bg-[#F4F7FA] px-1.5 py-0.2 rounded border border-[#E2E8F0]">
+                                  {cp.crime_code}
+                                </span>
+                                {cp.is_sparse && (
+                                  <span className="text-[9px] font-medium text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                                    Rare
                                   </span>
-                                  <span className="font-semibold text-[#0B1F3A] truncate" title={t.crime_name}>
-                                    {t.crime_name}
-                                  </span>
-                                  <span className="font-mono text-[10px] text-[#7C8796] bg-[#F4F7FA] px-1.5 py-0.5 rounded border border-[#E2E8F0] shrink-0">
-                                    {t.crime_code}
-                                  </span>
-                                  {t.is_sparse && (
-                                    <span
-                                      className="text-[9.5px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 shrink-0"
-                                      title="Low historical frequency in this district"
-                                    >
-                                      Rare
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span
-                                    className={`text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border ${sevBadge.bg} ${sevBadge.text} ${sevBadge.border}`}
-                                  >
-                                    {t.severity_level}
-                                  </span>
-                                  <div className="text-right">
-                                    <span className="font-mono font-bold text-[#0B1F3A] text-[12px]">
-                                      {t.predicted_count.toFixed(2)}
-                                    </span>
-                                    <span className="font-mono text-[10.5px] text-[#5D6878] ml-1.5">
-                                      ({selectedCategory
-                                        ? `${t.share_of_category_percent.toFixed(1)}%`
-                                        : `${t.share_of_total_percent.toFixed(1)}%`})
-                                    </span>
-                                  </div>
-                                </div>
+                                )}
                               </div>
-
-                              <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            </td>
+                            <td className="py-2.5 px-3 text-[#5D6878]">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-medium ${catStyle.bg} ${catStyle.text} border ${catStyle.border}`}>
+                                {cp.category_name}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-[13px] text-[#0B1F3A]">
+                              {cp.predicted_count > 0 ? (
+                                cp.predicted_count.toFixed(2)
+                              ) : (
+                                <span className="text-slate-400 font-normal text-xs">0.00 (None)</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full ${catStyle.bar}`}
-                                  style={{ width: `${Math.max(pctOfMax, 2)}%` }}
+                                  style={{ width: `${Math.max(pctOfMax, cp.predicted_count > 0 ? 3 : 0)}%` }}
                                 />
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                              <span className="text-[9.5px] text-slate-400 block mt-0.5">
+                                {cp.share_of_total_percent.toFixed(1)}% of district total
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono text-slate-500 text-[11px]">
+                              {cp.historical_baseline_count !== null && cp.historical_baseline_count !== undefined ? (
+                                <span>
+                                  {cp.historical_baseline_count.toFixed(2)}{' '}
+                                  {cp.percentage_change !== null && cp.percentage_change !== undefined && (
+                                    <span
+                                      className={
+                                        cp.percentage_change > 0
+                                          ? 'text-rose-600 font-semibold'
+                                          : 'text-emerald-600 font-semibold'
+                                      }
+                                    >
+                                      ({cp.percentage_change > 0 ? '+' : ''}
+                                      {cp.percentage_change.toFixed(1)}%)
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span
+                                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10.5px] font-semibold ${
+                                  cp.trend_status === 'Increasing'
+                                    ? 'bg-rose-50 text-rose-700'
+                                    : cp.trend_status === 'Decreasing'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {cp.trend_status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 pr-3 text-center">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${prioBadge.bg} ${prioBadge.text} ${prioBadge.border}`}
+                              >
+                                {cp.priority_level}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                    {sortedCrimeTypes.length > TYPE_COMPACT_LIMIT && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setShowAllTypes((prev) => !prev)}
-                          className="text-[12px] font-semibold text-[#1769AA] hover:text-[#0B1F3A] transition-colors cursor-pointer"
+              {/* SECTION C: VISUALIZATIONS */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Visual 1: Crime-Wise Predicted Incidents Bar Chart */}
+                <div className="lg:col-span-6 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <BarChart2 className="h-4 w-4 text-[#1769AA]" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
+                        Top Projected Crime Types (Incident Count)
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {topCrimesChartData.length} Active Crimes
+                    </span>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    {topCrimesChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={topCrimesChartData}
+                          layout="vertical"
+                          margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
                         >
-                          {showAllTypes ? 'Show Less' : 'View All'}
-                        </button>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
+                          <XAxis type="number" stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 10 }} />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            stroke="#CBD5E1"
+                            tick={{ fill: '#334155', fontSize: 10 }}
+                            width={110}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#FFFFFF',
+                              borderColor: '#E2E8F0',
+                              borderRadius: '0.5rem',
+                              fontSize: '0.75rem',
+                            }}
+                            formatter={(val: any) => [`${Number(val).toFixed(2)} incidents`, 'Predicted Count']}
+                          />
+                          <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                            {topCrimesChartData.map((entry, index) => {
+                              const style = CATEGORY_STYLES[entry.category] || CATEGORY_STYLES['Other Crime'];
+                              const barColor =
+                                style.bar === 'bg-rose-600'
+                                  ? '#E11D48'
+                                  : style.bar === 'bg-amber-500'
+                                  ? '#F59E0B'
+                                  : style.bar === 'bg-emerald-600'
+                                  ? '#059669'
+                                  : '#1769AA';
+                              return <Cell key={`cell-${index}`} fill={barColor} />;
+                            })}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                        No non-zero crime predictions for this district.
                       </div>
                     )}
                   </div>
                 </div>
-              )}
+
+                {/* Visual 2: Historical Actuals vs Forecast Timeline */}
+                <div className="lg:col-span-6 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp className="h-4 w-4 text-[#1769AA]" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
+                        Historical Actuals vs Forecast Trend
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Strict Separation (≤2025 vs ≥2026)
+                    </span>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    {chartPoints.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartPoints} margin={{ top: 5, right: 10, left: 5, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                          <XAxis dataKey="period" stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 10 }} />
+                          <YAxis stroke="#CBD5E1" tick={{ fill: '#64748B', fontSize: 10 }} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#FFFFFF',
+                              borderColor: '#E2E8F0',
+                              borderRadius: '0.5rem',
+                              fontSize: '0.75rem',
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="top"
+                            height={28}
+                            formatter={(value) => {
+                              if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Actuals</span>;
+                              if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Projected Estimate</span>;
+                              return <span className="text-xs text-slate-500">{value}</span>;
+                            }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="actual"
+                            name="actual"
+                            stroke="#1769AA"
+                            strokeWidth={2}
+                            fill="#1769AA"
+                            fillOpacity={0.12}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="current_future"
+                            name="current_future"
+                            stroke="#059669"
+                            strokeWidth={2.5}
+                            dot={{ r: 2.5, fill: '#059669' }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                        No timeline points available.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual 3: Category Breakdown Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {pipelineData.category_distribution.map((cat: any) => {
+                  const style = CATEGORY_STYLES[cat.category_name] || CATEGORY_STYLES['Other Crime'];
+                  const Icon = style.icon;
+                  return (
+                    <div key={cat.category_id} className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <div className={`rounded p-1 ${style.bg} ${style.text} border ${style.border}`}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-[#0B1F3A]">{cat.category_name}</span>
+                        </div>
+                        <span className="font-mono text-xs font-bold text-[#0B1F3A]">
+                          {cat.predicted_count.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${style.bar}`}
+                          style={{ width: `${Math.min(cat.share_of_total_percent, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[10.5px] text-[#5D6878]">
+                        <span>{cat.crime_types_count} crime types</span>
+                        <span className="font-semibold">{cat.share_of_total_percent.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* SECTION D: PROMINENT OPTIMIZE RESOURCES ACTION BANNER */}
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-lg p-2 bg-emerald-100 text-emerald-800">
+                    <Sliders className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-950">
+                      Phase 10 AI Preventive Resource Optimization
+                    </h3>
+                    <p className="text-xs text-emerald-800">
+                      Convert these {pipelineData.canonical_crime_predictions.length} crime predictions into optimal preventive resource allocations across all 10 resource pools.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleScrollToResources}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold bg-[#1769AA] text-white shadow-2xs hover:bg-[#12558a] transition-colors cursor-pointer"
+                  >
+                    <Sliders className="h-3.5 w-3.5" />
+                    <span>View District Resource Allocations</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNavigateToStudio}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100/70 transition-colors cursor-pointer"
+                  >
+                    <span>Open Optimization Studio</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-emerald-700" />
+                  </button>
+                </div>
+              </div>
+
+              {/* PART 4: SECTION E: 10-POOL RESOURCE RECOMMENDATIONS FOR THIS DISTRICT */}
+              <div ref={resourcesRef} className="space-y-4 pt-2">
+                <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
+                      <Sliders className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0B1F3A]">
+                        Resource Recommendations — {pipelineData.district_name} ({pipelineData.forecast_period.substring(0, 7)})
+                      </h3>
+                      <p className="text-xs text-[#5D6878]">
+                        Allocations derived via Scipy Integer MILP based on 21 predicted crime types and standing state capacity
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      State: {pipelineData.state_name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowResourceSection((prev) => !prev)}
+                      className="inline-flex items-center gap-1 text-xs text-[#5D6878] hover:text-[#0B1F3A] px-2 py-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      {showResourceSection ? (
+                        <>
+                          <span>Collapse</span>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Expand</span>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {showResourceSection && (
+                  <>
+                    {/* 10 Thematic Pool Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {Object.entries(pipelineData.pool_summaries).map(([cat, pool]) => {
+                    const meta = POOL_METADATA[cat] || {
+                      name: cat,
+                      unit: 'Units',
+                      icon: Users,
+                      color: 'text-slate-600',
+                      badgeBg: 'bg-slate-50',
+                      badgeText: 'text-slate-700',
+                      badgeBorder: 'border-slate-200',
+                    };
+                    const Icon = meta.icon;
+                    const isConfigured = pool.is_configured !== false;
+
+                    return (
+                      <div
+                        key={cat}
+                        className={`rounded-lg border p-3 flex flex-col justify-between shadow-2xs ${
+                          isConfigured ? 'border-[#D9E1EA] bg-white' : 'border-amber-200 bg-amber-50/30'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                              <span className="text-xs font-bold text-[#0B1F3A] truncate" title={meta.name}>
+                                {meta.name}
+                              </span>
+                            </div>
+                            {pool.is_external_partner && (
+                              <span className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1 py-0.2 rounded">
+                                Partner
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="text-base font-bold font-mono text-[#0B1F3A]">
+                              {isConfigured ? (
+                                <>
+                                  {pool.allocated}{' '}
+                                  <span className="text-[10px] font-normal text-slate-500">{pool.unit_of_measure || meta.unit}</span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-semibold text-amber-800">Unconfigured</span>
+                              )}
+                            </span>
+                            <span className="text-[10.5px] font-mono text-slate-500">
+                              Dem: {pool.demand}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400">Pool Avail:</span>
+                          <span className="font-mono font-semibold text-slate-600">
+                            {isConfigured ? `${pool.capacity} ${pool.unit_of_measure || meta.unit}` : '0 (Audit Req)'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Granular Crime-to-Resource Operational Breakdown Table */}
+                <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 mb-3 gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
+                        <SlidersHorizontal className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
+                          Crime-Specific Demand & Operational Allocation Breakdown
+                        </h4>
+                        <p className="text-[11px] text-[#5D6878]">
+                          Each predicted crime type mapped to its required preventive pools via institutional coefficients
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Filter by Pool Dropdown */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Filter Pool:</span>
+                      <select
+                        aria-label="Filter by Pool"
+                        value={resourcePoolFilter}
+                        onChange={(e) => setResourcePoolFilter(e.target.value)}
+                        className="h-8 rounded border border-[#D9E1EA] bg-white py-1 px-2.5 text-xs font-medium text-[#172033] shadow-2xs cursor-pointer"
+                      >
+                        <option value="ALL">All 10 Pools</option>
+                        {Object.keys(POOL_METADATA).map((p) => (
+                          <option key={p} value={p}>
+                            {POOL_METADATA[p].name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[750px]">
+                      <thead>
+                        <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[10px] font-semibold uppercase text-[#5D6878]">
+                          <th className="py-2.5 pl-3">Predicted Crime Type</th>
+                          <th className="py-2.5 px-3 text-right">Forecast Incidents</th>
+                          <th className="py-2.5 px-3">Resource Pool</th>
+                          <th className="py-2.5 px-3 text-right">Coefficient</th>
+                          <th className="py-2.5 px-3 text-right">Calculated Demand</th>
+                          <th className="py-2.5 px-3 text-right">District Allocation</th>
+                          <th className="py-2.5 px-3 text-right">Deficit</th>
+                          <th className="py-2.5 pr-3">Operational Rationale</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredResourceRecs.map((rec, idx) => {
+                          const meta = POOL_METADATA[rec.resource_category] || POOL_METADATA.PERSONNEL;
+                          const Icon = meta.icon;
+
+                          return (
+                            <tr key={`${rec.crime_type_id}-${rec.resource_category}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-2 pl-3 font-semibold text-[#0B1F3A]">
+                                {rec.crime_name}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-slate-600">
+                                {rec.predicted_count.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-medium ${meta.badgeBg} ${meta.badgeText} border ${meta.badgeBorder}`}>
+                                  <Icon className="h-3 w-3" />
+                                  <span>{meta.name}</span>
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-slate-500">
+                                {rec.coefficient.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-semibold text-[#1769AA]">
+                                {rec.raw_demand.toFixed(2)} {rec.unit_of_measure}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
+                                {rec.is_configured ? (
+                                  `${rec.allocated_quantity} ${rec.unit_of_measure}`
+                                ) : (
+                                  <span className="text-amber-700 font-normal text-[11px]">0 (Unconfigured)</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-slate-500">
+                                {rec.shortage > 0 ? (
+                                  <span className="text-rose-600 font-semibold">{rec.shortage}</span>
+                                ) : (
+                                  <span className="text-emerald-600">0</span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-3 text-[11px] text-[#5D6878] max-w-xs truncate" title={rec.operational_rationale || ''}>
+                                {rec.operational_rationale || 'Standard preventive deployment protocol.'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="mt-3 text-[10.5px] text-[#5D6878] italic">
+                    * {pipelineData.planning_disclaimer}
+                  </p>
+                </div>
+                </>
+                )}
+              </div>
             </div>
           )}
         </div>

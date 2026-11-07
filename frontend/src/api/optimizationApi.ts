@@ -17,6 +17,7 @@ import type {
   DistrictCrimeDemandResponse,
   CrimeSpecificOptimizationRequest,
   CrimeSpecificOptimizationResponse,
+  DistrictPipelineForecastResponse,
 } from '../types';
 
 export interface AllocationFilterParams {
@@ -223,6 +224,22 @@ export const optimizationApi = {
     const response = await apiClient.post<CrimeSpecificOptimizationResponse>(
       '/optimization/crime-optimize',
       body
+    );
+    return response.data;
+  },
+
+  /**
+   * Retrieve integrated district crime predictions (21 canonical types, trend, risk)
+   * coupled with 10-pool resource demand calculations and Scipy integer MILP recommended allocations.
+   */
+  getDistrictPipelineForecast: async (params: {
+    district_id: number;
+    year?: number;
+    month?: number;
+  }): Promise<DistrictPipelineForecastResponse> => {
+    const response = await apiClient.get<DistrictPipelineForecastResponse>(
+      '/optimization/district-pipeline-forecast',
+      { params }
     );
     return response.data;
   },

@@ -36,6 +36,7 @@ from backend.app.models.crime import CrimeType, CrimeCategory
 from backend.app.models.intelligence import CrimeRiskScore
 from backend.app.models.resources import ResourceType
 from backend.app.services.prediction_service import PredictionService
+from backend.app.repositories.prediction_repository import PredictionRepository
 from backend.app.services.risk_service import RiskService, CALCULATION_VERSION as RISK_VERSION
 from backend.app.services.crime_mapping_service import CrimeMappingService
 from backend.app.schemas.optimization import (
@@ -45,6 +46,9 @@ from backend.app.schemas.optimization import (
     CrimeSpecificOptimizationRequest,
     CrimeSpecificOptimizationResponse,
     DistrictCrimeAllocationItem,
+    CanonicalCrimePredictionItem,
+    DistrictResourceRecommendationDetail,
+    DistrictPipelineForecastResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -649,3 +653,201 @@ class CrimeResourceOptimizationService:
             shortage_alerts=shortage_alerts,
             planning_disclaimer=PLANNING_DISCLAIMER,
         )
+
+    @classmethod
+    def get_district_pipeline_forecast(
+        cls,
+        db: Session,
+        district_id: int,
+        year: int = 2026,
+        month: int = 11,
+    ) -> DistrictPipelineForecastResponse:
+        """
+        Produces the complete integrated forecast and 10-pool resource optimization pipeline
+        for a selected district and forecast month:
+        1. Calls Phase 8 ML model prediction for district + month.
+        2. Computes the 21 canonical crime types with trends and Phase 9 risk priorities.
+        3. Retrieves the historical vs forward timeline comparison points.
+        4. Calculates the 10-pool resource demands using the 210 institutional mappings.
+        5. Runs Scipy Integer MILP optimization under standing state capacity.
+        6. Synthesizes crime-specific resource recommendations with demand, allocation,
+           shortage, and operational rationales.
+        """
+        # 1. District information & lineage resolution
+        district = db.query(District).filter(District.id == district_id, District.is_current_admin == True).first()
+        if not district:
+            district = db.query(District).filter(District.id == district_id).first()
+        if not district:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"District with ID {district_id} not found."
+            )
+
+        state = db.query(State).filter(State.id == district.state_id).first()
+        state_name = state.state_name if state else "Unknown State"
+
+        parent_district_name = None
+        is_derived = False
+        if not district.is_census_2011 and district.parent_district_id:
+            parent_dist = db.query(District).filter(District.id == district.parent_district_id).first()
+            if parent_dist:
+                parent_district_name = parent_dist.district_name
+                is_derived = True
+
+        period_str = f"{year}-{month:02d}-01"
+
+        # 2. Phase 8 District Month Prediction (Overall total, CI, and trend)
+        pred_data = PredictionRepository.get_district_month_prediction(
+            db, district_id=district_id, year=year, month=month
+        )
+        total_crimes = float(pred_data.get("display_value", 0.0) or 0.0)
+        interval_lower = pred_data.get("prediction_interval_lower")
+        interval_upper = pred_data.get("prediction_interval_upper")
+        trend = pred_data.get("crime_level", "Similar")
+        if trend == "Moderate":
+            trend = "Similar"
+
+        # 3. Phase 8 Breakdown (21 crime types + 4 categories)
+        breakdown_data = PredictionRepository.get_prediction_breakdown(
+            db, district_id=district_id, year=year, month=month
+        )
+        crime_types_raw = breakdown_data.get("crime_types", []) if breakdown_data else []
+        categories_raw = breakdown_data.get("categories", []) if breakdown_data else []
+
+        # 4. Phase 8 Timeline Points (Historical vs Predicted)
+        timeline_data = PredictionRepository.get_actual_vs_predicted(db, district_id=district_id)
+        timeline_pts = []
+        if timeline_data and "comparison_points" in timeline_data:
+            for pt in timeline_data["comparison_points"]:
+                p = pt["period"][:7]
+                hist_val = pt.get("actual_count") if pt.get("actual_count") is not None else pt.get("parent_baseline_count")
+                is_hist = hist_val is not None and p <= "2025-12"
+                pred_val = pt.get("predicted_count")
+                is_pred = pred_val is not None and p >= "2026-01"
+                timeline_pts.append({
+                    "period": p,
+                    "actual": hist_val if is_hist else None,
+                    "predicted": pred_val if is_pred else None,
+                })
+
+        # 5. Phase 9 Risk Assessment Context
+        risk_row = db.query(CrimeRiskScore).filter(
+            CrimeRiskScore.district_id == district_id,
+            CrimeRiskScore.period_year == year,
+            CrimeRiskScore.period_month == month
+        ).first()
+        district_risk_score = float(risk_row.overall_risk_score) if risk_row else 50.0
+        district_risk_level = risk_row.risk_level if risk_row else "MODERATE"
+
+        # 6. Build Canonical Crime Predictions (All 21 types guaranteed)
+        canonical_preds: List[CanonicalCrimePredictionItem] = []
+        for ct in crime_types_raw:
+            p_count = round(float(ct.get("predicted_count", 0.0)), 2)
+            sev = ct.get("severity_level", "LOW")
+
+            # Priority assignment based on crime severity and district risk score
+            if sev == "CRITICAL" or district_risk_level == "CRITICAL":
+                priority = "CRITICAL"
+            elif sev == "HIGH" or district_risk_level in ["HIGH", "CRITICAL"]:
+                priority = "HIGH"
+            elif sev == "MEDIUM":
+                priority = "MEDIUM"
+            else:
+                priority = "LOW"
+
+            canonical_preds.append(
+                CanonicalCrimePredictionItem(
+                    crime_type_id=ct["crime_type_id"],
+                    crime_code=ct["crime_code"],
+                    crime_name=ct["crime_name"],
+                    category_id=ct["category_id"],
+                    category_name=ct["category_name"],
+                    severity_level=sev,
+                    predicted_count=p_count,
+                    historical_baseline_count=ct.get("historical_baseline_count"),
+                    numerical_change=ct.get("numerical_change"),
+                    percentage_change=ct.get("percentage_change"),
+                    trend_status=ct.get("trend_status", "Stable"),
+                    priority_level=priority,
+                    share_of_total_percent=round(float(ct.get("share_of_total_percent", 0.0)), 1),
+                    is_sparse=ct.get("is_sparse", False),
+                )
+            )
+        # Sort canonical predictions by predicted_count descending, then severity
+        canonical_preds.sort(key=lambda x: (x.predicted_count, 1 if x.severity_level == "CRITICAL" else 2), reverse=True)
+
+        # 7. Phase 10 Demand Calculation for District
+        demand_res = cls.calculate_district_crime_demand(
+            db, district_id=district_id, year=year, month=month
+        )
+
+        # 8. Run State-Level Optimization across all 10 pools
+        opt_req = CrimeSpecificOptimizationRequest(
+            state_id=district.state_id,
+            assessment_period=period_str,
+            scenario_name=f"Forecast Pipeline: {district.district_name}",
+        )
+        opt_res = cls.run_crime_specific_optimization(db, opt_req)
+
+        # Find allocations for this district
+        district_alloc_map: Dict[str, DistrictCrimeAllocationItem] = {}
+        for a in opt_res.allocations:
+            if a.district_id == district_id:
+                district_alloc_map[a.resource_category] = a
+
+        # 9. Build detailed Crime-to-Resource Recommendations
+        recs: List[DistrictResourceRecommendationDetail] = []
+        for db_item in demand_res.crime_breakdowns:
+            pool = db_item.shared_pool_category
+            pool_summary = opt_res.pool_summaries.get(pool, {})
+            is_conf = pool_summary.get("is_configured", False)
+            is_partner = pool_summary.get("is_external_partner", False)
+
+            # Check allocation for this pool in this district
+            d_alloc_item = district_alloc_map.get(pool)
+            alloc_qty = d_alloc_item.allocated_quantity if d_alloc_item else 0
+            shortage_qty = d_alloc_item.shortage if d_alloc_item else int(np.ceil(db_item.raw_demand))
+
+            recs.append(
+                DistrictResourceRecommendationDetail(
+                    crime_type_id=db_item.crime_type_id,
+                    crime_name=db_item.crime_name,
+                    predicted_count=db_item.predicted_crime_count,
+                    resource_category=pool,
+                    unit_of_measure=db_item.unit_of_measure or "Units",
+                    coefficient=db_item.coefficient,
+                    raw_demand=db_item.raw_demand,
+                    allocated_quantity=alloc_qty,
+                    shortage=shortage_qty,
+                    is_configured=is_conf,
+                    is_external_partner=is_partner,
+                    operational_rationale=db_item.operational_rationale,
+                )
+            )
+
+        return DistrictPipelineForecastResponse(
+            district_id=district.id,
+            district_name=district.district_name,
+            state_id=district.state_id,
+            state_name=state_name,
+            parent_district_id=district.parent_district_id,
+            parent_district_name=parent_district_name,
+            is_derived_from_parent=is_derived,
+            forecast_period=period_str,
+            forecast_year=year,
+            forecast_month=month,
+            total_predicted_crimes=total_crimes,
+            prediction_interval_lower=interval_lower,
+            prediction_interval_upper=interval_upper,
+            overall_trend=trend,
+            district_risk_score=district_risk_score,
+            district_risk_level=district_risk_level,
+            canonical_crime_predictions=canonical_preds,
+            category_distribution=categories_raw,
+            timeline_points=timeline_pts,
+            pool_summaries=opt_res.pool_summaries,
+            resource_recommendations=recs,
+            shortage_alerts=opt_res.shortage_alerts,
+            planning_disclaimer=PLANNING_DISCLAIMER,
+        )
+

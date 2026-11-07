@@ -618,6 +618,72 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         ]
         self.assertGreaterEqual(len(unconfigured_alerts), len(unconfigured_pools))
 
+    def test_15_district_pipeline_forecast_integration(self):
+        """15. Verifies end-to-end District Pipeline Forecast endpoint integrating Phase 8, 9, and 10."""
+        # 1. Unauthenticated -> 401
+        unauth_resp = client.get("/api/v1/optimization/district-pipeline-forecast?district_id=1&year=2026&month=11")
+        self.assertEqual(unauth_resp.status_code, 401)
+
+        # 2. Missing params -> 422
+        bad_resp = client.get("/api/v1/optimization/district-pipeline-forecast", headers=self.analyst_headers)
+        self.assertEqual(bad_resp.status_code, 422)
+
+        # 3. Authenticated valid request -> 200
+        resp = client.get(
+            "/api/v1/optimization/district-pipeline-forecast?district_id=1&year=2026&month=11",
+            headers=self.analyst_headers,
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+
+        # Check district and forecast period
+        self.assertEqual(data["district_id"], 1)
+        self.assertEqual(data["forecast_period"], "2026-11-01")
+        self.assertGreater(data["total_predicted_incidents"], 0.0)
+        self.assertLessEqual(data["conformal_interval_lower"], data["total_predicted_incidents"])
+        self.assertGreaterEqual(data["conformal_interval_upper"], data["total_predicted_incidents"])
+        self.assertIn(data["overall_trend"], ["HIGHER", "SIMILAR", "LOWER"])
+
+        # Check 21 canonical crime predictions
+        self.assertEqual(len(data["canonical_predictions"]), 21)
+        crime_types = [p["crime_type"] for p in data["canonical_predictions"]]
+        self.assertEqual(len(set(crime_types)), 21)
+
+        # Check 4 categories
+        self.assertEqual(len(data["category_breakdowns"]), 4)
+        cat_names = {c["category"] for c in data["category_breakdowns"]}
+        expected_cats = {"Violent Crime", "Other Crime", "Traffic Fatality", "Fire Accident"}
+        self.assertEqual(cat_names, expected_cats)
+
+        # Check 10 resource pool summaries
+        self.assertEqual(len(data["pool_summaries"]), 10)
+        unconfigured_pools = [
+            "SURVEILLANCE", "FORENSIC", "CYBER_TECHNOLOGY",
+            "EMERGENCY_RESPONSE", "COMMUNICATION", "TRAFFIC_SAFETY"
+        ]
+        for pool in unconfigured_pools:
+            p_info = data["pool_summaries"][pool]
+            self.assertFalse(p_info["is_configured"])
+            self.assertEqual(p_info["allocated"], 0)
+
+        configured_pools = ["PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"]
+        for pool in configured_pools:
+            p_info = data["pool_summaries"][pool]
+            self.assertTrue(p_info["is_configured"])
+            self.assertGreater(p_info["capacity"], 0)
+            self.assertLessEqual(p_info["allocated"], p_info["capacity"])
+
+        # Check granular recommendations
+        self.assertGreater(len(data["granular_recommendations"]), 0)
+        first_rec = data["granular_recommendations"][0]
+        self.assertIn("predicted_crime_type", first_rec)
+        self.assertIn("required_resource_category", first_rec)
+        self.assertIn("coefficient", first_rec)
+        self.assertIn("raw_demand", first_rec)
+        self.assertIn("allocated_quantity", first_rec)
+        self.assertIn("shortage", first_rec)
+        self.assertIn("operational_rationale", first_rec)
+
 
 if __name__ == "__main__":
     unittest.main()

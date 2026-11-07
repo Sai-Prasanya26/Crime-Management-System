@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Sliders,
   Users,
@@ -59,6 +60,8 @@ type TabType =
   | 'recommendations';
 
 export const ResourceOptimizationPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+
   // Navigation & filter state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [states, setStates] = useState<StateItem[]>([]);
@@ -67,6 +70,29 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
   const [isDistrictsLoading, setIsDistrictsLoading] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Handle URL search params on mount or param change
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const stateIdParam = searchParams.get('state_id');
+    const districtIdParam = searchParams.get('district_id');
+
+    if (tabParam) {
+      setActiveTab(tabParam as TabType);
+    }
+    if (stateIdParam) {
+      const parsedStateId = parseInt(stateIdParam, 10);
+      if (!isNaN(parsedStateId)) {
+        setSelectedStateId(parsedStateId);
+      }
+    }
+    if (districtIdParam) {
+      const parsedDistrictId = parseInt(districtIdParam, 10);
+      if (!isNaN(parsedDistrictId)) {
+        setSelectedDistrictId(parsedDistrictId);
+      }
+    }
+  }, [searchParams]);
 
   // Loading & error state
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -925,6 +951,8 @@ export const ResourceOptimizationPage: React.FC = () => {
               states={states}
               selectedStateId={selectedStateId}
               onStateSelect={(id) => setSelectedStateId(id)}
+              initialDistrictId={selectedDistrictId}
+              initialPeriod={searchParams.get('period') || undefined}
             />
           )}
 

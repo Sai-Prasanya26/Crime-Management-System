@@ -34,6 +34,7 @@ from backend.app.schemas.optimization import (
     DistrictCrimeDemandResponse,
     CrimeSpecificOptimizationRequest,
     CrimeSpecificOptimizationResponse,
+    DistrictPipelineForecastResponse,
 )
 from backend.app.services.optimization_service import OptimizationService
 from backend.app.services.crime_mapping_service import CrimeMappingService
@@ -327,5 +328,24 @@ def execute_crime_specific_optimization(
     return CrimeResourceOptimizationService.run_crime_specific_optimization(
         db, req=req, user_id=current_user.id
     )
+
+
+@router.get(
+    "/district-pipeline-forecast",
+    response_model=DistrictPipelineForecastResponse,
+    summary="Get District Integrated Forecast and 10-Pool Resource Optimization Pipeline",
+    description="Retrieve the unified district forecast (21 canonical crime types, timeline, trends, Phase 9 risk) coupled with Phase 10 demand calculations and Scipy integer MILP resource allocations across all 10 pools.",
+)
+def get_district_pipeline_forecast(
+    district_id: int = Query(..., ge=1, description="Unique ID of the district"),
+    year: int = Query(2026, ge=2020, le=2030, description="Forecast target year"),
+    month: int = Query(11, ge=1, le=12, description="Forecast target month (1 to 12)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DistrictPipelineForecastResponse:
+    return CrimeResourceOptimizationService.get_district_pipeline_forecast(
+        db, district_id=district_id, year=year, month=month
+    )
+
 
 

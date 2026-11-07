@@ -31,12 +31,16 @@ interface ConstrainedOptimizationViewProps {
   states: StateItem[];
   selectedStateId?: number;
   onStateSelect: (stateId: number | undefined) => void;
+  initialDistrictId?: number;
+  initialPeriod?: string;
 }
 
 export const ConstrainedOptimizationView: React.FC<ConstrainedOptimizationViewProps> = ({
   states,
   selectedStateId,
   onStateSelect,
+  initialDistrictId,
+  initialPeriod,
 }) => {
   // View mode: Crime-Specific (Phase 10) vs Single-Resource Solver (Phase 10.1)
   const [viewMode, setViewMode] = useState<'CRIME_SPECIFIC' | 'SINGLE_RESOURCE'>('CRIME_SPECIFIC');
@@ -262,6 +266,8 @@ export const ConstrainedOptimizationView: React.FC<ConstrainedOptimizationViewPr
           states={states}
           selectedStateId={selectedStateId}
           onStateSelect={onStateSelect}
+          initialDistrictId={initialDistrictId}
+          initialPeriod={initialPeriod}
         />
       ) : isLoading ? (
         <LoadingState message="Connecting to constrained MILP solver and loading verified allocations..." />

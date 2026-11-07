@@ -314,3 +314,64 @@ class CrimeSpecificOptimizationResponse(BaseModel):
     planning_disclaimer: str
 
 
+class CanonicalCrimePredictionItem(BaseModel):
+    crime_type_id: int
+    crime_code: str
+    crime_name: str
+    category_id: int
+    category_name: str
+    severity_level: str
+    predicted_count: float
+    historical_baseline_count: Optional[float] = None
+    numerical_change: Optional[float] = None
+    percentage_change: Optional[float] = None
+    trend_status: str
+    priority_level: str  # "CRITICAL", "HIGH", "MEDIUM", "LOW"
+    share_of_total_percent: float
+    is_sparse: bool
+
+
+class DistrictResourceRecommendationDetail(BaseModel):
+    crime_type_id: int
+    crime_name: str
+    predicted_count: float
+    resource_category: str
+    unit_of_measure: str
+    coefficient: float
+    raw_demand: float
+    allocated_quantity: int
+    shortage: int
+    is_configured: bool
+    is_external_partner: bool
+    operational_rationale: Optional[str] = None
+
+
+class DistrictPipelineForecastResponse(BaseModel):
+    district_id: int
+    district_name: str
+    state_id: int
+    state_name: str
+    parent_district_id: Optional[int] = None
+    parent_district_name: Optional[str] = None
+    is_derived_from_parent: bool = False
+    forecast_period: str
+    forecast_year: int
+    forecast_month: int
+    total_predicted_crimes: float
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
+    overall_trend: str
+    district_risk_score: float
+    district_risk_level: str
+    active_model_name: str = "HistGradientBoostingRegressor"
+    active_model_version: str = "v1.0-production"
+    canonical_crime_predictions: List[CanonicalCrimePredictionItem]
+    category_distribution: List[Dict[str, Any]]
+    timeline_points: List[Dict[str, Any]]
+    pool_summaries: Dict[str, Dict[str, Any]]
+    resource_recommendations: List[DistrictResourceRecommendationDetail]
+    shortage_alerts: List[Dict[str, Any]]
+    planning_disclaimer: str
+
+
+

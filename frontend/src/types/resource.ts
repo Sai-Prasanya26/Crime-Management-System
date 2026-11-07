@@ -605,3 +605,81 @@ export interface CrimeSpecificOptimizationResponse {
   shortage_alerts: Array<Record<string, any>>;
   planning_disclaimer: string;
 }
+
+export interface CanonicalCrimePredictionItem {
+  crime_type_id: number;
+  crime_code: string;
+  crime_name: string;
+  category_id: number;
+  category_name: string;
+  severity_level: string;
+  predicted_count: number;
+  historical_baseline_count?: number | null;
+  numerical_change?: number | null;
+  percentage_change?: number | null;
+  trend_status: string;
+  priority_level: string;
+  share_of_total_percent: number;
+  is_sparse: boolean;
+}
+
+export interface DistrictResourceRecommendationDetail {
+  crime_type_id: number;
+  crime_name: string;
+  predicted_count: number;
+  resource_category: string;
+  unit_of_measure: string;
+  coefficient: number;
+  raw_demand: number;
+  allocated_quantity: number;
+  shortage: number;
+  is_configured: boolean;
+  is_external_partner: boolean;
+  operational_rationale?: string | null;
+}
+
+export interface DistrictPipelineForecastResponse {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent: boolean;
+  forecast_period: string;
+  forecast_year: number;
+  forecast_month: number;
+  total_predicted_crimes: number;
+  prediction_interval_lower?: number | null;
+  prediction_interval_upper?: number | null;
+  overall_trend: string;
+  district_risk_score: number;
+  district_risk_level: string;
+  active_model_name: string;
+  active_model_version: string;
+  canonical_crime_predictions: CanonicalCrimePredictionItem[];
+  category_distribution: Array<Record<string, any>>;
+  timeline_points: Array<{
+    period: string;
+    actual?: number | null;
+    predicted?: number | null;
+  }>;
+  pool_summaries: Record<string, {
+    resource_type_id: number;
+    resource_name: string;
+    unit_of_measure?: string;
+    is_external_partner?: boolean;
+    is_configured?: boolean;
+    capacity: number;
+    allocated: number;
+    remaining_pool: number;
+    demand: number;
+    unmet_demand: number;
+    coverage_pct: number;
+    solver_status: string;
+  }>;
+  resource_recommendations: DistrictResourceRecommendationDetail[];
+  shortage_alerts: Array<Record<string, any>>;
+  planning_disclaimer: string;
+}
+

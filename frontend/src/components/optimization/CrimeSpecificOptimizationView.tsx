@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Scale,
   Sparkles,
@@ -45,6 +45,8 @@ interface CrimeSpecificOptimizationViewProps {
   states: StateItem[];
   selectedStateId?: number;
   onStateSelect: (stateId: number | undefined) => void;
+  initialDistrictId?: number;
+  initialPeriod?: string;
 }
 
 type SubTab = 'OPTIMIZATION' | 'MAPPINGS' | 'INVENTORY';
@@ -159,13 +161,15 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
   states,
   selectedStateId,
   onStateSelect,
+  initialDistrictId,
+  initialPeriod,
 }) => {
   // Navigation
   const [subTab, setSubTab] = useState<SubTab>('OPTIMIZATION');
 
   // Request Parameters
   const [optStateId, setOptStateId] = useState<number>(selectedStateId || 2); // Default Andhra Pradesh (ID 2)
-  const [assessmentPeriod, setAssessmentPeriod] = useState<string>('2026-11-01');
+  const [assessmentPeriod, setAssessmentPeriod] = useState<string>(initialPeriod || '2026-11-01');
   const [scenarioType, setScenarioType] = useState<string>('CRIME_SPECIFIC_OPTIMAL');
   const [isSimulation, setIsSimulation] = useState<boolean>(false);
   const [showCapacityOverrides, setShowCapacityOverrides] = useState<boolean>(false);
@@ -286,6 +290,22 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
       setIsLoadingDetail(false);
     }
   };
+
+  // Auto-open district drilldown when navigated from Predictions page
+  const initialDistrictHandledRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (
+      initialDistrictId &&
+      optimizationResult?.allocations &&
+      initialDistrictHandledRef.current !== initialDistrictId
+    ) {
+      const match = optimizationResult.allocations.find((a) => a.district_id === initialDistrictId);
+      if (match) {
+        initialDistrictHandledRef.current = initialDistrictId;
+        handleOpenDistrictDetail(match);
+      }
+    }
+  }, [initialDistrictId, optimizationResult]);
 
   // Load Mappings Master
   const loadMappings = useCallback(async () => {
