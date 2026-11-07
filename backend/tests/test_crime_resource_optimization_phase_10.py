@@ -64,7 +64,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         cls.officer_headers = {"Authorization": f"Bearer {cls.officer_token}"}
 
     def test_01_crime_mapping_master_retrieval(self):
-        """1. Verifies Crime-to-Resource Mapping Master covers all 21 crime types across 4 pools (84 mappings total)."""
+        """1. Verifies Crime-to-Resource Mapping Master covers all 21 crime types across 10 pools (210 mappings total)."""
         resp = client.get(
             "/api/v1/optimization/crime-mappings",
             headers=self.analyst_headers,
@@ -72,14 +72,26 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
-        self.assertEqual(data["total"], 84, f"Expected 84 mappings (21 crimes x 4 pools), got {data['total']}")
+        self.assertEqual(data["total"], 210, f"Expected 210 mappings (21 crimes x 10 pools), got {data['total']}")
         items = data["items"]
 
-        # Check that all 4 shared pools are covered
+        # Check that all 10 shared pools are covered
+        expected_10_pools = {
+            "PERSONNEL",
+            "MOBILITY",
+            "INVESTIGATION",
+            "SPECIALIZED",
+            "SURVEILLANCE",
+            "FORENSIC",
+            "CYBER_TECHNOLOGY",
+            "EMERGENCY_RESPONSE",
+            "COMMUNICATION",
+            "TRAFFIC_SAFETY",
+        }
         pools = {item["shared_pool_category"] for item in items}
-        self.assertEqual(pools, {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"})
+        self.assertEqual(pools, expected_10_pools)
 
-        # Verify that all 21 crime types have exactly 4 mappings each across the 4 pools
+        # Verify that all 21 crime types have exactly 10 mappings each across the 10 pools
         crimes_map = {}
         for item in items:
             crimes_map.setdefault(item["crime_type_id"], set()).add(item["shared_pool_category"])
@@ -87,15 +99,16 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         for c_id, c_pools in crimes_map.items():
             self.assertEqual(
                 c_pools,
-                {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"},
-                f"Crime ID {c_id} is missing resource pools: {c_pools}",
+                expected_10_pools,
+                f"Crime ID {c_id} is missing resource pools: {c_pools ^ expected_10_pools}",
             )
 
         # Validate attributes of each mapping
         for item in items:
             self.assertIn("crime_name", item)
             self.assertIn("resource_name", item)
-            self.assertGreater(item["coefficient"], 0)
+            self.assertIn("unit_of_measure", item)
+            self.assertGreaterEqual(item["coefficient"], 0)
             self.assertGreaterEqual(item["min_demand_threshold"], 0)
             self.assertGreater(item["priority_weight"], 0)
             self.assertTrue(len(item["operational_rationale"]) > 5)
@@ -147,14 +160,14 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(check_resp.status_code, 200)
 
     def test_03_standing_inventory_records_and_summary(self):
-        """3. Verifies standing inventory records across 36 active states with valid arithmetic."""
+        """3. Verifies standing inventory records across 36 active states and 10 categories (360 records total)."""
         resp = client.get(
             "/api/v1/optimization/inventory",
             headers=self.analyst_headers,
         )
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertGreaterEqual(data["total"], 36 * 4)  # 144 baseline records
+        self.assertGreaterEqual(data["total"], 36 * 10)  # 360 baseline records
 
         # Verify inventory arithmetic for all records
         for item in data["items"]:
@@ -163,6 +176,9 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             unavail = item["unavailable_count"]
             avail = item["available_pool"]
             self.assertEqual(avail, max(0, total - deployed - unavail))
+            self.assertIn("unit_of_measure", item)
+            self.assertIn("is_external_partner", item)
+            self.assertIn("is_configured", item)
 
         # Check inventory summary for Andhra Pradesh (State ID 2)
         summary_resp = client.get(
@@ -174,10 +190,10 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(summary["state_id"], 2)
         total_avail = sum(summary["available_by_category"].values())
         self.assertGreater(total_avail, 0)
-        self.assertEqual(len(summary["categories"]), 4)
+        self.assertEqual(len(summary["categories"]), 10)
 
     def test_04_district_crime_demand_calculation(self):
-        """4. Verifies crime-specific resource demand calculation integrating Phase 8 and Phase 9."""
+        """4. Verifies crime-specific resource demand calculation integrating Phase 8 and Phase 9 across 10 pools."""
         # Call demand endpoint for district ID 1
         resp = client.get(
             "/api/v1/optimization/crime-demand?district_id=1&year=2026&month=11",
@@ -191,6 +207,19 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertIn("district_risk_score", data)
         self.assertIn("district_risk_level", data)
         self.assertIn("resource_demands", data)
+
+        expected_10_pools = {
+            "PERSONNEL",
+            "MOBILITY",
+            "INVESTIGATION",
+            "SPECIALIZED",
+            "SURVEILLANCE",
+            "FORENSIC",
+            "CYBER_TECHNOLOGY",
+            "EMERGENCY_RESPONSE",
+            "COMMUNICATION",
+            "TRAFFIC_SAFETY",
+        }
 
         # Ensure all pool demands are non-negative integers
         for pool, demand in data["resource_demands"].items():
@@ -209,7 +238,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertIn("operational_rationale", item)
             self.assertGreaterEqual(item["raw_demand"], 0.0)
 
-        # Check full 21-crime matrix
+        # Check full 21-crime matrix across all 10 pools
         self.assertIn("crime_matrix", data)
         self.assertIsNotNone(data["crime_matrix"])
         self.assertEqual(len(data["crime_matrix"]), 21, "Expected full matrix of 21 crime types")
@@ -217,10 +246,12 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertIn("coefficients", cm)
             self.assertIn("raw_demands", cm)
             self.assertIn("rationales", cm)
-            self.assertEqual(set(cm["coefficients"].keys()), {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"})
+            self.assertEqual(set(cm["coefficients"].keys()), expected_10_pools)
+            self.assertEqual(set(cm["raw_demands"].keys()), expected_10_pools)
+            self.assertEqual(set(cm["rationales"].keys()), expected_10_pools)
 
     def test_05_crime_specific_milp_optimization_conservation(self):
-        """5. Verifies Scipy integer MILP solver guarantees strict capacity conservation and whole numbers."""
+        """5. Verifies Scipy integer MILP solver guarantees strict capacity conservation and whole numbers across all 10 pools."""
         resp = client.post(
             "/api/v1/optimization/crime-optimize",
             json={
@@ -237,6 +268,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertIn(data["solver_status"], ["OPTIMAL", "FEASIBLE"])
         self.assertEqual(data["state_id"], 2)
         self.assertGreater(len(data["allocations"]), 0)
+        self.assertEqual(len(data["pool_summaries"]), 10)
 
         # Verify strict capacity conservation: sum(allocated) <= pool_capacity
         for pool, pool_info in data["pool_summaries"].items():
@@ -247,6 +279,9 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
                 capacity,
                 f"Resource conservation violated for {pool}: {allocated} > {capacity}",
             )
+            self.assertIn("unit_of_measure", pool_info)
+            self.assertIn("is_external_partner", pool_info)
+            self.assertIn("is_configured", pool_info)
 
         # Verify district-level allocations are valid non-negative integers
         for dist in data["allocations"]:
@@ -480,7 +515,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             db.close()
 
     def test_13_complete_21_crimes_matrix_and_explanations(self):
-        """13. Verifies that all 21 predicted crime types map across all 4 resource pools and produce full explanations."""
+        """13. Verifies that all 21 predicted crime types map across all 10 resource pools and produce full explanations."""
         resp = client.get(
             "/api/v1/optimization/crime-demand?district_id=1&year=2026&month=11",
             headers=self.analyst_headers,
@@ -492,7 +527,18 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         matrix = data["crime_matrix"]
         self.assertEqual(len(matrix), 21)
 
-        expected_pools = {"PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"}
+        expected_pools = {
+            "PERSONNEL",
+            "MOBILITY",
+            "INVESTIGATION",
+            "SPECIALIZED",
+            "SURVEILLANCE",
+            "FORENSIC",
+            "CYBER_TECHNOLOGY",
+            "EMERGENCY_RESPONSE",
+            "COMMUNICATION",
+            "TRAFFIC_SAFETY",
+        }
         for item in matrix:
             self.assertIn("crime_name", item)
             self.assertIn("predicted_count", item)
@@ -500,7 +546,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             self.assertEqual(set(item["raw_demands"].keys()), expected_pools)
             self.assertEqual(set(item["rationales"].keys()), expected_pools)
             for pool in expected_pools:
-                self.assertGreater(item["coefficients"][pool], 0.0)
+                self.assertGreaterEqual(item["coefficients"][pool], 0.0)
                 self.assertGreaterEqual(item["raw_demands"][pool], 0.0)
                 self.assertTrue(len(item["rationales"][pool]) > 5)
 
@@ -521,7 +567,6 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         for alloc in opt_data["allocations"]:
             exps = alloc.get("crime_explanations")
             self.assertIsNotNone(exps)
-            self.assertGreater(len(exps), 0)
             for exp in exps:
                 self.assertIn("crime_name", exp)
                 self.assertIn("predicted_count", exp)
@@ -531,9 +576,47 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
                 self.assertIn("pool_available_capacity", exp)
                 self.assertIn("recommended_district_allocation", exp)
                 self.assertIn("operational_rationale", exp)
-                self.assertGreater(exp["resource_coefficient"], 0.0)
+                self.assertGreaterEqual(exp["resource_coefficient"], 0.0)
                 self.assertGreaterEqual(exp["calculated_demand"], 0.0)
                 self.assertGreaterEqual(exp["proportional_allocation"], 0.0)
+
+    def test_14_unconfigured_pools_handling_and_alerts(self):
+        """14. Verifies that unconfigured pools report UNCONFIGURED_CAPACITY, withhold allocations, and raise alerts."""
+        resp = client.post(
+            "/api/v1/optimization/crime-optimize",
+            json={
+                "state_id": 2,
+                "assessment_period": "2026-11-01",
+                "scenario_type": "CRIME_SPECIFIC_OPTIMAL",
+                "is_simulation": False,
+            },
+            headers=self.analyst_headers,
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+
+        unconfigured_pools = [
+            "SURVEILLANCE",
+            "FORENSIC",
+            "CYBER_TECHNOLOGY",
+            "EMERGENCY_RESPONSE",
+            "COMMUNICATION",
+            "TRAFFIC_SAFETY",
+        ]
+
+        # Verify pool status and allocations
+        for pool in unconfigured_pools:
+            pool_info = data["pool_summaries"][pool]
+            self.assertEqual(pool_info["solver_status"], "UNCONFIGURED_CAPACITY")
+            self.assertEqual(pool_info["allocated"], 0)
+            self.assertEqual(pool_info["capacity"], 0)
+            self.assertFalse(pool_info["is_configured"])
+
+        # Verify shortage alerts contain unconfigured capacity warnings
+        unconfigured_alerts = [
+            a for a in data["shortage_alerts"] if a.get("alert_type") == "UNCONFIGURED_CAPACITY"
+        ]
+        self.assertGreaterEqual(len(unconfigured_alerts), len(unconfigured_pools))
 
 
 if __name__ == "__main__":

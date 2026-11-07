@@ -122,6 +122,20 @@ class OptimizationScenarioComparisonResponse(BaseModel):
 # Phase 10 Crime-Specific Optimization Schemas
 # ============================================================================
 
+ALL_RESOURCE_POOLS = [
+    "PERSONNEL",
+    "MOBILITY",
+    "INVESTIGATION",
+    "SPECIALIZED",
+    "SURVEILLANCE",
+    "FORENSIC",
+    "CYBER_TECHNOLOGY",
+    "EMERGENCY_RESPONSE",
+    "COMMUNICATION",
+    "TRAFFIC_SAFETY",
+]
+
+
 class CrimeResourceMappingItem(BaseModel):
     id: int
     crime_type_id: int
@@ -136,6 +150,7 @@ class CrimeResourceMappingItem(BaseModel):
     min_demand_threshold: float
     priority_weight: float
     shared_pool_category: str
+    unit_of_measure: Optional[str] = None
     operational_rationale: Optional[str] = None
     is_active: bool = True
 
@@ -162,11 +177,14 @@ class ResourceInventoryItem(BaseModel):
     resource_type_id: int
     resource_name: str
     category: str
+    unit_of_measure: Optional[str] = None
     total_inventory: int
     deployed_count: int
     unavailable_count: int
     available_pool: int
     data_status: str
+    is_external_partner: Optional[bool] = False
+    is_configured: Optional[bool] = True
     reference_year: int
     source_name: str
     notes: Optional[str] = None
@@ -205,6 +223,7 @@ class CrimeDemandBreakdownItem(BaseModel):
     coefficient: float
     raw_demand: float
     shared_pool_category: str
+    unit_of_measure: Optional[str] = None
     priority_weight: float
     operational_rationale: Optional[str] = None
 
@@ -219,6 +238,7 @@ class CrimeTypeMatrixItem(BaseModel):
     coefficients: Dict[str, float]
     raw_demands: Dict[str, float]
     rationales: Dict[str, str]
+    units: Optional[Dict[str, str]] = None
 
 
 class DistrictCrimeDemandResponse(BaseModel):
@@ -257,6 +277,9 @@ class DistrictCrimeAllocationItem(BaseModel):
     resource_category: str
     resource_type_id: int
     resource_name: str
+    unit_of_measure: Optional[str] = None
+    is_external_partner: Optional[bool] = False
+    is_configured: Optional[bool] = True
     demanded_quantity: int
     allocated_quantity: int
     baseline_available: Optional[int] = None

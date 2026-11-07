@@ -106,15 +106,24 @@ class CrimeResourceOptimizationService:
         for m in mappings:
             mappings_by_crime.setdefault(m.crime_type_id, []).append(m)
 
-        # 5. Calculate Crime-Specific Demand Items and 21-Crime Matrix
+        CATEGORY_RESOURCE_MAP = {
+            "PERSONNEL": (1, "Police Officers", "Personnel"),
+            "MOBILITY": (2, "Patrol Vehicles", "Vehicles"),
+            "INVESTIGATION": (3, "Investigation Teams", "Teams"),
+            "SPECIALIZED": (93, "Crime Branch Specialized Units", "Units"),
+            "SURVEILLANCE": (61, "Surveillance CCTV Cameras", "Cameras"),
+            "FORENSIC": (121, "Forensic Examination Capacity", "Tests/Month"),
+            "CYBER_TECHNOLOGY": (122, "Digital Forensic Workstations", "Workstations"),
+            "EMERGENCY_RESPONSE": (123, "Emergency Medical Response Units", "Ambulances"),
+            "COMMUNICATION": (124, "Police Radio & Dispatch Consoles", "Channels"),
+            "TRAFFIC_SAFETY": (125, "Traffic Safety Enforcement Devices", "Devices"),
+        }
+        pool_units: Dict[str, str] = {cat: val[2] for cat, val in CATEGORY_RESOURCE_MAP.items()}
+
+        # 5. Calculate Crime-Specific Demand Items and 21-Crime Matrix across all 10 pools
         demand_breakdowns: List[CrimeDemandBreakdownItem] = []
         crime_matrix: List[CrimeTypeMatrixItem] = []
-        raw_demands_by_pool: Dict[str, float] = {
-            "PERSONNEL": 0.0,
-            "MOBILITY": 0.0,
-            "INVESTIGATION": 0.0,
-            "SPECIALIZED": 0.0,
-        }
+        raw_demands_by_pool: Dict[str, float] = {cat: 0.0 for cat in CATEGORY_RESOURCE_MAP.keys()}
 
         # Map crime types from predictions
         for ct in pred_breakdown.crime_types:
@@ -135,11 +144,13 @@ class CrimeResourceOptimizationService:
             ct_coeffs: Dict[str, float] = {}
             ct_raw_demands: Dict[str, float] = {}
             ct_rationales: Dict[str, str] = {}
+            ct_units: Dict[str, str] = dict(pool_units)
 
             for m in ct_maps:
                 pool = m.shared_pool_category.upper()
                 ct_coeffs[pool] = m.coefficient
                 ct_rationales[pool] = m.operational_rationale or ""
+                m_unit = m.unit_of_measure or pool_units.get(pool, "Units")
 
                 if p_count >= m.min_demand_threshold:
                     # Physical resource demand (uninflated: crime forecast * planning coefficient)
@@ -161,6 +172,7 @@ class CrimeResourceOptimizationService:
                             coefficient=m.coefficient,
                             raw_demand=round(raw_req, 3),
                             shared_pool_category=pool,
+                            unit_of_measure=m_unit,
                             priority_weight=m.priority_weight,
                             operational_rationale=m.operational_rationale,
                         )
@@ -179,6 +191,7 @@ class CrimeResourceOptimizationService:
                     coefficients=ct_coeffs,
                     raw_demands=ct_raw_demands,
                     rationales=ct_rationales,
+                    units=ct_units,
                 )
             )
 
@@ -261,8 +274,23 @@ class CrimeResourceOptimizationService:
                 if override >= 0:
                     avail_pools[cat.upper()] = override
 
-        # Selected resource categories to optimize
-        categories_to_opt = req.resource_categories or ["PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"]
+        # Selected resource categories to optimize (defaults to all 10 institutional pools)
+        CATEGORY_RESOURCE_MAP = {
+            "PERSONNEL": (1, "Police Officers", "Personnel", 1000, False),
+            "MOBILITY": (2, "Patrol Vehicles", "Vehicles", 500, False),
+            "INVESTIGATION": (3, "Investigation Teams", "Teams", 200, False),
+            "SPECIALIZED": (93, "Crime Branch Specialized Units", "Units", 100, False),
+            "SURVEILLANCE": (61, "Surveillance CCTV Cameras", "Cameras", 150, False),
+            "FORENSIC": (121, "Forensic Examination Capacity", "Tests/Month", 100, False),
+            "CYBER_TECHNOLOGY": (122, "Digital Forensic Workstations", "Workstations", 50, False),
+            "EMERGENCY_RESPONSE": (123, "Emergency Medical Response Units", "Ambulances", 80, True),
+            "COMMUNICATION": (124, "Police Radio & Dispatch Consoles", "Channels", 120, False),
+            "TRAFFIC_SAFETY": (125, "Traffic Safety Enforcement Devices", "Devices", 150, False),
+        }
+
+        configured_map = {c["category"]: c.get("is_configured", True) for c in inv_summary.categories}
+
+        categories_to_opt = req.resource_categories or list(CATEGORY_RESOURCE_MAP.keys())
         categories_to_opt = [c.upper() for c in categories_to_opt]
 
         # 4. Gather District Crime Demands
@@ -282,7 +310,7 @@ class CrimeResourceOptimizationService:
         n_districts = len(district_demands)
         run_id = f"opt-crime-{year}{month:02d}-{uuid.uuid4().hex[:8]}"
 
-        # 5. Solve Optimization per Category Pool
+        # 5. Solve Optimization per Category Pool across all 10 pools
         pool_summaries: Dict[str, Dict[str, Any]] = {}
         all_allocations: List[DistrictCrimeAllocationItem] = []
         shortage_alerts: List[Dict[str, Any]] = []
@@ -291,87 +319,100 @@ class CrimeResourceOptimizationService:
         total_allocated_all = 0
         total_unmet_all = 0
 
-        # Mapping category to primary resource_type_id and name
-        CATEGORY_RESOURCE_MAP = {
-            "PERSONNEL": (1, "Police Officers"),
-            "MOBILITY": (2, "Patrol Vehicles"),
-            "INVESTIGATION": (3, "Investigation Teams"),
-            "SPECIALIZED": (20, "Cyber Police Personnel"),
-        }
-
         for cat in categories_to_opt:
-            res_type_id, res_name = CATEGORY_RESOURCE_MAP.get(cat, (1, "Police Officers"))
-            capacity = avail_pools.get(cat, 500)
+            res_type_id, res_name, res_unit, default_cap, is_partner = CATEGORY_RESOURCE_MAP.get(
+                cat, (1, "Police Officers", "Units", 500, False)
+            )
+            has_override = (
+                req.capacity_overrides is not None
+                and cat in req.capacity_overrides
+                and req.capacity_overrides[cat] >= 0
+            )
+            is_cat_configured = configured_map.get(cat, True) or has_override
+            capacity = avail_pools.get(cat, 0)
 
             # Demand vector
             demands = np.array([dem.resource_demands.get(cat, 0) for dem in district_demands], dtype=int)
             cat_demand_sum = int(np.sum(demands))
             total_demand_all += cat_demand_sum
 
-            # Priority weights vector: based on demand-weighted crime severity, Phase 9 risk score, and scenario type
-            weights = np.zeros(n_districts, dtype=float)
-            for i, dem in enumerate(district_demands):
-                cat_breakdowns = [b for b in dem.crime_breakdowns if b.shared_pool_category == cat]
-                total_cat_raw = sum(b.raw_demand for b in cat_breakdowns)
-                if total_cat_raw > 0:
-                    weighted_sev = sum(b.raw_demand * b.severity_weight for b in cat_breakdowns) / total_cat_raw
-                else:
-                    weighted_sev = 1.0
-
-                r_score = dem.district_risk_score
-                if req.scenario_type == "HIGH_SEVERITY_PRIORITY":
-                    weights[i] = weighted_sev * (1.0 + (r_score / 50.0))
-                elif req.scenario_type == "CYBER_SPECIALIZED" and cat == "SPECIALIZED":
-                    weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
-                elif req.scenario_type == "HIGHWAY_SAFETY" and cat == "MOBILITY":
-                    weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
-                else:
-                    # Balanced CRIME_SPECIFIC_OPTIMAL
-                    weights[i] = weighted_sev * (1.0 + (r_score / 100.0))
-
-            # -----------------------------------------------------------------
-            # MILP Formulation using scipy.optimize.milp
-            # -----------------------------------------------------------------
-            # Variables: x_i in [0, demands_i], x_i in Z
-            # Maximize: sum(weights_i * x_i)  <=> Minimize: -sum(weights_i * x_i)
-            # Subject to: sum(x_i) <= capacity
-            # -----------------------------------------------------------------
-            c = -weights  # Cost vector to minimize
-            integrality = np.ones(n_districts)  # 1 = integer constraints
-            bounds = Bounds(lb=np.zeros(n_districts), ub=demands)
-            A = np.ones((1, n_districts))
-            constraints = LinearConstraint(A, lb=0, ub=capacity)
-
-            if cat_demand_sum == 0:
+            if not is_cat_configured:
+                # Unconfigured capacity: allocate 0, solver reports UNCONFIGURED_CAPACITY, alert raised
                 alloc_res = np.zeros(n_districts, dtype=int)
-                solver_status_cat = "ZERO_DEMAND"
-            elif cat_demand_sum <= capacity:
-                # Supply satisfies all demand fully
-                alloc_res = demands.copy()
-                solver_status_cat = "OPTIMAL_SATISFIED"
+                solver_status_cat = "UNCONFIGURED_CAPACITY"
+                if cat_demand_sum > 0:
+                    shortage_alerts.append({
+                        "district_id": None,
+                        "district_name": "Statewide Standing Pool",
+                        "category": cat,
+                        "demanded": cat_demand_sum,
+                        "allocated": 0,
+                        "deficit": cat_demand_sum,
+                        "risk_level": "WARNING",
+                        "alert_type": "UNCONFIGURED_CAPACITY",
+                        "message": f"Standing inventory for {cat} is unconfigured (0 units available). Allocations withheld until state administration records verified baseline.",
+                    })
             else:
-                # Solve integer optimization under shortage
-                res = milp(c=c, integrality=integrality, bounds=bounds, constraints=constraints)
-                if res.success:
-                    alloc_res = np.round(res.x).astype(int)
-                    # Enforce capacity bound strictly against numerical float creep
-                    while np.sum(alloc_res) > capacity:
-                        max_idx = np.argmax(alloc_res)
-                        alloc_res[max_idx] -= 1
-                    solver_status_cat = "OPTIMAL_CONSTRAINED"
-                else:
-                    # Fallback greedy priority allocation
+                # Priority weights vector: based on demand-weighted crime severity, Phase 9 risk score, and scenario type
+                weights = np.zeros(n_districts, dtype=float)
+                for i, dem in enumerate(district_demands):
+                    cat_breakdowns = [b for b in dem.crime_breakdowns if b.shared_pool_category == cat]
+                    total_cat_raw = sum(b.raw_demand for b in cat_breakdowns)
+                    if total_cat_raw > 0:
+                        weighted_sev = sum(b.raw_demand * b.severity_weight for b in cat_breakdowns) / total_cat_raw
+                    else:
+                        weighted_sev = 1.0
+
+                    r_score = dem.district_risk_score
+                    if req.scenario_type == "HIGH_SEVERITY_PRIORITY":
+                        weights[i] = weighted_sev * (1.0 + (r_score / 50.0))
+                    elif req.scenario_type == "CYBER_SPECIALIZED" and cat in ["SPECIALIZED", "CYBER_TECHNOLOGY"]:
+                        weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
+                    elif req.scenario_type == "HIGHWAY_SAFETY" and cat in ["MOBILITY", "TRAFFIC_SAFETY"]:
+                        weights[i] = weighted_sev * (1.5 + (r_score / 40.0))
+                    else:
+                        # Balanced CRIME_SPECIFIC_OPTIMAL
+                        weights[i] = weighted_sev * (1.0 + (r_score / 100.0))
+
+                # -----------------------------------------------------------------
+                # MILP Formulation using scipy.optimize.milp
+                # -----------------------------------------------------------------
+                c = -weights  # Cost vector to minimize
+                integrality = np.ones(n_districts)  # 1 = integer constraints
+                bounds = Bounds(lb=np.zeros(n_districts), ub=demands)
+                A = np.ones((1, n_districts))
+                constraints = LinearConstraint(A, lb=0, ub=capacity)
+
+                if cat_demand_sum == 0:
                     alloc_res = np.zeros(n_districts, dtype=int)
-                    remaining = capacity
-                    sort_order = np.argsort(-weights)
-                    for idx in sort_order:
-                        d_need = demands[idx]
-                        take = min(d_need, remaining)
-                        alloc_res[idx] = take
-                        remaining -= take
-                        if remaining <= 0:
-                            break
-                    solver_status_cat = "GREEDY_FALLBACK"
+                    solver_status_cat = "ZERO_DEMAND"
+                elif cat_demand_sum <= capacity:
+                    # Supply satisfies all demand fully
+                    alloc_res = demands.copy()
+                    solver_status_cat = "OPTIMAL_SATISFIED"
+                else:
+                    # Solve integer optimization under shortage
+                    res = milp(c=c, integrality=integrality, bounds=bounds, constraints=constraints)
+                    if res.success:
+                        alloc_res = np.round(res.x).astype(int)
+                        # Enforce capacity bound strictly against numerical float creep
+                        while np.sum(alloc_res) > capacity:
+                            max_idx = np.argmax(alloc_res)
+                            alloc_res[max_idx] -= 1
+                        solver_status_cat = "OPTIMAL_CONSTRAINED"
+                    else:
+                        # Fallback greedy priority allocation
+                        alloc_res = np.zeros(n_districts, dtype=int)
+                        remaining = capacity
+                        sort_order = np.argsort(-weights)
+                        for idx in sort_order:
+                            d_need = demands[idx]
+                            take = min(d_need, remaining)
+                            alloc_res[idx] = take
+                            remaining -= take
+                            if remaining <= 0:
+                                break
+                        solver_status_cat = "GREEDY_FALLBACK"
 
             cat_allocated_sum = int(np.sum(alloc_res))
             cat_remaining = max(0, capacity - cat_allocated_sum)
@@ -384,6 +425,9 @@ class CrimeResourceOptimizationService:
             pool_summaries[cat] = {
                 "resource_type_id": res_type_id,
                 "resource_name": res_name,
+                "unit_of_measure": res_unit,
+                "is_external_partner": is_partner,
+                "is_configured": is_cat_configured,
                 "capacity": capacity,
                 "allocated": cat_allocated_sum,
                 "remaining_pool": cat_remaining,
@@ -401,7 +445,9 @@ class CrimeResourceOptimizationService:
                 d_surplus = max(0, d_alloc - d_demand)
                 d_cov = round((d_alloc / max(d_demand, 1)) * 100.0, 1) if d_demand > 0 else 100.0
 
-                if d_demand == 0:
+                if not is_cat_configured:
+                    status_str = "UNCONFIGURED_CAPACITY" if d_demand > 0 else "ZERO_DEMAND"
+                elif d_demand == 0:
                     status_str = "ZERO_DEMAND"
                 elif d_cov >= 99.9:
                     status_str = "FULLY_COVERED"
@@ -456,17 +502,23 @@ class CrimeResourceOptimizationService:
                     })
 
                 # Rationale formulation
-                if d_demand == 0:
+                if not is_cat_configured:
+                    rationale = (
+                        f"State {cat.lower()} capacity is unconfigured (0 available). Allocation withheld to prevent synthetic capacity assignment."
+                        if d_demand > 0
+                        else f"Zero predicted {cat.lower()} incident demand in {dem.district_name}; pool unconfigured."
+                    )
+                elif d_demand == 0:
                     rationale = f"Zero predicted {cat.lower()} incident demand in {dem.district_name}; resources preserved for higher threat sectors."
                 elif d_cov >= 99.9:
                     rationale = (
-                        f"Allocated {d_alloc} {res_name.lower()} (100% of demand) to counter predicted "
+                        f"Allocated {d_alloc} {res_unit.lower()} of {res_name.lower()} (100% of demand) to counter predicted "
                         f"{', '.join([tc['crime_name'] for tc in top_crimes_json]) or 'crime demand'} under {dem.district_risk_level} risk priority."
                     )
                 else:
                     rationale = (
-                        f"Allocated {d_alloc} of {d_demand} {res_name.lower()} ({d_cov}% coverage, deficit: {d_shortage}) "
-                        f"under state capacity pool constraint ({capacity} total). Prioritized by risk score {dem.district_risk_score:.1f}."
+                        f"Allocated {d_alloc} of {d_demand} {res_unit.lower()} of {res_name.lower()} ({d_cov}% coverage, deficit: {d_shortage}) "
+                        f"under state capacity pool constraint ({capacity} {res_unit.lower()} total). Prioritized by risk score {dem.district_risk_score:.1f}."
                     )
 
                 item = DistrictCrimeAllocationItem(
@@ -480,6 +532,9 @@ class CrimeResourceOptimizationService:
                     resource_category=cat,
                     resource_type_id=res_type_id,
                     resource_name=res_name,
+                    unit_of_measure=res_unit,
+                    is_external_partner=is_partner,
+                    is_configured=is_cat_configured,
                     demanded_quantity=d_demand,
                     allocated_quantity=d_alloc,
                     baseline_available=None,

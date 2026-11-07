@@ -415,6 +415,7 @@ export interface CrimeResourceMappingItem {
   min_demand_threshold: number;
   priority_weight: number;
   shared_pool_category: string;
+  unit_of_measure?: string | null;
   operational_rationale?: string | null;
   is_active: boolean;
 }
@@ -441,11 +442,14 @@ export interface ResourceInventoryItem {
   resource_type_id: number;
   resource_name: string;
   category: string;
+  unit_of_measure?: string | null;
   total_inventory: number;
   deployed_count: number;
   unavailable_count: number;
   available_pool: number;
   data_status: string;
+  is_external_partner?: boolean;
+  is_configured?: boolean;
   reference_year: number;
   source_name: string;
   notes?: string | null;
@@ -484,6 +488,7 @@ export interface CrimeDemandBreakdownItem {
   coefficient: number;
   raw_demand: number;
   shared_pool_category: string;
+  unit_of_measure?: string | null;
   priority_weight: number;
   operational_rationale?: string | null;
 }
@@ -498,6 +503,7 @@ export interface CrimeTypeMatrixItem {
   coefficients: Record<string, number>;
   raw_demands: Record<string, number>;
   rationales: Record<string, string>;
+  units?: Record<string, string>;
 }
 
 export interface DistrictCrimeDemandResponse {
@@ -536,6 +542,9 @@ export interface DistrictCrimeAllocationItem {
   resource_category: string;
   resource_type_id: number;
   resource_name: string;
+  unit_of_measure?: string | null;
+  is_external_partner?: boolean;
+  is_configured?: boolean;
   demanded_quantity: number;
   allocated_quantity: number;
   baseline_available?: number | null;
@@ -574,6 +583,9 @@ export interface CrimeSpecificOptimizationResponse {
   pool_summaries: Record<string, {
     resource_type_id: number;
     resource_name: string;
+    unit_of_measure?: string;
+    is_external_partner?: boolean;
+    is_configured?: boolean;
     capacity: number;
     allocated: number;
     remaining_pool: number;

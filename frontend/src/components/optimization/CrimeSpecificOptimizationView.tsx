@@ -20,6 +20,12 @@ import {
   Save,
   Database,
   Activity,
+  Camera,
+  Microscope,
+  Laptop,
+  HeartPulse,
+  Radio,
+  Gauge,
 } from 'lucide-react';
 import { StatCard } from '../common/StatCard';
 import LoadingState from '../common/LoadingState';
@@ -43,6 +49,112 @@ interface CrimeSpecificOptimizationViewProps {
 
 type SubTab = 'OPTIMIZATION' | 'MAPPINGS' | 'INVENTORY';
 
+const POOL_METADATA: Record<
+  string,
+  {
+    name: string;
+    subtext: string;
+    icon: React.ElementType;
+    bgLight: string;
+    textColor: string;
+    barColor: string;
+    unitDefault: string;
+    isPartner?: boolean;
+  }
+> = {
+  PERSONNEL: {
+    name: 'Personnel Pool',
+    subtext: 'Police & Traffic Officers',
+    icon: Users,
+    bgLight: 'bg-blue-50',
+    textColor: 'text-blue-700',
+    barColor: 'bg-blue-600',
+    unitDefault: 'Personnel',
+  },
+  MOBILITY: {
+    name: 'Mobility Pool',
+    subtext: 'Patrol Vehicles & PCR Vans',
+    icon: Car,
+    bgLight: 'bg-emerald-50',
+    textColor: 'text-emerald-700',
+    barColor: 'bg-emerald-600',
+    unitDefault: 'Vehicles',
+  },
+  INVESTIGATION: {
+    name: 'Investigation Pool',
+    subtext: 'Investigation & SIT Teams',
+    icon: FileText,
+    bgLight: 'bg-amber-50',
+    textColor: 'text-amber-700',
+    barColor: 'bg-amber-600',
+    unitDefault: 'Teams',
+  },
+  SPECIALIZED: {
+    name: 'Specialized Tactical',
+    subtext: 'Crime Branch & QRT Units',
+    icon: ShieldAlert,
+    bgLight: 'bg-purple-50',
+    textColor: 'text-purple-700',
+    barColor: 'bg-purple-600',
+    unitDefault: 'Units',
+  },
+  SURVEILLANCE: {
+    name: 'Surveillance Pool',
+    subtext: 'CCTV & ANPR Cameras',
+    icon: Camera,
+    bgLight: 'bg-cyan-50',
+    textColor: 'text-cyan-700',
+    barColor: 'bg-cyan-600',
+    unitDefault: 'Cameras',
+  },
+  FORENSIC: {
+    name: 'Forensic Lab Pool',
+    subtext: 'Crime Scene & DNA Testing',
+    icon: Microscope,
+    bgLight: 'bg-rose-50',
+    textColor: 'text-rose-700',
+    barColor: 'bg-rose-600',
+    unitDefault: 'Tests/Month',
+  },
+  CYBER_TECHNOLOGY: {
+    name: 'Cyber Tech Pool',
+    subtext: 'Digital Forensic Workstations',
+    icon: Laptop,
+    bgLight: 'bg-indigo-50',
+    textColor: 'text-indigo-700',
+    barColor: 'bg-indigo-600',
+    unitDefault: 'Workstations',
+  },
+  EMERGENCY_RESPONSE: {
+    name: 'Emergency Medical (EMS)',
+    subtext: '108 Ambulances & Trauma Teams',
+    icon: HeartPulse,
+    bgLight: 'bg-red-50',
+    textColor: 'text-red-700',
+    barColor: 'bg-red-600',
+    unitDefault: 'Ambulances',
+    isPartner: true,
+  },
+  COMMUNICATION: {
+    name: 'Communication Pool',
+    subtext: 'Radio & Dispatch Channels',
+    icon: Radio,
+    bgLight: 'bg-teal-50',
+    textColor: 'text-teal-700',
+    barColor: 'bg-teal-600',
+    unitDefault: 'Channels',
+  },
+  TRAFFIC_SAFETY: {
+    name: 'Traffic Safety Pool',
+    subtext: 'Speed Radars & Breathalyzers',
+    icon: Gauge,
+    bgLight: 'bg-orange-50',
+    textColor: 'text-orange-700',
+    barColor: 'bg-orange-600',
+    unitDefault: 'Devices',
+  },
+};
+
 export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationViewProps> = ({
   states,
   selectedStateId,
@@ -62,6 +174,12 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
     MOBILITY?: number;
     INVESTIGATION?: number;
     SPECIALIZED?: number;
+    SURVEILLANCE?: number;
+    FORENSIC?: number;
+    CYBER_TECHNOLOGY?: number;
+    EMERGENCY_RESPONSE?: number;
+    COMMUNICATION?: number;
+    TRAFFIC_SAFETY?: number;
   }>({});
 
   // Optimization Result
@@ -534,10 +652,10 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                     Reset Overrides
                   </button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <div>
                     <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Personnel Pool Override:
+                      Personnel (Officers):
                     </label>
                     <input
                       type="number"
@@ -554,7 +672,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Mobility / Vehicle Override:
+                      Mobility (Vehicles):
                     </label>
                     <input
                       type="number"
@@ -571,7 +689,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Investigation Units Override:
+                      Investigation (Teams):
                     </label>
                     <input
                       type="number"
@@ -588,7 +706,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Specialized / Cyber Override:
+                      Specialized (Units):
                     </label>
                     <input
                       type="number"
@@ -598,6 +716,108 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                         setCapacityOverrides({
                           ...capacityOverrides,
                           SPECIALIZED: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Surveillance (Cameras):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 200"
+                      value={capacityOverrides.SURVEILLANCE ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          SURVEILLANCE: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Forensic (Tests/Mo):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 120"
+                      value={capacityOverrides.FORENSIC ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          FORENSIC: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Cyber Tech (Stations):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 60"
+                      value={capacityOverrides.CYBER_TECHNOLOGY ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          CYBER_TECHNOLOGY: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Emergency (EMS):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 90"
+                      value={capacityOverrides.EMERGENCY_RESPONSE ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          EMERGENCY_RESPONSE: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Radio (Channels):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 150"
+                      value={capacityOverrides.COMMUNICATION ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          COMMUNICATION: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Traffic (Devices):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 180"
+                      value={capacityOverrides.TRAFFIC_SAFETY ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          TRAFFIC_SAFETY: e.target.value ? Number(e.target.value) : undefined,
                         })
                       }
                       className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
@@ -649,200 +869,99 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
             </div>
           )}
 
-          {/* 3. Four Shared Resource Pools Summary Cards */}
+          {/* 3. Ten Shared Resource Pools Summary Cards */}
           {optimizationResult && optimizationResult.pool_summaries && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Pool 1: PERSONNEL */}
-              {optimizationResult.pool_summaries['PERSONNEL'] && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
-                        <Users className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900">Personnel Pool</h4>
-                        <p className="text-[11px] text-slate-600">Police &amp; Traffic Officers</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-slate-800">
-                      {optimizationResult.pool_summaries['PERSONNEL'].coverage_pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, optimizationResult.pool_summaries['PERSONNEL'].coverage_pct)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['PERSONNEL'].capacity.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Demanded</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['PERSONNEL'].demand.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Allocated</span>
-                      <span className="font-bold text-blue-700">
-                        {optimizationResult.pool_summaries['PERSONNEL'].allocated.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              {Object.entries(optimizationResult.pool_summaries).map(([poolKey, poolInfo]) => {
+                const meta = POOL_METADATA[poolKey] || {
+                  name: `${poolKey} Pool`,
+                  subtext: 'Resource Allocation Pool',
+                  icon: Layers,
+                  bgLight: 'bg-slate-50',
+                  textColor: 'text-slate-700',
+                  barColor: 'bg-indigo-600',
+                  unitDefault: 'Units',
+                };
+                const IconComponent = meta.icon;
+                const isUnconfigured = poolInfo.solver_status === 'UNCONFIGURED_CAPACITY' || poolInfo.is_configured === false;
+                const unitStr = poolInfo.unit_of_measure || meta.unitDefault;
 
-              {/* Pool 2: MOBILITY */}
-              {optimizationResult.pool_summaries['MOBILITY'] && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
-                        <Car className="h-4 w-4" />
+                return (
+                  <div
+                    key={poolKey}
+                    className={`rounded-xl border p-3.5 shadow-xs space-y-2.5 transition-all ${
+                      isUnconfigured
+                        ? 'border-amber-200 bg-amber-50/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`p-1.5 rounded-lg shrink-0 ${meta.bgLight} ${meta.textColor}`}>
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{meta.name}</h4>
+                          <p className="text-[10px] text-slate-500 truncate">{meta.subtext}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900">Mobility Pool</h4>
-                        <p className="text-[11px] text-slate-600">Patrol Vehicles &amp; Highway Units</p>
+                      <div className="text-right shrink-0">
+                        {isUnconfigured ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            Unconfigured
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-800">
+                            {poolInfo.coverage_pct.toFixed(0)}%
+                          </span>
+                        )}
+                        {meta.isPartner && (
+                          <span className="block mt-0.5 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            Partner Agency
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-800">
-                      {optimizationResult.pool_summaries['MOBILITY'].coverage_pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-emerald-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, optimizationResult.pool_summaries['MOBILITY'].coverage_pct)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['MOBILITY'].capacity.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Demanded</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['MOBILITY'].demand.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Allocated</span>
-                      <span className="font-bold text-emerald-700">
-                        {optimizationResult.pool_summaries['MOBILITY'].allocated.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Pool 3: INVESTIGATION */}
-              {optimizationResult.pool_summaries['INVESTIGATION'] && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-amber-50 text-amber-700">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900">Investigation Pool</h4>
-                        <p className="text-[11px] text-slate-600">Special Investigators &amp; Forensic</p>
-                      </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className={`${isUnconfigured ? 'bg-amber-400' : meta.barColor} h-1.5 rounded-full transition-all`}
+                        style={{
+                          width: `${isUnconfigured ? 0 : Math.min(100, poolInfo.coverage_pct)}%`,
+                        }}
+                      />
                     </div>
-                    <span className="text-xs font-bold text-slate-800">
-                      {optimizationResult.pool_summaries['INVESTIGATION'].coverage_pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-amber-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, optimizationResult.pool_summaries['INVESTIGATION'].coverage_pct)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['INVESTIGATION'].capacity.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Demanded</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['INVESTIGATION'].demand.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Allocated</span>
-                      <span className="font-bold text-amber-700">
-                        {optimizationResult.pool_summaries['INVESTIGATION'].allocated.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Pool 4: SPECIALIZED */}
-              {optimizationResult.pool_summaries['SPECIALIZED'] && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-purple-50 text-purple-700">
-                        <ShieldAlert className="h-4 w-4" />
+                    <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                      <div>
+                        <span className="text-[9px] text-slate-500 block truncate">Cap ({unitStr})</span>
+                        <span className="font-bold text-slate-800 text-[11px]">
+                          {poolInfo.capacity.toLocaleString()}
+                        </span>
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">Specialized / Cyber</h4>
-                        <p className="text-[11px] text-slate-600">Cyber Forensics &amp; Digital Tech</p>
+                        <span className="text-[9px] text-slate-500 block truncate">Demanded</span>
+                        <span className="font-bold text-slate-800 text-[11px]">
+                          {poolInfo.demand.toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-500 block truncate">Allocated</span>
+                        <span className={`font-bold text-[11px] ${isUnconfigured ? 'text-amber-700' : meta.textColor}`}>
+                          {poolInfo.allocated.toLocaleString()}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-800">
-                      {optimizationResult.pool_summaries['SPECIALIZED'].coverage_pct.toFixed(0)}%
-                    </span>
+
+                    {isUnconfigured && (
+                      <p className="text-[9px] text-amber-700 bg-amber-50 p-1 rounded text-center font-medium">
+                        Allocations withheld (Audit Required)
+                      </p>
+                    )}
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-purple-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, optimizationResult.pool_summaries['SPECIALIZED'].coverage_pct)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['SPECIALIZED'].capacity.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Demanded</span>
-                      <span className="font-bold text-slate-800">
-                        {optimizationResult.pool_summaries['SPECIALIZED'].demand.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-600 block">Allocated</span>
-                      <span className="font-bold text-purple-700">
-                        {optimizationResult.pool_summaries['SPECIALIZED'].allocated.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
 
@@ -1024,7 +1143,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 Institutional Crime-to-Resource Mapping Master
               </h3>
               <p className="text-xs text-slate-600">
-                Explicit institutional parameters linking all 21 Phase 8 predicted crime types to 4 preventive shared resource pools.
+                Explicit institutional parameters linking all 21 Phase 8 predicted crime types to 10 preventive shared resource pools.
               </p>
             </div>
 
@@ -1034,11 +1153,17 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 onChange={(e) => setMappingCategoryFilter(e.target.value)}
                 className="h-8 px-2.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800"
               >
-                <option value="ALL">All Shared Pools</option>
+                <option value="ALL">All 10 Shared Pools</option>
                 <option value="PERSONNEL">Personnel Pool</option>
                 <option value="MOBILITY">Mobility Pool</option>
                 <option value="INVESTIGATION">Investigation Pool</option>
-                <option value="SPECIALIZED">Specialized / Cyber Pool</option>
+                <option value="SPECIALIZED">Specialized Tactical Pool</option>
+                <option value="SURVEILLANCE">Surveillance & CCTV Pool</option>
+                <option value="FORENSIC">Forensic Lab Pool</option>
+                <option value="CYBER_TECHNOLOGY">Cyber Tech Workstations Pool</option>
+                <option value="EMERGENCY_RESPONSE">Emergency Medical EMS Pool</option>
+                <option value="COMMUNICATION">Radio & Dispatch Pool</option>
+                <option value="TRAFFIC_SAFETY">Traffic Safety Pool</option>
               </select>
 
               <button
@@ -1140,11 +1265,17 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 onChange={(e) => setInventoryCategoryFilter(e.target.value)}
                 className="h-8 px-2.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800"
               >
-                <option value="ALL">All Categories</option>
+                <option value="ALL">All 10 Resource Categories</option>
                 <option value="PERSONNEL">Personnel</option>
                 <option value="MOBILITY">Mobility</option>
                 <option value="INVESTIGATION">Investigation</option>
-                <option value="SPECIALIZED">Specialized</option>
+                <option value="SPECIALIZED">Specialized Tactical</option>
+                <option value="SURVEILLANCE">Surveillance & CCTV</option>
+                <option value="FORENSIC">Forensic Examination</option>
+                <option value="CYBER_TECHNOLOGY">Cyber Technology</option>
+                <option value="EMERGENCY_RESPONSE">Emergency Medical (EMS)</option>
+                <option value="COMMUNICATION">Communication & Radio</option>
+                <option value="TRAFFIC_SAFETY">Traffic Safety</option>
               </select>
             </div>
           </div>
@@ -1318,7 +1449,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   }`}
                 >
                   <Layers className="h-3.5 w-3.5" />
-                  Complete 21-Crime Demand Matrix (All 4 Pools)
+                  Complete 21-Crime Demand Matrix (All 10 Pools)
                 </button>
               </div>
 
@@ -1387,16 +1518,16 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 </div>
               )}
 
-              {/* TAB 2: COMPLETE 21-CRIME MATRIX (ALL 4 POOLS) */}
+              {/* TAB 2: COMPLETE 21-CRIME MATRIX (ALL 10 POOLS) */}
               {drillDownTab === 'MATRIX' && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5 text-slate-700" />
-                      All 21 Predicted Crime Types &times; 4 Resource Pools Matrix
+                      All 21 Predicted Crime Types &times; 10 Resource Pools Matrix
                     </h4>
                     <span className="text-[11px] text-slate-500">
-                      Coefficients &amp; Raw Demands across Personnel, Mobility, Investigation &amp; Specialized
+                      Coefficients &amp; Raw Demands across all 10 institutional pools (Personnel, Mobility, Investigation, Specialized, Surveillance, Forensic, Cyber Tech, Emergency EMS, Communication &amp; Traffic Safety)
                     </span>
                   </div>
 
@@ -1407,16 +1538,22 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                     </div>
                   ) : districtDemandDetail && districtDemandDetail.crime_matrix ? (
                     <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                      <table className="w-full text-left text-[11px] text-slate-700">
+                      <table className="w-full text-left text-[11px] text-slate-700 whitespace-nowrap">
                         <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
                           <tr>
                             <th className="px-2.5 py-2">Crime Type</th>
-                            <th className="px-2.5 py-2 text-center">Severity</th>
+                            <th className="px-2 py-2 text-center">Severity</th>
                             <th className="px-2.5 py-2 text-right">Predicted (&ycirc;)</th>
-                            <th className="px-2.5 py-2 text-center">Personnel (Coeff / Dem)</th>
-                            <th className="px-2.5 py-2 text-center">Mobility (Coeff / Dem)</th>
-                            <th className="px-2.5 py-2 text-center">Investigation (Coeff / Dem)</th>
-                            <th className="px-2.5 py-2 text-center">Specialized (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Personnel (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Mobility (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Investigation (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Specialized (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Surveillance (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Forensic (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Cyber Tech (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Emergency EMS (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Comm (Coeff / Dem)</th>
+                            <th className="px-2 py-2 text-center">Traffic (Coeff / Dem)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1426,7 +1563,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                                 {cm.crime_name}
                                 <span className="block text-[9px] text-slate-500">{cm.category_name}</span>
                               </td>
-                              <td className="px-2.5 py-2 text-center">
+                              <td className="px-2 py-2 text-center">
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
                                   {cm.severity_level}
                                 </span>
@@ -1434,17 +1571,35 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                               <td className="px-2.5 py-2 text-right font-bold text-slate-800">
                                 {cm.predicted_count.toFixed(1)}
                               </td>
-                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
                                 {cm.coefficients['PERSONNEL']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['PERSONNEL']?.toFixed(2) ?? '0.00'}</span>
                               </td>
-                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
                                 {cm.coefficients['MOBILITY']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['MOBILITY']?.toFixed(2) ?? '0.00'}</span>
                               </td>
-                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
                                 {cm.coefficients['INVESTIGATION']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['INVESTIGATION']?.toFixed(2) ?? '0.00'}</span>
                               </td>
-                              <td className="px-2.5 py-2 text-center text-slate-700 font-mono">
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
                                 {cm.coefficients['SPECIALIZED']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['SPECIALIZED']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['SURVEILLANCE']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['SURVEILLANCE']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['FORENSIC']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['FORENSIC']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['CYBER_TECHNOLOGY']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['CYBER_TECHNOLOGY']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['EMERGENCY_RESPONSE']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['EMERGENCY_RESPONSE']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['COMMUNICATION']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['COMMUNICATION']?.toFixed(2) ?? '0.00'}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-mono">
+                                {cm.coefficients['TRAFFIC_SAFETY']?.toFixed(2) ?? '0.00'} / <span className="font-semibold">{cm.raw_demands['TRAFFIC_SAFETY']?.toFixed(2) ?? '0.00'}</span>
                               </td>
                             </tr>
                           ))}
