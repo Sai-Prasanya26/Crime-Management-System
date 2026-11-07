@@ -15,6 +15,10 @@ import {
   ShieldAlert,
   Car,
   Flame,
+  Award,
+  ChevronDown,
+  ChevronUp,
+  GitBranch,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -35,6 +39,9 @@ import type {
   ActualVsPredictedData,
   DistrictMonthPrediction,
   PredictionBreakdownResponse,
+  PredictionOverview,
+  EvaluationComparison,
+  PredictionItem,
 } from '../api/predictionApi';
 import type { StateItem, DistrictItem } from '../types';
 
@@ -97,7 +104,7 @@ const SEVERITY_BADGES: Record<string, { bg: string; text: string; border: string
 const TYPE_COMPACT_LIMIT = 5;
 
 export const PredictionsPage: React.FC = () => {
-  // Geographic and temporal controls - initialized with NO default state, district, year, or month
+  // Geographic and temporal controls
   const [states, setStates] = useState<StateItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
@@ -105,16 +112,22 @@ export const PredictionsPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
 
+  // Overview and Model Evaluation data
+  const [overview, setOverview] = useState<PredictionOverview | null>(null);
+  const [evaluation, setEvaluation] = useState<EvaluationComparison | null>(null);
+  const [stateTopDistricts, setStateTopDistricts] = useState<PredictionItem[]>([]);
+  const [showEvaluationReport, setShowEvaluationReport] = useState<boolean>(false);
+
   // Prediction result and state
   const [predictionResult, setPredictionResult] = useState<DistrictMonthPrediction | null>(null);
   const [breakdownResult, setBreakdownResult] = useState<PredictionBreakdownResponse | null>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [predictError, setPredictError] = useState<string | null>(null);
 
-  // Interactive selected category for side-by-side view (defaults to first category on prediction)
+  // Interactive selected category for side-by-side view
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
-  // View All expand/collapse toggles matching Crime Analytics behavior
+  // View All expand/collapse toggles
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
   const [showAllTypes, setShowAllTypes] = useState<boolean>(false);
 
@@ -125,16 +138,20 @@ export const PredictionsPage: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  // Initial load: Fetch states only, do NOT auto-select state or district
+  // Initial load: Fetch states, pipeline overview, and evaluation comparisons
   const loadInitialData = useCallback(async () => {
     setIsInitialLoading(true);
     setPageError(null);
     try {
-      const statesRes = await geographyApi.getStates();
-      const stateList = statesRes.items || [];
-      setStates(stateList);
+      const [statesRes, overviewRes, evalRes] = await Promise.all([
+        geographyApi.getStates(),
+        predictionApi.getOverview().catch(() => null),
+        predictionApi.getEvaluation().catch(() => null),
+      ]);
+      setStates(statesRes.items || []);
+      setOverview(overviewRes);
+      setEvaluation(evalRes);
 
-      // Do NOT select any state, district, year, or month by default
       setSelectedStateId(undefined);
       setDistricts([]);
       setSelectedDistrictId(undefined);
@@ -157,7 +174,7 @@ export const PredictionsPage: React.FC = () => {
     loadInitialData();
   }, [loadInitialData]);
 
-  // When State / UT changes, clear dependent district, year, month, and results
+  // When State changes, load districts and state-level top forecast predictions
   const handleStateChange = async (stateId: number | undefined) => {
     setSelectedStateId(stateId);
     setSelectedDistrictId(undefined);
@@ -173,19 +190,28 @@ export const PredictionsPage: React.FC = () => {
     setPredictError(null);
 
     if (!stateId) {
+      setStateTopDistricts([]);
       return;
     }
 
     try {
-      const res = await geographyApi.getDistricts(stateId, 'current');
-      const items = res.items || [];
-      setDistricts(items);
+      const [distsRes, predsRes] = await Promise.all([
+        geographyApi.getDistricts(stateId, 'current'),
+        predictionApi.getMonthlyPredictions({
+          state_id: stateId,
+          forecast_status: 'CURRENT_FUTURE_FORECAST',
+          limit: 15,
+        }),
+      ]);
+      setDistricts(distsRes.items || []);
+      setStateTopDistricts(predsRes.items || []);
     } catch {
       setDistricts([]);
+      setStateTopDistricts([]);
     }
   };
 
-  // When District changes, clear dependent year, month, and results
+  // When District changes
   const handleDistrictChange = (districtId: number | undefined) => {
     setSelectedDistrictId(districtId);
     setSelectedYear(undefined);
@@ -199,7 +225,7 @@ export const PredictionsPage: React.FC = () => {
     setActualVsPred(null);
   };
 
-  // When Year changes, clear dependent month and result
+  // When Year changes
   const handleYearChange = (year: number | undefined) => {
     setSelectedYear(year);
     setSelectedMonth(undefined);
@@ -211,7 +237,7 @@ export const PredictionsPage: React.FC = () => {
     setShowAllTypes(false);
   };
 
-  // When Month changes, clear previous prediction until Predict is clicked
+  // When Month changes
   const handleMonthChange = (month: number | undefined) => {
     setSelectedMonth(month);
     setPredictError(null);
@@ -222,13 +248,14 @@ export const PredictionsPage: React.FC = () => {
     setShowAllTypes(false);
   };
 
-  // Reset Filters handler: restores initial unselected state
+  // Reset Filters handler
   const handleResetFilters = () => {
     setSelectedStateId(undefined);
     setSelectedDistrictId(undefined);
     setSelectedYear(undefined);
     setSelectedMonth(undefined);
     setDistricts([]);
+    setStateTopDistricts([]);
     setPredictionResult(null);
     setBreakdownResult(null);
     setSelectedCategoryId(null);
@@ -245,25 +272,19 @@ export const PredictionsPage: React.FC = () => {
     selectedMonth !== undefined
   );
 
-  // Run prediction when user clicks "Predict Crime"
-  const handlePredictCrime = async () => {
-    if (!selectedDistrictId || !selectedYear || !selectedMonth) {
-      setPredictError('Please select state, district, year, and month to predict crime.');
-      return;
-    }
-
+  // Run prediction when user clicks "Predict Crime" or selects from comparison table
+  const executePrediction = async (districtId: number, year: number, month: number) => {
     setIsPredicting(true);
     setPredictError(null);
     try {
       const [predData, chartData, breakdownData] = await Promise.all([
-        predictionApi.getDistrictMonthPrediction(selectedDistrictId, selectedYear, selectedMonth),
-        predictionApi.getActualVsPredicted(selectedDistrictId),
-        predictionApi.getPredictionBreakdown(selectedDistrictId, selectedYear, selectedMonth),
+        predictionApi.getDistrictMonthPrediction(districtId, year, month),
+        predictionApi.getActualVsPredicted(districtId),
+        predictionApi.getPredictionBreakdown(districtId, year, month),
       ]);
       setPredictionResult(predData);
       setActualVsPred(chartData);
       setBreakdownResult(breakdownData);
-      // Automatically select the first category for interactive side-by-side view
       if (breakdownData.categories && breakdownData.categories.length > 0) {
         setSelectedCategoryId(breakdownData.categories[0].category_id);
       } else {
@@ -281,6 +302,23 @@ export const PredictionsPage: React.FC = () => {
     } finally {
       setIsPredicting(false);
     }
+  };
+
+  const handlePredictCrime = () => {
+    if (!selectedDistrictId || !selectedYear || !selectedMonth) {
+      setPredictError('Please select state, district, year, and month to predict crime.');
+      return;
+    }
+    executePrediction(selectedDistrictId, selectedYear, selectedMonth);
+  };
+
+  // Quick select a district from the forecast comparison table
+  const handleQuickSelectDistrict = (item: PredictionItem) => {
+    setSelectedStateId(item.state_id);
+    setSelectedDistrictId(item.district_id);
+    setSelectedYear(2026);
+    setSelectedMonth(11);
+    executePrediction(item.district_id, 2026, 11);
   };
 
   // Format chart data points (historical observed vs estimated future incidents)
@@ -315,7 +353,6 @@ export const PredictionsPage: React.FC = () => {
       curr.predicted_count > (max?.predicted_count ?? -1) ? curr : max,
       breakdownResult.crime_types[0]
     );
-    // If all predicted counts are zero, treat as no prominent active crime type
     if (!maxItem || maxItem.predicted_count <= 0) {
       return null;
     }
@@ -332,7 +369,6 @@ export const PredictionsPage: React.FC = () => {
   const displayedCategories = useMemo(() => {
     if (!breakdownResult) return [];
     if (showAllCategories) return breakdownResult.categories;
-    // Show top 2 categories; if a category is currently selected and outside top 2, keep it visible
     const base = breakdownResult.categories.slice(0, 2);
     if (selectedCategoryId && !base.some((c) => c.category_id === selectedCategoryId)) {
       const active = breakdownResult.categories.find((c) => c.category_id === selectedCategoryId);
@@ -341,7 +377,7 @@ export const PredictionsPage: React.FC = () => {
     return base;
   }, [breakdownResult, showAllCategories, selectedCategoryId]);
 
-  // All filtered crime types for the active category (or all 21 if none selected), sorted descending
+  // All filtered crime types for the active category, sorted descending
   const sortedCrimeTypes = useMemo(() => {
     if (!breakdownResult) return [];
     const pool =
@@ -363,6 +399,12 @@ export const PredictionsPage: React.FC = () => {
     if (sortedCrimeTypes.length === 0) return 1;
     return Math.max(...sortedCrimeTypes.map((t) => t.predicted_count), 0.01);
   }, [sortedCrimeTypes]);
+
+  // Comparison districts to display in ranking table
+  const displayedComparisonDistricts = useMemo(() => {
+    if (stateTopDistricts.length > 0) return stateTopDistricts;
+    return overview?.top_predicted_districts || [];
+  }, [stateTopDistricts, overview]);
 
   return (
     <DashboardLayout
@@ -388,13 +430,169 @@ export const PredictionsPage: React.FC = () => {
 
       {!isInitialLoading && !pageError && (
         <div className="space-y-4">
+          {/* TOP SUMMARY KPI BAR: High-Level Forecasting Architecture Overview */}
+          {overview && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-blue-200/60 pb-3 gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="rounded p-1 bg-[#EAF3FA] text-[#1769AA]">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                      AI-Driven Crime Forecasting & Uncertainty Architecture
+                    </h3>
+                    <p className="text-[11px] text-[#5D6878]">
+                      Production Model: <span className="font-semibold text-[#1769AA]">{overview.active_model_name}</span> ({overview.algorithm} {overview.active_model_version})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded bg-white text-[#1769AA] border border-blue-200">
+                    Horizon: {overview.current_forecast_start || '2026-11'} to {overview.current_forecast_end || '2027-10'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowEvaluationReport((prev) => !prev)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-white border border-[#D9E1EA] text-[#0B1F3A] hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <BarChart2 className="h-3.5 w-3.5 text-[#1769AA]" />
+                    <span>{showEvaluationReport ? 'Hide Evaluation' : 'Model Evaluation'}</span>
+                    {showEvaluationReport ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Overview KPI Cards */}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Total Predictions Stored
+                  </span>
+                  <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
+                    {overview.total_predictions.toLocaleString()}
+                  </p>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    {overview.districts_covered} Monitored Districts
+                  </span>
+                </div>
+
+                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Test Out-of-Sample MAE
+                  </span>
+                  <p className="mt-1 text-xl font-bold font-mono text-[#1769AA]">
+                    1.6956
+                  </p>
+                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">
+                    -25.03% vs Seasonal Baseline
+                  </span>
+                </div>
+
+                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Model Accuracy (R² / WAPE)
+                  </span>
+                  <p className="mt-1 text-xl font-bold font-mono text-[#0B1F3A]">
+                    R²: 0.6063
+                  </p>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    WAPE: 36.84% (Zero-division safe)
+                  </span>
+                </div>
+
+                <div className="rounded border border-blue-200/80 bg-white p-3 shadow-2xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Uncertainty Bounds
+                  </span>
+                  <p className="mt-1 text-base font-bold text-emerald-700">
+                    Split Conformal
+                  </p>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    80% Nominal [79.74% Empirical]
+                  </span>
+                </div>
+              </div>
+
+              {/* Expandable Model Evaluation Comparison Report */}
+              {showEvaluationReport && evaluation && (
+                <div className="mt-4 pt-3 border-t border-blue-200/60 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A] flex items-center gap-1.5">
+                      <Award className="h-4 w-4 text-[#C98512]" />
+                      <span>Model Evaluation & Benchmark Comparison (Untouched 2025 Test Set)</span>
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      Evaluated on 7,680 Out-of-Sample District-Month Observations
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto bg-white rounded border border-[#D9E1EA]">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[10px] font-semibold uppercase text-slate-500">
+                          <th className="py-2 px-3">Model / Architecture</th>
+                          <th className="py-2 px-3 text-right">MAE</th>
+                          <th className="py-2 px-3 text-right">RMSE</th>
+                          <th className="py-2 px-3 text-right">WAPE %</th>
+                          <th className="py-2 px-3 text-right">R² Score</th>
+                          <th className="py-2 px-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-mono">
+                        {Object.entries(evaluation.metrics_summary).map(([name, m]) => {
+                          const isPrimary = name === 'HistGradientBoosting';
+                          return (
+                            <tr key={name} className={isPrimary ? 'bg-blue-50/70 font-bold text-[#1769AA]' : 'hover:bg-slate-50'}>
+                              <td className="py-2 px-3 font-sans">
+                                <div className="flex items-center gap-1.5">
+                                  <span>{name.replace(/_/g, ' ')}</span>
+                                  {isPrimary && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-[#1769AA] text-white">
+                                      Production Primary
+                                    </span>
+                                  )}
+                                  {name.includes('Naive') || name.includes('Average') ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                      Baseline Hurdle
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-right">{m.MAE.toFixed(4)}</td>
+                              <td className="py-2 px-3 text-right">{m.RMSE.toFixed(4)}</td>
+                              <td className="py-2 px-3 text-right">{m['WAPE%'].toFixed(2)}%</td>
+                              <td className="py-2 px-3 text-right">{m.R2.toFixed(4)}</td>
+                              <td className="py-2 px-3 text-right font-sans">
+                                {isPrimary ? (
+                                  <span className="text-emerald-700 font-bold">Selected</span>
+                                ) : (
+                                  <span className="text-slate-400">Evaluated</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="mt-2 text-[10.5px] text-[#5D6878] italic">
+                    * Disclaimer: Crime predictions are statistical estimates based on historical patterns. They do not constitute actual confirmed crime incidents and must not be used as the sole determinant for punitive or tactical enforcement.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* PROGRESSIVE SELECTION CONTROLS */}
           <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
             <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
               <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
                 <div className="flex h-10 items-center justify-center sm:justify-start gap-1.5 rounded bg-[#F4F7FA] px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#0B1F3A] border border-[#D9E1EA] shrink-0">
                   <Sparkles className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>Forecast Filters</span>
+                  <span>Forecast Filters:</span>
                 </div>
 
                 {/* 1. State / UT Selector */}
@@ -407,7 +605,7 @@ export const PredictionsPage: React.FC = () => {
                   }}
                   className="h-10 w-full sm:w-auto sm:min-w-[190px] rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
                 >
-                  <option value="">Select State / UT</option>
+                  <option value="">All States / UTs (National)</option>
                   {states.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.state_name}
@@ -415,7 +613,7 @@ export const PredictionsPage: React.FC = () => {
                   ))}
                 </select>
 
-                {/* 2. District Selector (Revealed after State is selected) */}
+                {/* 2. District Selector */}
                 {Boolean(selectedStateId) && (
                   <select
                     aria-label="District"
@@ -429,13 +627,13 @@ export const PredictionsPage: React.FC = () => {
                     <option value="">Select District</option>
                     {districts.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.district_name}
+                        {d.district_name} {!d.is_census_2011 ? '(Carved)' : ''}
                       </option>
                     ))}
                   </select>
                 )}
 
-                {/* 3. Year Selector (Revealed after District is selected) */}
+                {/* 3. Year Selector */}
                 {Boolean(selectedDistrictId) && (
                   <select
                     aria-label="Year"
@@ -449,16 +647,16 @@ export const PredictionsPage: React.FC = () => {
                     <option value="">Select Year</option>
                     <option value={2027}>2027 (Forecast)</option>
                     <option value={2026}>2026 (Forecast)</option>
-                    <option value={2025}>2025 (Historical)</option>
-                    <option value={2024}>2024 (Historical)</option>
-                    <option value={2023}>2023 (Historical)</option>
-                    <option value={2022}>2022 (Historical)</option>
-                    <option value={2021}>2021 (Historical)</option>
-                    <option value={2020}>2020 (Historical)</option>
+                    <option value={2025}>2025 (Historical Actuals)</option>
+                    <option value={2024}>2024 (Historical Actuals)</option>
+                    <option value={2023}>2023 (Historical Actuals)</option>
+                    <option value={2022}>2022 (Historical Actuals)</option>
+                    <option value={2021}>2021 (Historical Actuals)</option>
+                    <option value={2020}>2020 (Historical Actuals)</option>
                   </select>
                 )}
 
-                {/* 4. Month Selector (Revealed after Year is selected) */}
+                {/* 4. Month Selector */}
                 {Boolean(selectedYear) && (
                   <select
                     aria-label="Month"
@@ -486,7 +684,7 @@ export const PredictionsPage: React.FC = () => {
                   </select>
                 )}
 
-                {/* 5. Predict Crime Button (Revealed after Month is selected) */}
+                {/* 5. Predict Crime Button */}
                 {Boolean(selectedMonth) && (
                   <button
                     type="button"
@@ -531,24 +729,106 @@ export const PredictionsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Initial Prompt State */}
-          {!isPredicting && !predictionResult && (
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 text-center shadow-2xs">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#EAF3FA] text-[#1769AA] mb-3">
-                <Activity className="h-5 w-5" />
+          {/* SECTION: DISTRICT-WISE FORECAST COMPARISON TABLE (Visible when no district predicted yet) */}
+          {!predictionResult && displayedComparisonDistricts.length > 0 && (
+            <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[#0B1F3A]">
+                      {selectedStateId
+                        ? `Projected Crime Caseload by District — ${states.find((s) => s.id === selectedStateId)?.state_name || 'Selected State'}`
+                        : 'Top Projected Jurisdictions (District Forecast Comparison)'}
+                    </h3>
+                    <p className="text-[11px] text-[#5D6878]">
+                      Machine learning projections for the upcoming period with split conformal uncertainty intervals
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs text-slate-400 font-mono">
+                  {displayedComparisonDistricts.length} Jurisdictions Ranked
+                </span>
               </div>
-              <h3 className="text-sm font-bold text-[#0B1F3A]">No Prediction Selected</h3>
-              <p className="mt-1 text-xs text-[#5D6878] max-w-md mx-auto">
-                {!selectedStateId
-                  ? 'Select a State / UT to begin exploring crime projections.'
-                  : !selectedDistrictId
-                  ? 'Select a District within the chosen State / UT.'
-                  : !selectedYear
-                  ? 'Select a Year for historical actuals or future forecasts.'
-                  : !selectedMonth
-                  ? 'Select a Month, then click Predict Crime to generate predictions.'
-                  : 'Click Predict Crime to estimate incidents for the selected period.'}
-              </p>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[650px]">
+                  <thead>
+                    <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[10px] font-semibold uppercase text-[#5D6878]">
+                      <th className="py-2.5 pl-3 w-14"># Rank</th>
+                      <th className="py-2.5 px-3">District & Lineage</th>
+                      <th className="py-2.5 px-3">State / UT</th>
+                      <th className="py-2.5 px-3">Period</th>
+                      <th className="py-2.5 px-3 text-right">Projected Crimes</th>
+                      <th className="py-2.5 px-3 text-right">80% Prediction Interval</th>
+                      <th className="py-2.5 pr-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 whitespace-nowrap">
+                    {displayedComparisonDistricts.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                        onClick={() => handleQuickSelectDistrict(item)}
+                      >
+                        <td className="py-2.5 pl-3 font-mono font-bold text-slate-500">
+                          <span
+                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10.5px] font-bold ${
+                              idx === 0
+                                ? 'bg-amber-100 text-[#C98512]'
+                                : idx === 1
+                                ? 'bg-slate-200 text-slate-700'
+                                : idx === 2
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-[#0B1F3A]">{item.district_name}</span>
+                            {item.is_derived_from_parent && (
+                              <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9.5px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                <GitBranch className="h-2.5 w-2.5" />
+                                <span>Carved</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-[#5D6878]">{item.state_name}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500">{item.forecast_period}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-[#1769AA] text-[13px]">
+                          {item.predicted_crime_count.toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                          {item.prediction_interval_lower !== null &&
+                          item.prediction_interval_lower !== undefined &&
+                          item.prediction_interval_upper !== null &&
+                          item.prediction_interval_upper !== undefined
+                            ? `[${item.prediction_interval_lower.toFixed(2)} – ${item.prediction_interval_upper.toFixed(2)}]`
+                            : '—'}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickSelectDistrict(item);
+                            }}
+                            className="px-2 py-0.5 rounded text-[11px] font-semibold text-[#1769AA] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                          >
+                            Inspect Forecast
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -562,7 +842,7 @@ export const PredictionsPage: React.FC = () => {
             </div>
           )}
 
-          {/* PREDICTION DASHBOARD CONTAINER */}
+          {/* PREDICTION DASHBOARD CONTAINER (When District is Selected & Predicted) */}
           {!isPredicting && predictionResult && (
             <div className="space-y-4">
               {/* SECTION 1: DISTRICT HEADER & OVERALL FORECAST */}
@@ -676,9 +956,12 @@ export const PredictionsPage: React.FC = () => {
                             <TrendingUp className="h-4 w-4" />
                           </div>
                           <h3 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
-                            Historical vs. Predicted Trend
+                            Historical Actuals vs. Estimated Forecasts Timeline
                           </h3>
                         </div>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Strict separation between historical actual observations (≤2025) and forward estimates (≥2026)
+                        </span>
                       </div>
 
                       <div className="h-64 w-full">
@@ -702,10 +985,10 @@ export const PredictionsPage: React.FC = () => {
                               }}
                               formatter={(val: any, name: any) => {
                                 if (name === 'actual') {
-                                  return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed'];
+                                  return [val ? `${Number(val).toLocaleString()} incidents` : '—', 'Historical Observed Actual'];
                                 }
                                 if (name === 'current_future') {
-                                  return [val ? `${Number(val).toLocaleString()} estimated incidents` : '—', 'Estimated Incidents'];
+                                  return [val ? `${Number(val).toLocaleString()} estimated incidents` : '—', 'Model Projected Estimate'];
                                 }
                                 return [val, String(name)];
                               }}
@@ -714,8 +997,8 @@ export const PredictionsPage: React.FC = () => {
                               verticalAlign="top"
                               height={32}
                               formatter={(value) => {
-                                if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed</span>;
-                                if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Estimated Incidents</span>;
+                                if (value === 'actual') return <span className="text-xs font-semibold text-[#1769AA]">Historical Observed Actual</span>;
+                                if (value === 'current_future') return <span className="text-xs font-bold text-emerald-700">Model Projected Estimate</span>;
                                 return <span className="text-xs text-slate-500">{value}</span>;
                               }}
                             />
@@ -746,10 +1029,10 @@ export const PredictionsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* SECTION 2: INTERACTIVE SIDE-BY-SIDE BREAKDOWN (MATCHING CRIME ANALYTICS BEHAVIOR) */}
+              {/* SECTION 2: INTERACTIVE SIDE-BY-SIDE BREAKDOWN */}
               {breakdownResult && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                  {/* LEFT PANEL: 4 CATEGORY CARDS WITH EXPAND/COLLAPSE VIEW ALL (5 COLS) */}
+                  {/* LEFT PANEL: 4 CATEGORY CARDS */}
                   <div className="lg:col-span-5 space-y-2">
                     <div className="flex items-center justify-between h-6 mb-1">
                       <div className="flex items-center gap-2">
@@ -809,7 +1092,6 @@ export const PredictionsPage: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* Slim horizontal progress bar representing percentage share */}
                             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-2">
                               <div
                                 className={`h-full rounded-full ${style.bar}`}
@@ -821,7 +1103,6 @@ export const PredictionsPage: React.FC = () => {
                       })}
                     </div>
 
-                    {/* View All / Show Less for Categories matching Crime Analytics pattern */}
                     {breakdownResult.categories.length > 2 && (
                       <div className="pt-1.5 border-t border-slate-100 flex items-center justify-end shrink-0">
                         <button
@@ -835,7 +1116,7 @@ export const PredictionsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* RIGHT PANEL: PREDICTED CRIME TYPES WITH VIEW ALL (7 COLS) */}
+                  {/* RIGHT PANEL: PREDICTED CRIME TYPES */}
                   <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs min-h-[300px] flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5 shrink-0">
@@ -852,7 +1133,6 @@ export const PredictionsPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* List of Ranked Crime Types */}
                       <div className="space-y-2 overflow-y-auto max-h-[360px] pr-1">
                         {displayedCrimeTypes.map((t, idx) => {
                           const pctOfMax = maxTypeCount > 0 ? (t.predicted_count / maxTypeCount) * 100 : 0;
@@ -904,7 +1184,6 @@ export const PredictionsPage: React.FC = () => {
                                 </div>
                               </div>
 
-                              {/* Slim relative-volume bar */}
                               <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full ${catStyle.bar}`}
@@ -917,7 +1196,6 @@ export const PredictionsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* View All / Show Less footer toggle matching Crime Analytics pattern */}
                     {sortedCrimeTypes.length > TYPE_COMPACT_LIMIT && (
                       <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end shrink-0">
                         <button

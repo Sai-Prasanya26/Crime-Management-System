@@ -18,6 +18,9 @@ export interface PredictionItem {
   is_latest: boolean;
   model_version: string;
   model_name: string;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
 }
 
 export interface PredictionOverview {

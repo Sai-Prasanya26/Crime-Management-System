@@ -111,7 +111,7 @@ class PredictionRepository:
             .filter(CrimePrediction.model_id == active_model.id)
             .filter(CrimePrediction.prediction_date == target_forecast_date)
             .order_by(desc(CrimePrediction.predicted_crime_count))
-            .limit(5)
+            .limit(10)
             .all()
         )
 
