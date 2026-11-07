@@ -8,6 +8,15 @@ import type {
   OptimizationScenarioComparisonRequest,
   OptimizationScenarioComparisonResponse,
   PaginatedList,
+  CrimeResourceMappingItem,
+  CrimeResourceMappingUpdateRequest,
+  CrimeResourceMappingListResponse,
+  ResourceInventoryItem,
+  ResourceInventoryUpdateRequest,
+  ResourceInventorySummaryResponse,
+  DistrictCrimeDemandResponse,
+  CrimeSpecificOptimizationRequest,
+  CrimeSpecificOptimizationResponse,
 } from '../types';
 
 export interface AllocationFilterParams {
@@ -97,6 +106,122 @@ export const optimizationApi = {
   ): Promise<OptimizationScenarioComparisonResponse> => {
     const response = await apiClient.post<OptimizationScenarioComparisonResponse>(
       '/optimization/scenarios',
+      body
+    );
+    return response.data;
+  },
+
+  // ==========================================================================
+  // Phase 10: Crime-Specific AI Preventive Resource Optimization
+  // ==========================================================================
+
+  /**
+   * Retrieve configurable mappings connecting predicted crime types to suitable preventive resources.
+   */
+  getCrimeMappings: async (params?: {
+    crime_type_id?: number;
+    shared_pool_category?: string;
+    is_active?: boolean;
+  }): Promise<CrimeResourceMappingListResponse> => {
+    const response = await apiClient.get<CrimeResourceMappingListResponse>(
+      '/optimization/crime-mappings',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Update requirement coefficient, threshold, priority weight, or operational rationale.
+   * Admin RBAC required.
+   */
+  updateCrimeMapping: async (
+    mappingId: number,
+    body: CrimeResourceMappingUpdateRequest
+  ): Promise<CrimeResourceMappingItem> => {
+    const response = await apiClient.put<CrimeResourceMappingItem>(
+      `/optimization/crime-mappings/${mappingId}`,
+      body
+    );
+    return response.data;
+  },
+
+  /**
+   * Reset all crime-to-resource mappings back to institutional defaults.
+   * Admin RBAC required.
+   */
+  resetCrimeMappings: async (): Promise<CrimeResourceMappingListResponse> => {
+    const response = await apiClient.post<CrimeResourceMappingListResponse>(
+      '/optimization/crime-mappings/reset'
+    );
+    return response.data;
+  },
+
+  /**
+   * Retrieve calculated crime-specific preventive resource demand breakdown for a district.
+   */
+  getDistrictCrimeDemand: async (params: {
+    district_id: number;
+    year?: number;
+    month?: number;
+  }): Promise<DistrictCrimeDemandResponse> => {
+    const response = await apiClient.get<DistrictCrimeDemandResponse>(
+      '/optimization/crime-demand',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * List standing resource inventory records detailing total, deployed, unavailable, and available pools.
+   */
+  getInventory: async (params?: {
+    state_id?: number;
+    district_id?: number;
+    category?: string;
+  }): Promise<PaginatedList<ResourceInventoryItem>> => {
+    const response = await apiClient.get<PaginatedList<ResourceInventoryItem>>(
+      '/optimization/inventory',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Update standing inventory planning inputs for scenario modeling.
+   * Admin RBAC required.
+   */
+  updateInventory: async (
+    inventoryId: number,
+    body: ResourceInventoryUpdateRequest
+  ): Promise<ResourceInventoryItem> => {
+    const response = await apiClient.put<ResourceInventoryItem>(
+      `/optimization/inventory/${inventoryId}`,
+      body
+    );
+    return response.data;
+  },
+
+  /**
+   * Retrieve aggregated inventory totals, deployed counts, and available pools by category.
+   */
+  getInventorySummary: async (stateId?: number): Promise<ResourceInventorySummaryResponse> => {
+    const response = await apiClient.get<ResourceInventorySummaryResponse>(
+      '/optimization/inventory/summary',
+      { params: stateId ? { state_id: stateId } : undefined }
+    );
+    return response.data;
+  },
+
+  /**
+   * Execute mixed-integer linear programming (MILP) to allocate resources across districts
+   * based on predicted crime types, severity, and Phase 9 risk scores while strictly conserving resource pools.
+   * Analyst or Admin RBAC required.
+   */
+  executeCrimeSpecificOptimization: async (
+    body: CrimeSpecificOptimizationRequest
+  ): Promise<CrimeSpecificOptimizationResponse> => {
+    const response = await apiClient.post<CrimeSpecificOptimizationResponse>(
+      '/optimization/crime-optimize',
       body
     );
     return response.data;

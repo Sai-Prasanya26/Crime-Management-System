@@ -5,7 +5,7 @@ from backend.app.models.crime import CrimeCategory, CrimeType, CrimeIncident
 from backend.app.models.resources import ResourceType, ResourceCost, DistrictResource, StateResource
 from backend.app.models.ml import MLModel, CrimePrediction
 from backend.app.models.intelligence import CrimeRiskScore, ResourceRecommendation, BudgetEstimation
-from backend.app.models.optimization import OptimizationRun, OptimizationAllocation
+from backend.app.models.optimization import OptimizationRun, OptimizationAllocation, CrimeResourceMapping, ResourceInventoryRecord
 from backend.app.models.budget import CostBenchmarkRate, BudgetEstimationRun, BudgetEstimationItem
 from backend.app.models.auth import User, AuditLog
 from backend.app.models.reports import GeneratedReport
@@ -30,6 +30,8 @@ __all__ = [
     "BudgetEstimation",
     "OptimizationRun",
     "OptimizationAllocation",
+    "CrimeResourceMapping",
+    "ResourceInventoryRecord",
     "CostBenchmarkRate",
     "BudgetEstimationRun",
     "BudgetEstimationItem",

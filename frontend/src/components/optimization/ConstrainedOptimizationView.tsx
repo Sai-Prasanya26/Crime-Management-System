@@ -18,6 +18,7 @@ import { StatCard } from '../common/StatCard';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import EmptyState from '../common/EmptyState';
+import CrimeSpecificOptimizationView from './CrimeSpecificOptimizationView';
 import { optimizationApi } from '../../api';
 import type {
   StateItem,
@@ -37,6 +38,9 @@ export const ConstrainedOptimizationView: React.FC<ConstrainedOptimizationViewPr
   selectedStateId,
   onStateSelect,
 }) => {
+  // View mode: Crime-Specific (Phase 10) vs Single-Resource Solver (Phase 10.1)
+  const [viewMode, setViewMode] = useState<'CRIME_SPECIFIC' | 'SINGLE_RESOURCE'>('CRIME_SPECIFIC');
+
   // Mode selection: OPERATIONAL (Strict) vs SIMULATION (Hypothetical Capacity Modeling)
   const [allocationMode, setAllocationMode] = useState<'OPERATIONAL' | 'SIMULATION'>('OPERATIONAL');
 
@@ -221,13 +225,49 @@ export const ConstrainedOptimizationView: React.FC<ConstrainedOptimizationViewPr
     return list;
   }, [activeRun?.allocations, searchQuery, riskFilter, statusFilter]);
 
-  if (isLoading) {
-    return <LoadingState message="Connecting to constrained MILP solver and loading verified allocations..." />;
-  }
-
   return (
     <div className="space-y-5">
-      {/* 1. Header & Discrepancy Reconciliation Banner */}
+      {/* Top View Mode Switcher */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode('CRIME_SPECIFIC')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'CRIME_SPECIFIC'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Crime-Specific AI Optimization (Phase 10)
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('SINGLE_RESOURCE')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'SINGLE_RESOURCE'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Scale className="h-3.5 w-3.5" />
+            Single-Resource Inventory Solver (Phase 10.1)
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'CRIME_SPECIFIC' ? (
+        <CrimeSpecificOptimizationView
+          states={states}
+          selectedStateId={selectedStateId}
+          onStateSelect={onStateSelect}
+        />
+      ) : isLoading ? (
+        <LoadingState message="Connecting to constrained MILP solver and loading verified allocations..." />
+      ) : (
+        <>
+          {/* 1. Header & Discrepancy Reconciliation Banner */}
       <div className="rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-white to-blue-50/50 p-4 shadow-2xs space-y-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
@@ -842,6 +882,8 @@ export const ConstrainedOptimizationView: React.FC<ConstrainedOptimizationViewPr
               </div>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </div>

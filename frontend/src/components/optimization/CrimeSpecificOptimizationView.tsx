@@ -1,0 +1,1599 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Scale,
+  Sparkles,
+  Play,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  Layers,
+  Search,
+  Sliders,
+  RotateCcw,
+  Users,
+  Car,
+  FileText,
+  ShieldAlert,
+  ChevronRight,
+  X,
+  Edit2,
+  Save,
+  Database,
+  Activity,
+} from 'lucide-react';
+import { StatCard } from '../common/StatCard';
+import LoadingState from '../common/LoadingState';
+import ErrorState from '../common/ErrorState';
+import { optimizationApi } from '../../api';
+import type {
+  StateItem,
+  CrimeSpecificOptimizationResponse,
+  DistrictCrimeAllocationItem,
+  ResourceInventorySummaryResponse,
+  CrimeResourceMappingItem,
+  ResourceInventoryItem,
+  DistrictCrimeDemandResponse,
+} from '../../types';
+
+interface CrimeSpecificOptimizationViewProps {
+  states: StateItem[];
+  selectedStateId?: number;
+  onStateSelect: (stateId: number | undefined) => void;
+}
+
+type SubTab = 'OPTIMIZATION' | 'MAPPINGS' | 'INVENTORY';
+
+export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationViewProps> = ({
+  states,
+  selectedStateId,
+  onStateSelect,
+}) => {
+  // Navigation
+  const [subTab, setSubTab] = useState<SubTab>('OPTIMIZATION');
+
+  // Request Parameters
+  const [optStateId, setOptStateId] = useState<number>(selectedStateId || 2); // Default Andhra Pradesh (ID 2)
+  const [assessmentPeriod, setAssessmentPeriod] = useState<string>('2026-11-01');
+  const [scenarioType, setScenarioType] = useState<string>('CRIME_SPECIFIC_OPTIMAL');
+  const [isSimulation, setIsSimulation] = useState<boolean>(false);
+  const [showCapacityOverrides, setShowCapacityOverrides] = useState<boolean>(false);
+  const [capacityOverrides, setCapacityOverrides] = useState<{
+    PERSONNEL?: number;
+    MOBILITY?: number;
+    INVESTIGATION?: number;
+    SPECIALIZED?: number;
+  }>({});
+
+  // Optimization Result
+  const [optimizationResult, setOptimizationResult] = useState<CrimeSpecificOptimizationResponse | null>(null);
+  const [inventorySummary, setInventorySummary] = useState<ResourceInventorySummaryResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isOptimizing, setIsOptimizing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // District Table Filtering
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [riskFilter, setRiskFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Drill-Down Drawer / Modal
+  const [selectedDistrict, setSelectedDistrict] = useState<DistrictCrimeAllocationItem | null>(null);
+  const [districtDemandDetail, setDistrictDemandDetail] = useState<DistrictCrimeDemandResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+
+  // Mapping Master State
+  const [mappings, setMappings] = useState<CrimeResourceMappingItem[]>([]);
+  const [mappingCategoryFilter, setMappingCategoryFilter] = useState<string>('ALL');
+  const [editingMapping, setEditingMapping] = useState<CrimeResourceMappingItem | null>(null);
+  const [isUpdatingMapping, setIsUpdatingMapping] = useState<boolean>(false);
+  const [mappingSuccessMsg, setMappingSuccessMsg] = useState<string | null>(null);
+
+  // Inventory State
+  const [inventoryRecords, setInventoryRecords] = useState<ResourceInventoryItem[]>([]);
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState<string>('ALL');
+  const [editingInventory, setEditingInventory] = useState<ResourceInventoryItem | null>(null);
+  const [isUpdatingInventory, setIsUpdatingInventory] = useState<boolean>(false);
+  const [inventorySuccessMsg, setInventorySuccessMsg] = useState<string | null>(null);
+
+  // Sync state selection
+  useEffect(() => {
+    if (selectedStateId && selectedStateId !== optStateId) {
+      setOptStateId(selectedStateId);
+    }
+  }, [selectedStateId, optStateId]);
+
+  // Load baseline inventory summary and execute initial optimization
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [invRes, optRes] = await Promise.all([
+        optimizationApi.getInventorySummary(optStateId),
+        optimizationApi.executeCrimeSpecificOptimization({
+          state_id: optStateId,
+          assessment_period: assessmentPeriod,
+          scenario_type: scenarioType,
+          is_simulation: isSimulation,
+          capacity_overrides: Object.keys(capacityOverrides).length > 0 ? capacityOverrides : undefined,
+        }),
+      ]);
+      setInventorySummary(invRes);
+      setOptimizationResult(optRes);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to load crime-specific optimization data.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [optStateId, assessmentPeriod, scenarioType, isSimulation, capacityOverrides]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Execute Optimization Handler
+  const handleExecuteOptimization = async () => {
+    setIsOptimizing(true);
+    setError(null);
+    try {
+      const res = await optimizationApi.executeCrimeSpecificOptimization({
+        state_id: optStateId,
+        assessment_period: assessmentPeriod,
+        scenario_type: scenarioType,
+        is_simulation: isSimulation,
+        capacity_overrides: Object.keys(capacityOverrides).length > 0 ? capacityOverrides : undefined,
+      });
+      setOptimizationResult(res);
+      const invRes = await optimizationApi.getInventorySummary(optStateId);
+      setInventorySummary(invRes);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Optimization solver failed.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // Open District Drill-Down
+  const handleOpenDistrictDetail = async (item: DistrictCrimeAllocationItem) => {
+    setSelectedDistrict(item);
+    setIsLoadingDetail(true);
+    try {
+      const detail = await optimizationApi.getDistrictCrimeDemand({
+        district_id: item.district_id,
+      });
+      setDistrictDemandDetail(detail);
+    } catch (err: any) {
+      console.error('Failed to load district demand detail', err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  // Load Mappings Master
+  const loadMappings = useCallback(async () => {
+    try {
+      const res = await optimizationApi.getCrimeMappings({
+        shared_pool_category: mappingCategoryFilter !== 'ALL' ? mappingCategoryFilter : undefined,
+      });
+      setMappings(res.items);
+    } catch (err: any) {
+      console.error('Failed to load mappings', err);
+    }
+  }, [mappingCategoryFilter]);
+
+  useEffect(() => {
+    if (subTab === 'MAPPINGS') {
+      loadMappings();
+    }
+  }, [subTab, loadMappings]);
+
+  // Load Inventory Records
+  const loadInventory = useCallback(async () => {
+    try {
+      const res = await optimizationApi.getInventory({
+        state_id: optStateId,
+        category: inventoryCategoryFilter !== 'ALL' ? inventoryCategoryFilter : undefined,
+      });
+      setInventoryRecords(res.items);
+    } catch (err: any) {
+      console.error('Failed to load inventory records', err);
+    }
+  }, [optStateId, inventoryCategoryFilter]);
+
+  useEffect(() => {
+    if (subTab === 'INVENTORY') {
+      loadInventory();
+    }
+  }, [subTab, loadInventory]);
+
+  // Save Mapping Updates
+  const handleSaveMapping = async () => {
+    if (!editingMapping) return;
+    setIsUpdatingMapping(true);
+    try {
+      await optimizationApi.updateCrimeMapping(editingMapping.id, {
+        coefficient: editingMapping.coefficient,
+        min_demand_threshold: editingMapping.min_demand_threshold,
+        priority_weight: editingMapping.priority_weight,
+        is_active: editingMapping.is_active,
+        operational_rationale: editingMapping.operational_rationale || undefined,
+      });
+      setMappingSuccessMsg(`Mapping for ${editingMapping.crime_name} updated successfully.`);
+      setEditingMapping(null);
+      loadMappings();
+      setTimeout(() => setMappingSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to update mapping.');
+    } finally {
+      setIsUpdatingMapping(false);
+    }
+  };
+
+  // Reset Mappings to Defaults
+  const handleResetMappings = async () => {
+    if (!confirm('Are you sure you want to reset all 21 crime-to-resource mappings back to institutional baseline defaults?')) {
+      return;
+    }
+    try {
+      await optimizationApi.resetCrimeMappings();
+      setMappingSuccessMsg('All mappings successfully reset to verified institutional defaults.');
+      loadMappings();
+      setTimeout(() => setMappingSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to reset mappings.');
+    }
+  };
+
+  // Save Inventory Updates
+  const handleSaveInventory = async () => {
+    if (!editingInventory) return;
+    setIsUpdatingInventory(true);
+    try {
+      await optimizationApi.updateInventory(editingInventory.id, {
+        total_inventory: editingInventory.total_inventory,
+        deployed_count: editingInventory.deployed_count,
+        unavailable_count: editingInventory.unavailable_count,
+        notes: editingInventory.notes || undefined,
+      });
+      setInventorySuccessMsg(`Inventory record for ${editingInventory.category} updated.`);
+      setEditingInventory(null);
+      loadInventory();
+      setTimeout(() => setInventorySuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to update inventory record.');
+    } finally {
+      setIsUpdatingInventory(false);
+    }
+  };
+
+  // Filtered district allocations
+  const filteredAllocations = useMemo(() => {
+    if (!optimizationResult?.allocations) return [];
+    let list = optimizationResult.allocations;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((a) => a.district_name.toLowerCase().includes(q));
+    }
+
+    if (riskFilter !== 'ALL') {
+      list = list.filter((a) => a.risk_level === riskFilter);
+    }
+
+    if (statusFilter !== 'ALL') {
+      list = list.filter((a) => a.status === statusFilter);
+    }
+
+    return list;
+  }, [optimizationResult?.allocations, searchQuery, riskFilter, statusFilter]);
+
+  // Compute total available standing pool capacity from pool_summaries
+  const totalAvailablePool = useMemo(() => {
+    if (!optimizationResult?.pool_summaries) return 0;
+    return Object.values(optimizationResult.pool_summaries).reduce((acc, p) => acc + (p.capacity || 0), 0);
+  }, [optimizationResult]);
+
+  if (isLoading) {
+    return <LoadingState message="Integrating Phase 8 crime forecasts & Phase 9 risk assessments into MILP solver..." />;
+  }
+
+  if (error && !optimizationResult) {
+    return <ErrorState message={error} onRetry={loadData} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Planning Disclaimer & Architecture Banner */}
+      <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-white to-blue-50/60 p-5 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-200">
+                <Scale className="h-3.5 w-3.5 text-indigo-700" />
+                Phase 10: Crime-Specific Preventive AI Resource Optimization
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="h-3 w-3" />
+                Phase 8 Forecasts &times; Phase 9 Risk Integration
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                <Layers className="h-3 w-3" />
+                4 Shared Pools &bull; Integer MILP
+              </span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">
+              Demand-Driven Police Resource Allocation Engine
+            </h2>
+            <p className="text-xs text-slate-600 max-w-4xl">
+              Allocates standing physical police inventories strictly according to <strong>crime-specific demand</strong> derived from
+              all 21 predicted crime types in Phase 8, calibrated by Phase 9 risk scores. Integer programming guarantees zero fractional
+              personnel and strict physical conservation without exceeding available inventory.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+            <button
+              onClick={() => setSubTab('OPTIMIZATION')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                subTab === 'OPTIMIZATION'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Activity className="h-3.5 w-3.5 inline mr-1" />
+              Optimization Results
+            </button>
+            <button
+              onClick={() => setSubTab('MAPPINGS')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                subTab === 'MAPPINGS'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5 inline mr-1" />
+              Mapping Master (21 Crimes)
+            </button>
+            <button
+              onClick={() => setSubTab('INVENTORY')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                subTab === 'INVENTORY'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Database className="h-3.5 w-3.5 inline mr-1" />
+              Standing Inventory
+            </button>
+          </div>
+        </div>
+
+        {/* Prominent Statutory Disclaimer */}
+        <div className="mt-4 pt-3 border-t border-indigo-100 flex items-start gap-2 text-xs text-slate-600">
+          <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+          <span>
+            <strong>Decision-Support Notice:</strong> All allocations generated by this system represent quantitative scenario planning benchmarks.
+            They do not constitute statutory police deployment orders under the Police Act. Demand is strictly driven by statistical incident forecasts
+            and recorded severity, with zero demographic or socioeconomic profiling.
+          </span>
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
+      {/* TAB 1: OPTIMIZATION RUN & RESULTS                                    */}
+      {/* ==================================================================== */}
+      {subTab === 'OPTIMIZATION' && (
+        <>
+          {/* Controls & Configuration Panel */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* State Selector */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Jurisdiction (State / UT)
+                  </label>
+                  <select
+                    value={optStateId}
+                    onChange={(e) => {
+                      const newId = Number(e.target.value);
+                      setOptStateId(newId);
+                      onStateSelect(newId);
+                    }}
+                    className="h-9 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  >
+                    {states.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.state_name} ({s.entity_type || 'STATE'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Forecast Period */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Forecast Horizon
+                  </label>
+                  <select
+                    value={assessmentPeriod}
+                    onChange={(e) => setAssessmentPeriod(e.target.value)}
+                    className="h-9 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  >
+                    <option value="2026-11-01">Nov 2026</option>
+                    <option value="2026-12-01">Dec 2026</option>
+                    <option value="2027-01-01">Jan 2027</option>
+                    <option value="2027-02-01">Feb 2027</option>
+                    <option value="2027-03-01">Mar 2027</option>
+                  </select>
+                </div>
+
+                {/* Scenario Archetype */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Optimization Strategy Archetype
+                  </label>
+                  <select
+                    value={scenarioType}
+                    onChange={(e) => setScenarioType(e.target.value)}
+                    className="h-9 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  >
+                    <option value="CRIME_SPECIFIC_OPTIMAL">Balanced Crime-Specific (Optimal MILP)</option>
+                    <option value="HIGH_SEVERITY_PRIORITY">Violent &amp; Heinous Crime Priority</option>
+                    <option value="CYBER_SPECIALIZED">Cyber Forensics &amp; Financial Specialization</option>
+                    <option value="HIGHWAY_SAFETY">Traffic &amp; Highway Corridor Enforcement</option>
+                    <option value="EQUAL_DEFICIT_REDUCTION">Equal Deficit Reduction</option>
+                  </select>
+                </div>
+
+                {/* Simulation Mode Toggle */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Execution Mode
+                  </label>
+                  <div className="flex items-center gap-1 h-9">
+                    <button
+                      type="button"
+                      onClick={() => setIsSimulation(false)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-l-lg border transition-colors cursor-pointer ${
+                        !isSimulation
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Operational
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSimulation(true)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-r-lg border transition-colors cursor-pointer ${
+                        isSimulation
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Simulation
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 self-end lg:self-center">
+                <button
+                  type="button"
+                  onClick={() => setShowCapacityOverrides(!showCapacityOverrides)}
+                  className={`h-9 px-3 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    showCapacityOverrides || Object.keys(capacityOverrides).length > 0
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Sliders className="h-3.5 w-3.5" />
+                  Capacity Overrides
+                  {Object.keys(capacityOverrides).length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-[10px]">
+                      {Object.keys(capacityOverrides).length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExecuteOptimization}
+                  disabled={isOptimizing}
+                  className="h-9 px-4 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs flex items-center gap-2 disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {isOptimizing ? (
+                    <>
+                      <RotateCcw className="h-3.5 w-3.5 animate-spin" />
+                      Solving MILP...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      Run AI Optimization
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible Capacity Overrides */}
+            {showCapacityOverrides && (
+              <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-indigo-600" />
+                    Standing Pool Capacity Overrides (Simulation Only)
+                  </h4>
+                  <button
+                    onClick={() => setCapacityOverrides({})}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                  >
+                    Reset Overrides
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Personnel Pool Override:
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={capacityOverrides.PERSONNEL ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          PERSONNEL: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Mobility / Vehicle Override:
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 800"
+                      value={capacityOverrides.MOBILITY ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          MOBILITY: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Investigation Units Override:
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 400"
+                      value={capacityOverrides.INVESTIGATION ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          INVESTIGATION: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                      Specialized / Cyber Override:
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 150"
+                      value={capacityOverrides.SPECIALIZED ?? ''}
+                      onChange={(e) =>
+                        setCapacityOverrides({
+                          ...capacityOverrides,
+                          SPECIALIZED: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Top-Level KPI Cards (5 Cards) */}
+          {optimizationResult && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+              <StatCard
+                title="Available Standing Pool"
+                value={totalAvailablePool.toLocaleString()}
+                subtext={`State: ${optimizationResult.state_name}`}
+                icon={Database}
+                color="blue"
+              />
+              <StatCard
+                title="Total Crime Demand"
+                value={optimizationResult.total_demand.toLocaleString()}
+                subtext="Calculated from 21 predicted crimes"
+                icon={Sparkles}
+                color="navy"
+              />
+              <StatCard
+                title="Total Allocated"
+                value={optimizationResult.total_allocated.toLocaleString()}
+                subtext="Strict conservation (<= pool)"
+                icon={CheckCircle2}
+                color="emerald"
+              />
+              <StatCard
+                title="Unmet Demand / Shortage"
+                value={optimizationResult.total_unmet_demand.toLocaleString()}
+                subtext={optimizationResult.total_unmet_demand === 0 ? 'Full coverage achieved' : 'Prioritized triage applied'}
+                icon={AlertTriangle}
+                color="amber"
+              />
+              <StatCard
+                title="Overall Coverage Rate"
+                value={`${optimizationResult.overall_coverage_pct.toFixed(1)}%`}
+                subtext={`Solver: ${optimizationResult.solver_status} (${optimizationResult.execution_duration_ms}ms)`}
+                icon={Scale}
+                color="blue"
+              />
+            </div>
+          )}
+
+          {/* 3. Four Shared Resource Pools Summary Cards */}
+          {optimizationResult && optimizationResult.pool_summaries && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Pool 1: PERSONNEL */}
+              {optimizationResult.pool_summaries['PERSONNEL'] && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Personnel Pool</h4>
+                        <p className="text-[11px] text-slate-600">Police &amp; Traffic Officers</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">
+                      {optimizationResult.pool_summaries['PERSONNEL'].coverage_pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, optimizationResult.pool_summaries['PERSONNEL'].coverage_pct)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['PERSONNEL'].capacity.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Demanded</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['PERSONNEL'].demand.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Allocated</span>
+                      <span className="font-bold text-blue-700">
+                        {optimizationResult.pool_summaries['PERSONNEL'].allocated.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pool 2: MOBILITY */}
+              {optimizationResult.pool_summaries['MOBILITY'] && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
+                        <Car className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Mobility Pool</h4>
+                        <p className="text-[11px] text-slate-600">Patrol Vehicles &amp; Highway Units</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">
+                      {optimizationResult.pool_summaries['MOBILITY'].coverage_pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, optimizationResult.pool_summaries['MOBILITY'].coverage_pct)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['MOBILITY'].capacity.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Demanded</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['MOBILITY'].demand.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Allocated</span>
+                      <span className="font-bold text-emerald-700">
+                        {optimizationResult.pool_summaries['MOBILITY'].allocated.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pool 3: INVESTIGATION */}
+              {optimizationResult.pool_summaries['INVESTIGATION'] && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-amber-50 text-amber-700">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Investigation Pool</h4>
+                        <p className="text-[11px] text-slate-600">Special Investigators &amp; Forensic</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">
+                      {optimizationResult.pool_summaries['INVESTIGATION'].coverage_pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-amber-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, optimizationResult.pool_summaries['INVESTIGATION'].coverage_pct)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['INVESTIGATION'].capacity.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Demanded</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['INVESTIGATION'].demand.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Allocated</span>
+                      <span className="font-bold text-amber-700">
+                        {optimizationResult.pool_summaries['INVESTIGATION'].allocated.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pool 4: SPECIALIZED */}
+              {optimizationResult.pool_summaries['SPECIALIZED'] && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-purple-50 text-purple-700">
+                        <ShieldAlert className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Specialized / Cyber</h4>
+                        <p className="text-[11px] text-slate-600">Cyber Forensics &amp; Digital Tech</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">
+                      {optimizationResult.pool_summaries['SPECIALIZED'].coverage_pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-purple-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, optimizationResult.pool_summaries['SPECIALIZED'].coverage_pct)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Cap / Avail</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['SPECIALIZED'].capacity.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Demanded</span>
+                      <span className="font-bold text-slate-800">
+                        {optimizationResult.pool_summaries['SPECIALIZED'].demand.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-600 block">Allocated</span>
+                      <span className="font-bold text-purple-700">
+                        {optimizationResult.pool_summaries['SPECIALIZED'].allocated.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4. District Recommendations Table */}
+          <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden space-y-3 p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-indigo-600" />
+                  District Allocation Recommendations &bull; {filteredAllocations.length} District Allocations
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Click &ldquo;Explain &amp; Breakdown&rdquo; on any district to inspect its predicted crime counts, mapping formulas, and pool demands.
+                </p>
+              </div>
+
+              {/* Table Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 text-slate-600 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search district..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+                <select
+                  value={riskFilter}
+                  onChange={(e) => setRiskFilter(e.target.value)}
+                  className="h-8 px-2 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="ALL">All Risk Levels</option>
+                  <option value="CRITICAL">Critical Risk</option>
+                  <option value="HIGH">High Risk</option>
+                  <option value="MODERATE">Moderate Risk</option>
+                  <option value="LOW">Low Risk</option>
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-8 px-2 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="SATISFIED">Satisfied (100%)</option>
+                  <option value="PARTIAL">Partial (50-99%)</option>
+                  <option value="DEFICIT">Deficit (&lt;50%)</option>
+                  <option value="UNMET">Unmet (0%)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto border border-slate-100 rounded-lg">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="px-3 py-2.5">District</th>
+                    <th className="px-3 py-2.5">Resource Pool</th>
+                    <th className="px-3 py-2.5">Phase 9 Risk</th>
+                    <th className="px-3 py-2.5">Top Predicted Crimes</th>
+                    <th className="px-3 py-2.5 text-right">Demanded</th>
+                    <th className="px-3 py-2.5 text-right">Allocated</th>
+                    <th className="px-3 py-2.5 text-right">Shortage</th>
+                    <th className="px-3 py-2.5 text-center">Coverage</th>
+                    <th className="px-3 py-2.5 text-center">Status</th>
+                    <th className="px-3 py-2.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredAllocations.map((item, idx) => {
+                    const isCritical = item.risk_level === 'CRITICAL';
+                    const isHigh = item.risk_level === 'HIGH';
+                    const isMod = item.risk_level === 'MODERATE';
+
+                    const statusBadge =
+                      item.status === 'SATISFIED'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : item.status === 'PARTIAL'
+                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                        : item.status === 'DEFICIT'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-rose-100 text-rose-800 border-rose-200';
+
+                    return (
+                      <tr key={`${item.district_id}-${item.resource_category}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-3 py-2.5 font-bold text-slate-900">
+                          {item.district_name}
+                          <span className="block text-[10px] font-normal text-slate-600">
+                            {item.state_name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {item.resource_category}
+                          </span>
+                          <span className="block text-[10px] text-slate-600">{item.resource_name}</span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              isCritical
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : isHigh
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : isMod
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {item.risk_score.toFixed(1)} &bull; {item.risk_level}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {item.top_predicted_crimes.slice(0, 2).map((ct: any, cidx: number) => (
+                              <span
+                                key={cidx}
+                                className="inline-block px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[10px] truncate"
+                              >
+                                {ct.crime_name || ct.crime_type_name || 'Crime'}: {Math.round(ct.predicted_count || 0)}
+                              </span>
+                            ))}
+                            {item.top_predicted_crimes.length > 2 && (
+                              <span className="text-[10px] text-slate-600">
+                                +{item.top_predicted_crimes.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                          {item.demanded_quantity}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-bold text-indigo-700">
+                          {item.allocated_quantity}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-medium text-rose-600">
+                          {item.shortage > 0 ? `-${item.shortage}` : '0'}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold">
+                          {item.coverage_percentage.toFixed(0)}%
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <button
+                            onClick={() => handleOpenDistrictDetail(item)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors cursor-pointer"
+                          >
+                            Explain
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 2: CRIME-TO-RESOURCE MAPPING MASTER (21 CRIME TYPES)             */}
+      {/* ==================================================================== */}
+      {subTab === 'MAPPINGS' && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-indigo-600" />
+                Institutional Crime-to-Resource Mapping Master
+              </h3>
+              <p className="text-xs text-slate-600">
+                Explicit institutional parameters linking all 21 Phase 8 predicted crime types to 4 preventive shared resource pools.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={mappingCategoryFilter}
+                onChange={(e) => setMappingCategoryFilter(e.target.value)}
+                className="h-8 px-2.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800"
+              >
+                <option value="ALL">All Shared Pools</option>
+                <option value="PERSONNEL">Personnel Pool</option>
+                <option value="MOBILITY">Mobility Pool</option>
+                <option value="INVESTIGATION">Investigation Pool</option>
+                <option value="SPECIALIZED">Specialized / Cyber Pool</option>
+              </select>
+
+              <button
+                onClick={handleResetMappings}
+                className="h-8 px-3 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset Defaults
+              </button>
+            </div>
+          </div>
+
+          {mappingSuccessMsg && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{mappingSuccessMsg}</span>
+            </div>
+          )}
+
+          <div className="overflow-x-auto border border-slate-100 rounded-lg">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="px-3 py-2.5">Crime Type &amp; Category</th>
+                  <th className="px-3 py-2.5">Mapped Resource</th>
+                  <th className="px-3 py-2.5">Shared Pool</th>
+                  <th className="px-3 py-2.5 text-right">Coefficient</th>
+                  <th className="px-3 py-2.5 text-right">Threshold</th>
+                  <th className="px-3 py-2.5 text-right">Weight</th>
+                  <th className="px-3 py-2.5">Institutional Mitigation Rationale</th>
+                  <th className="px-3 py-2.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {mappings.map((m) => (
+                  <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2.5 font-bold text-slate-900">
+                      {m.crime_name}
+                      <span className="block text-[10px] font-normal text-slate-600">
+                        {m.category_name}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 font-medium text-slate-800">
+                      {m.resource_name}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {m.shared_pool_category}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold text-slate-900">
+                      {m.coefficient.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">
+                      {m.min_demand_threshold}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                      {m.priority_weight.toFixed(1)}&times;
+                    </td>
+                    <td className="px-3 py-2.5 text-[11px] text-slate-600 max-w-md">
+                      {m.operational_rationale}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button
+                        onClick={() => setEditingMapping(m)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="h-3 w-3 text-slate-600" />
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 3: STANDING RESOURCE INVENTORY (36 STATES AUDIT)                 */}
+      {/* ==================================================================== */}
+      {subTab === 'INVENTORY' && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Database className="h-4 w-4 text-indigo-600" />
+                Standing Resource Inventory Baseline Audit
+              </h3>
+              <p className="text-xs text-slate-600">
+                Accurate physical standing pools separating total sanctioned inventory, currently deployed units, and unavailable maintenance pools.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={inventoryCategoryFilter}
+                onChange={(e) => setInventoryCategoryFilter(e.target.value)}
+                className="h-8 px-2.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-800"
+              >
+                <option value="ALL">All Categories</option>
+                <option value="PERSONNEL">Personnel</option>
+                <option value="MOBILITY">Mobility</option>
+                <option value="INVESTIGATION">Investigation</option>
+                <option value="SPECIALIZED">Specialized</option>
+              </select>
+            </div>
+          </div>
+
+          {inventorySummary && (
+            <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 text-xs text-indigo-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="font-bold">Total Available Standing Pool ({inventorySummary.state_name || 'National'}): </span>
+                <span className="font-extrabold text-indigo-700">
+                  {Object.values(inventorySummary.available_by_category || {}).reduce((a, b) => a + b, 0).toLocaleString()}
+                </span>
+                <span className="mx-2 text-indigo-300">|</span>
+                <span>Reference Year: {inventorySummary.reference_year}</span>
+              </div>
+              <span className="text-[11px] text-slate-500 italic">{inventorySummary.disclaimer}</span>
+            </div>
+          )}
+
+          {inventorySuccessMsg && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{inventorySuccessMsg}</span>
+            </div>
+          )}
+
+          <div className="overflow-x-auto border border-slate-100 rounded-lg">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="px-3 py-2.5">Jurisdiction</th>
+                  <th className="px-3 py-2.5">Resource &amp; Category</th>
+                  <th className="px-3 py-2.5 text-right">Total Inventory</th>
+                  <th className="px-3 py-2.5 text-right">Currently Deployed</th>
+                  <th className="px-3 py-2.5 text-right">Unavailable / Maint</th>
+                  <th className="px-3 py-2.5 text-right">Available Standing Pool</th>
+                  <th className="px-3 py-2.5 text-center">Data Status</th>
+                  <th className="px-3 py-2.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {inventoryRecords.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2.5 font-bold text-slate-900">
+                      {r.state_name}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="font-medium text-slate-800">{r.resource_name}</span>
+                      <span className="block text-[10px] text-slate-600">{r.category}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                      {r.total_inventory.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">
+                      {r.deployed_count.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-rose-600">
+                      {r.unavailable_count.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700">
+                      {r.available_pool.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                        {r.data_status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button
+                        onClick={() => setEditingInventory(r)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="h-3 w-3 text-slate-600" />
+                        Edit Inputs
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: DISTRICT EXPLANATION & PREDICTION BREAKDOWN DRAWER          */}
+      {/* ==================================================================== */}
+      {selectedDistrict && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/40 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-900">
+                    District Explainability
+                  </span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900">
+                    Risk: {selectedDistrict.risk_score.toFixed(1)} &bull; {selectedDistrict.risk_level}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mt-1">
+                  {selectedDistrict.district_name}, {selectedDistrict.state_name}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedDistrict(null);
+                  setDistrictDemandDetail(null);
+                }}
+                className="p-1.5 text-slate-600 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs">
+              {/* Plain Language Rationale */}
+              <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-100 space-y-1.5">
+                <h4 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-700" />
+                  Preventive Allocation Recommendation Rationale
+                </h4>
+                <p className="text-xs text-indigo-900 leading-relaxed">
+                  {selectedDistrict.recommendation_rationale}
+                </p>
+              </div>
+
+              {/* Pool Allocation Summary Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                    <span>{selectedDistrict.resource_category}</span>
+                    <span className="text-indigo-700 font-extrabold">{selectedDistrict.coverage_percentage.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5">
+                    <div
+                      className="bg-indigo-600 h-1.5 rounded-full"
+                      style={{ width: `${Math.min(100, selectedDistrict.coverage_percentage)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-600 pt-1">
+                    <span>Dem: {selectedDistrict.demanded_quantity}</span>
+                    <span>Alloc: {selectedDistrict.allocated_quantity}</span>
+                    <span className="text-rose-600">{selectedDistrict.shortage > 0 ? `-${selectedDistrict.shortage}` : '0'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phase 8 Crime Forecast & Mapping Breakdown */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-slate-700" />
+                  Phase 8 Predicted Crime Types &amp; Resource Demand Formula Breakdown
+                </h4>
+                {isLoadingDetail ? (
+                  <div className="py-6 text-center text-slate-600">
+                    <RotateCcw className="h-4 w-4 animate-spin inline mr-1" />
+                    Calculating exact demand breakdown...
+                  </div>
+                ) : districtDemandDetail && districtDemandDetail.crime_breakdowns ? (
+                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table className="w-full text-left text-[11px] text-slate-700">
+                      <thead className="bg-slate-50 font-bold text-slate-600 uppercase border-b border-slate-200">
+                        <tr>
+                          <th className="px-2.5 py-2">Predicted Crime Type</th>
+                          <th className="px-2.5 py-2 text-right">Predicted Count</th>
+                          <th className="px-2.5 py-2 text-center">Severity</th>
+                          <th className="px-2.5 py-2">Mapped Pool</th>
+                          <th className="px-2.5 py-2 text-right">Coeff</th>
+                          <th className="px-2.5 py-2 text-right">Raw Demand</th>
+                          <th className="px-2.5 py-2">Preventive Rationale</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {districtDemandDetail.crime_breakdowns.map((cb, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="px-2.5 py-2 font-medium text-slate-900">
+                              {cb.crime_name}
+                              <span className="block text-[9px] text-slate-600">{cb.category_name}</span>
+                            </td>
+                            <td className="px-2.5 py-2 text-right font-bold text-slate-800">
+                              {cb.predicted_crime_count.toFixed(1)}
+                            </td>
+                            <td className="px-2.5 py-2 text-center">
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                {cb.severity_level}
+                              </span>
+                            </td>
+                            <td className="px-2.5 py-2 font-semibold text-indigo-700">
+                              {cb.shared_pool_category}
+                            </td>
+                            <td className="px-2.5 py-2 text-right text-slate-600">
+                              {cb.coefficient.toFixed(2)}
+                            </td>
+                            <td className="px-2.5 py-2 text-right font-medium text-slate-700">
+                              {cb.raw_demand.toFixed(2)}
+                            </td>
+                            <td className="px-2.5 py-2 text-[10px] text-slate-600 max-w-xs truncate">
+                              {cb.operational_rationale}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-slate-600">No crime breakdown available for this district.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => {
+                  setSelectedDistrict(null);
+                  setDistrictDemandDetail(null);
+                }}
+                className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors cursor-pointer"
+              >
+                Close Breakdown
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: EDIT CRIME-TO-RESOURCE MAPPING (ADMIN)                      */}
+      {/* ==================================================================== */}
+      {editingMapping && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 p-5 space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b pb-2 border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <Edit2 className="h-4 w-4 text-indigo-600" />
+                Configure Mapping: {editingMapping.crime_name}
+              </h3>
+              <button
+                onClick={() => setEditingMapping(null)}
+                className="text-slate-600 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Requirement Coefficient (Resources per Incident):
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editingMapping.coefficient}
+                  onChange={(e) =>
+                    setEditingMapping({
+                      ...editingMapping,
+                      coefficient: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Activation Threshold (Minimum Incidents to trigger):
+                </label>
+                <input
+                  type="number"
+                  value={editingMapping.min_demand_threshold}
+                  onChange={(e) =>
+                    setEditingMapping({
+                      ...editingMapping,
+                      min_demand_threshold: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Priority Weight (Heuristic Multiplier):
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editingMapping.priority_weight}
+                  onChange={(e) =>
+                    setEditingMapping({
+                      ...editingMapping,
+                      priority_weight: parseFloat(e.target.value) || 1.0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Operational Mitigation Rationale:
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingMapping.operational_rationale || ''}
+                  onChange={(e) =>
+                    setEditingMapping({
+                      ...editingMapping,
+                      operational_rationale: e.target.value,
+                    })
+                  }
+                  className="w-full p-2 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingMapping(null)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMapping}
+                disabled={isUpdatingMapping}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: EDIT INVENTORY RECORD (ADMIN)                               */}
+      {/* ==================================================================== */}
+      {editingInventory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 p-5 space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b pb-2 border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <Edit2 className="h-4 w-4 text-indigo-600" />
+                Update Standing Inventory: {editingInventory.category} ({editingInventory.state_name})
+              </h3>
+              <button
+                onClick={() => setEditingInventory(null)}
+                className="text-slate-600 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Total Sanctioned / Standing Inventory:
+                </label>
+                <input
+                  type="number"
+                  value={editingInventory.total_inventory}
+                  onChange={(e) =>
+                    setEditingInventory({
+                      ...editingInventory,
+                      total_inventory: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Currently Deployed / Committed Count:
+                </label>
+                <input
+                  type="number"
+                  value={editingInventory.deployed_count}
+                  onChange={(e) =>
+                    setEditingInventory({
+                      ...editingInventory,
+                      deployed_count: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Unavailable / Maintenance Count:
+                </label>
+                <input
+                  type="number"
+                  value={editingInventory.unavailable_count}
+                  onChange={(e) =>
+                    setEditingInventory({
+                      ...editingInventory,
+                      unavailable_count: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                  className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-slate-800"
+                />
+              </div>
+
+              <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                <span className="text-[11px] font-bold text-slate-700 block">
+                  Computed Available Standing Pool:
+                </span>
+                <span className="text-base font-extrabold text-emerald-700">
+                  {Math.max(
+                    0,
+                    editingInventory.total_inventory -
+                      editingInventory.deployed_count -
+                      editingInventory.unavailable_count
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingInventory(null)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveInventory}
+                disabled={isUpdatingInventory}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Save Inventory
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CrimeSpecificOptimizationView;

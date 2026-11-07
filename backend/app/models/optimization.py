@@ -93,6 +93,9 @@ class OptimizationAllocation(Base):
     risk_level = Column(String(20), nullable=False, default="LOW")
     allocation_status = Column(String(30), nullable=False, default="SATISFIED")
     explanation = Column(Text, nullable=True)
+    crime_breakdown_json = Column(JSON, nullable=True)
+    coverage_percentage = Column(DECIMAL(5, 2), nullable=True, default=100.00)
+    unmet_demand = Column(Integer, nullable=False, default=0)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     __table_args__ = (
@@ -104,4 +107,59 @@ class OptimizationAllocation(Base):
     # Relationships
     district = relationship("District")
     run = relationship("OptimizationRun", back_populates="allocations", primaryjoin="foreign(OptimizationAllocation.run_id)==OptimizationRun.run_id")
+
+
+class CrimeResourceMapping(Base):
+    __tablename__ = "crime_resource_mappings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    crime_type_id = Column(Integer, ForeignKey("crime_types.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource_type_id = Column(Integer, ForeignKey("resource_types.id", ondelete="RESTRICT"), nullable=False, index=True)
+    coefficient = Column(DECIMAL(6, 3), nullable=False, default=0.500)
+    min_demand_threshold = Column(DECIMAL(6, 3), nullable=False, default=0.050)
+    priority_weight = Column(DECIMAL(4, 2), nullable=False, default=1.00)
+    shared_pool_category = Column(String(50), nullable=False, default="PERSONNEL")
+    operational_rationale = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("crime_type_id", "resource_type_id", name="uq_crime_res_mapping"),
+        Index("idx_crm_pool", "shared_pool_category", "is_active"),
+    )
+
+    # Relationships
+    crime_type = relationship("CrimeType")
+    resource_type = relationship("ResourceType")
+
+
+class ResourceInventoryRecord(Base):
+    __tablename__ = "resource_inventory_records"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    state_id = Column(Integer, ForeignKey("states.id", ondelete="RESTRICT"), nullable=False, index=True)
+    district_id = Column(Integer, ForeignKey("districts.id", ondelete="SET NULL"), nullable=True, index=True)
+    resource_type_id = Column(Integer, ForeignKey("resource_types.id", ondelete="RESTRICT"), nullable=False, index=True)
+    category = Column(String(50), nullable=False, default="PERSONNEL", index=True)
+    total_inventory = Column(Integer, nullable=False, default=0)
+    deployed_count = Column(Integer, nullable=False, default=0)
+    unavailable_count = Column(Integer, nullable=False, default=0)
+    available_pool = Column(Integer, nullable=False, default=0)
+    data_status = Column(String(50), nullable=False, default="OFFICIAL_BPRD_BENCHMARK")
+    reference_year = Column(SmallInteger, nullable=False, default=2024, index=True)
+    source_name = Column(String(150), nullable=False, default="BPR&D Data on Police Organizations")
+    notes = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("state_id", "district_id", "resource_type_id", "reference_year", name="uq_res_inv_record"),
+        Index("idx_inv_status", "data_status"),
+    )
+
+    # Relationships
+    state = relationship("State")
+    district = relationship("District")
+    resource_type = relationship("ResourceType")
 

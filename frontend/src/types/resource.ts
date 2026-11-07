@@ -396,3 +396,172 @@ export interface OptimizationScenarioComparisonResponse {
   scenarios: OptimizationRunResponse[];
   comparison_summary: string;
 }
+
+// ============================================================================
+// Phase 10: Crime-Specific Preventive AI Resource Optimization
+// ============================================================================
+
+export interface CrimeResourceMappingItem {
+  id: number;
+  crime_type_id: number;
+  crime_code: string;
+  crime_name: string;
+  category_id: number;
+  category_name: string;
+  severity_level: string;
+  resource_type_id: number;
+  resource_name: string;
+  coefficient: number;
+  min_demand_threshold: number;
+  priority_weight: number;
+  shared_pool_category: string;
+  operational_rationale?: string | null;
+  is_active: boolean;
+}
+
+export interface CrimeResourceMappingUpdateRequest {
+  coefficient?: number;
+  min_demand_threshold?: number;
+  priority_weight?: number;
+  operational_rationale?: string;
+  is_active?: boolean;
+}
+
+export interface CrimeResourceMappingListResponse {
+  total: number;
+  items: CrimeResourceMappingItem[];
+}
+
+export interface ResourceInventoryItem {
+  id: number;
+  state_id: number;
+  state_name: string;
+  district_id?: number | null;
+  district_name?: string | null;
+  resource_type_id: number;
+  resource_name: string;
+  category: string;
+  total_inventory: number;
+  deployed_count: number;
+  unavailable_count: number;
+  available_pool: number;
+  data_status: string;
+  reference_year: number;
+  source_name: string;
+  notes?: string | null;
+}
+
+export interface ResourceInventoryUpdateRequest {
+  total_inventory?: number;
+  deployed_count?: number;
+  unavailable_count?: number;
+  notes?: string;
+}
+
+export interface ResourceInventorySummaryResponse {
+  state_id?: number | null;
+  state_name?: string | null;
+  reference_year: number;
+  categories: Record<string, any>[];
+  total_inventory_by_category: Record<string, number>;
+  deployed_by_category: Record<string, number>;
+  unavailable_by_category: Record<string, number>;
+  available_by_category: Record<string, number>;
+  data_source: string;
+  disclaimer: string;
+}
+
+export interface CrimeDemandBreakdownItem {
+  crime_type_id: number;
+  crime_code: string;
+  crime_name: string;
+  category_name: string;
+  severity_level: string;
+  severity_weight: number;
+  predicted_crime_count: number;
+  resource_type_id: number;
+  resource_name: string;
+  coefficient: number;
+  raw_demand: number;
+  shared_pool_category: string;
+  priority_weight: number;
+  operational_rationale?: string | null;
+}
+
+export interface DistrictCrimeDemandResponse {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  assessment_period: string;
+  total_predicted_crimes: number;
+  district_risk_score: number;
+  district_risk_level: string;
+  resource_demands: Record<string, number>;
+  crime_breakdowns: CrimeDemandBreakdownItem[];
+  calculation_notes: string;
+}
+
+export interface CrimeSpecificOptimizationRequest {
+  state_id: number;
+  assessment_period?: string;
+  scenario_name?: string;
+  scenario_type?: string;
+  resource_categories?: string[];
+  capacity_overrides?: Record<string, number>;
+  is_simulation?: boolean;
+}
+
+export interface DistrictCrimeAllocationItem {
+  district_id: number;
+  district_name: string;
+  state_id: number;
+  state_name: string;
+  risk_score: number;
+  risk_level: string;
+  top_predicted_crimes: Array<Record<string, any>>;
+  resource_category: string;
+  resource_type_id: number;
+  resource_name: string;
+  demanded_quantity: number;
+  allocated_quantity: number;
+  baseline_available?: number | null;
+  existing_committed?: number | null;
+  shortage: number;
+  surplus: number;
+  coverage_percentage: number;
+  status: string;
+  recommendation_rationale: string;
+}
+
+export interface CrimeSpecificOptimizationResponse {
+  run_id: string;
+  state_id: number;
+  state_name: string;
+  assessment_period: string;
+  scenario_name: string;
+  scenario_type: string;
+  algorithm: string;
+  is_simulation: boolean;
+  pool_summaries: Record<string, {
+    resource_type_id: number;
+    resource_name: string;
+    capacity: number;
+    allocated: number;
+    remaining_pool: number;
+    demand: number;
+    unmet_demand: number;
+    coverage_pct: number;
+    solver_status: string;
+  }>;
+  overall_coverage_pct: number;
+  total_demand: number;
+  total_allocated: number;
+  total_unmet_demand: number;
+  solver_status: string;
+  execution_duration_ms: number;
+  allocations: DistrictCrimeAllocationItem[];
+  state_summaries: Array<Record<string, any>>;
+  shortage_alerts: Array<Record<string, any>>;
+  planning_disclaimer: string;
+}

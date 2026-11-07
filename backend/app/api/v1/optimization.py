@@ -9,12 +9,12 @@ Provides:
 - RBAC protection: execution requires ANALYST or ADMIN role
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, Path, status
 from sqlalchemy.orm import Session
 
 from backend.app.database.session import get_db
-from backend.app.api.deps import get_current_user, require_analyst
+from backend.app.api.deps import get_current_user, require_analyst, require_admin
 from backend.app.models.auth import User
 from backend.app.schemas.common import StandardListResponse
 from backend.app.schemas.optimization import (
@@ -25,8 +25,19 @@ from backend.app.schemas.optimization import (
     OptimizationResourcesAuditResponse,
     OptimizationScenarioComparisonRequest,
     OptimizationScenarioComparisonResponse,
+    CrimeResourceMappingItem,
+    CrimeResourceMappingUpdateRequest,
+    CrimeResourceMappingListResponse,
+    ResourceInventoryItem,
+    ResourceInventoryUpdateRequest,
+    ResourceInventorySummaryResponse,
+    DistrictCrimeDemandResponse,
+    CrimeSpecificOptimizationRequest,
+    CrimeSpecificOptimizationResponse,
 )
 from backend.app.services.optimization_service import OptimizationService
+from backend.app.services.crime_mapping_service import CrimeMappingService
+from backend.app.services.crime_resource_optimization_service import CrimeResourceOptimizationService
 from backend.app.repositories.optimization_repository import OptimizationRepository
 
 router = APIRouter()
@@ -178,4 +189,143 @@ def compare_optimization_scenarios(
         req=request,
         user_id=current_user.id,
     )
+
+
+# ============================================================================
+# Phase 10 Crime-Specific Optimization Endpoints
+# ============================================================================
+
+@router.get(
+    "/crime-mappings",
+    response_model=CrimeResourceMappingListResponse,
+    summary="List Crime-to-Resource Mappings",
+    description="Retrieve configurable mappings connecting predicted crime types to suitable preventive resources (Personnel, Mobility, Investigation, Specialized, Traffic).",
+)
+def list_crime_mappings(
+    crime_type_id: Optional[int] = Query(None, description="Filter by Crime Type ID"),
+    shared_pool_category: Optional[str] = Query(None, description="Filter by Shared Pool (PERSONNEL, MOBILITY, INVESTIGATION, SPECIALIZED)"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CrimeResourceMappingListResponse:
+    items = CrimeMappingService.list_mappings(
+        db,
+        crime_type_id=crime_type_id,
+        shared_pool_category=shared_pool_category,
+        is_active=is_active,
+    )
+    return CrimeResourceMappingListResponse(total=len(items), items=items)
+
+
+@router.put(
+    "/crime-mappings/{mapping_id}",
+    response_model=CrimeResourceMappingItem,
+    summary="Update Crime-to-Resource Mapping (Admin)",
+    description="Update requirement coefficient, threshold, priority weight, or operational rationale for a crime-to-resource mapping. Protected by Admin RBAC.",
+)
+def update_crime_mapping(
+    mapping_id: int = Path(..., description="Unique CrimeResourceMapping ID"),
+    req: CrimeResourceMappingUpdateRequest = ...,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> CrimeResourceMappingItem:
+    return CrimeMappingService.update_mapping(db, mapping_id=mapping_id, req=req)
+
+
+@router.post(
+    "/crime-mappings/reset",
+    response_model=CrimeResourceMappingListResponse,
+    summary="Reset Crime-to-Resource Mappings to Institutional Defaults (Admin)",
+    description="Reset all crime-to-resource mappings across all 21 crime types back to verified institutional baseline parameters.",
+)
+def reset_crime_mappings(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> CrimeResourceMappingListResponse:
+    CrimeMappingService.reset_mappings(db)
+    items = CrimeMappingService.list_mappings(db)
+    return CrimeResourceMappingListResponse(total=len(items), items=items)
+
+
+@router.get(
+    "/crime-demand",
+    response_model=DistrictCrimeDemandResponse,
+    summary="Calculate Crime-Specific Resource Demand for a District",
+    description="Compute granular preventive resource requirements for a district by combining Phase 8 crime-type predictions with the Crime-to-Resource Mapping Master and Phase 9 risk scores.",
+)
+def get_district_crime_demand(
+    district_id: int = Query(..., description="Target District ID"),
+    year: int = Query(2026, description="Forecast target year"),
+    month: int = Query(11, description="Forecast target month"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DistrictCrimeDemandResponse:
+    return CrimeResourceOptimizationService.calculate_district_crime_demand(
+        db, district_id=district_id, year=year, month=month
+    )
+
+
+@router.get(
+    "/inventory",
+    response_model=StandardListResponse[ResourceInventoryItem],
+    summary="List Resource Inventory Records",
+    description="Retrieve standing resource inventory records detailing total, deployed, unavailable, and available pools by state and category.",
+)
+def list_resource_inventory(
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    district_id: Optional[int] = Query(None, description="Filter by District ID"),
+    category: Optional[str] = Query(None, description="Filter by Category (PERSONNEL, MOBILITY, INVESTIGATION, SPECIALIZED)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StandardListResponse[ResourceInventoryItem]:
+    items = CrimeMappingService.list_inventory(
+        db, state_id=state_id, district_id=district_id, category=category
+    )
+    return StandardListResponse(items=items, total=len(items), skip=0, limit=len(items))
+
+
+@router.put(
+    "/inventory/{inventory_id}",
+    response_model=ResourceInventoryItem,
+    summary="Update Resource Inventory Planning Inputs (Admin)",
+    description="Update standing total, deployed, or unavailable counts for scenario planning. Labeled strictly as planning input.",
+)
+def update_resource_inventory(
+    inventory_id: int = Path(..., description="Unique ResourceInventoryRecord ID"),
+    req: ResourceInventoryUpdateRequest = ...,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ResourceInventoryItem:
+    return CrimeMappingService.update_inventory(db, inventory_id=inventory_id, req=req)
+
+
+@router.get(
+    "/inventory/summary",
+    response_model=ResourceInventorySummaryResponse,
+    summary="Get Resource Availability Summary",
+    description="Retrieve aggregated inventory totals, deployed counts, and available pools by resource category for a state or nationwide.",
+)
+def get_resource_inventory_summary(
+    state_id: Optional[int] = Query(None, description="Filter by State ID (omit for national summary)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResourceInventorySummaryResponse:
+    return CrimeMappingService.get_available_inventory_summary(db, state_id=state_id)
+
+
+@router.post(
+    "/crime-optimize",
+    response_model=CrimeSpecificOptimizationResponse,
+    summary="Execute Crime-Specific Constrained Resource Optimization (MILP)",
+    description="Run mixed-integer linear programming (MILP) to allocate resources across districts based on predicted crime types, severity, and Phase 9 risk scores while strictly conserving resource inventory pools.",
+)
+def execute_crime_specific_optimization(
+    req: CrimeSpecificOptimizationRequest,
+    current_user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
+) -> CrimeSpecificOptimizationResponse:
+    return CrimeResourceOptimizationService.run_crime_specific_optimization(
+        db, req=req, user_id=current_user.id
+    )
+
 
