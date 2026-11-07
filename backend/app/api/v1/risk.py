@@ -3,6 +3,8 @@ Phase 9: Explainable Crime Risk Assessment API Endpoints.
 
 Protected routes providing access to explainable district risk assessments,
 methodology metadata, longitudinal risk trends, and authorized score calculations.
+Percentile-based risk scores are relative comparison scores across districts (0-100),
+strictly intended for operational prioritization and resource planning, not crime probabilities.
 Requires authenticated staff JWT.
 """
 
@@ -21,6 +23,9 @@ from backend.app.schemas.risk import (
     RiskCalculateRequest,
     RiskCalculateResponse,
     RiskTrendsResponse,
+    StateRiskSummaryResponse,
+    RiskDistributionResponse,
+    TopRiskDistrictsResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 from backend.app.services.risk_service import RiskService, CALCULATION_VERSION
@@ -89,10 +94,89 @@ def get_risk_trends(
 
 
 @router.get(
+    "/states/summary",
+    response_model=StateRiskSummaryResponse,
+    summary="Get State-Wise Risk Summary",
+    description="Retrieve aggregated risk profiles and threat rankings across all 36 active States/UTs.",
+)
+def get_state_risk_summary(
+    assessment_period: str = Query("2026-11-01", description="Assessment period date (YYYY-MM-DD)"),
+    year: Optional[int] = Query(None, description="Assessment year"),
+    month: Optional[int] = Query(None, description="Assessment month"),
+    score_type: Optional[str] = Query(None, description="Score type: 'HISTORICAL' or 'FORECAST'"),
+    calculation_version: Optional[str] = Query(None, description="Risk scoring methodology version"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StateRiskSummaryResponse:
+    return RiskService.get_state_risk_summary(
+        db,
+        assessment_period=assessment_period,
+        year=year,
+        month=month,
+        score_type=score_type,
+        calculation_version=calculation_version,
+    )
+
+
+@router.get(
+    "/distribution",
+    response_model=RiskDistributionResponse,
+    summary="Get Risk Level Category Distribution",
+    description="Retrieve categorical risk breakdown, district counts, percentages, and score thresholds.",
+)
+def get_risk_distribution(
+    assessment_period: str = Query("2026-11-01", description="Assessment period date (YYYY-MM-DD)"),
+    year: Optional[int] = Query(None, description="Assessment year"),
+    month: Optional[int] = Query(None, description="Assessment month"),
+    score_type: Optional[str] = Query(None, description="Score type: 'HISTORICAL' or 'FORECAST'"),
+    calculation_version: Optional[str] = Query(None, description="Risk scoring methodology version"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RiskDistributionResponse:
+    return RiskService.get_risk_distribution(
+        db,
+        assessment_period=assessment_period,
+        year=year,
+        month=month,
+        score_type=score_type,
+        calculation_version=calculation_version,
+    )
+
+
+@router.get(
+    "/top-districts",
+    response_model=TopRiskDistrictsResponse,
+    summary="Get Top High-Risk Districts",
+    description="Retrieve ranked list of highest-risk districts for operational readiness.",
+)
+def get_top_risk_districts(
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of districts to return"),
+    state_id: Optional[int] = Query(None, description="Filter by State ID"),
+    assessment_period: str = Query("2026-11-01", description="Assessment period date (YYYY-MM-DD)"),
+    year: Optional[int] = Query(None, description="Assessment year"),
+    month: Optional[int] = Query(None, description="Assessment month"),
+    score_type: Optional[str] = Query(None, description="Score type: 'HISTORICAL' or 'FORECAST'"),
+    calculation_version: Optional[str] = Query(None, description="Risk scoring methodology version"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TopRiskDistrictsResponse:
+    return RiskService.get_top_risk_districts(
+        db,
+        limit=limit,
+        state_id=state_id,
+        assessment_period=assessment_period,
+        year=year,
+        month=month,
+        score_type=score_type,
+        calculation_version=calculation_version,
+    )
+
+
+@router.get(
     "/districts",
     response_model=StandardListResponse[RiskItemResponse],
     summary="List District Risk Scores (Districts Path)",
-    description="Retrieve paginated district risk scores with optional geographic, severity band, temporal, and score_type filters.",
+    description="Retrieve paginated district risk scores with optional geographic, severity band, temporal, search, and score_type filters.",
 )
 def list_risk_scores_districts(
     state_id: Optional[int] = Query(None, description="Filter by State ID"),
@@ -103,6 +187,7 @@ def list_risk_scores_districts(
     year: Optional[int] = Query(None, description="Assessment year"),
     month: Optional[int] = Query(None, description="Assessment month"),
     calculation_version: Optional[str] = Query(None, description="Risk scoring methodology version"),
+    search: Optional[str] = Query(None, description="Search by district or state name"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     current_user: User = Depends(get_current_user),
@@ -118,6 +203,7 @@ def list_risk_scores_districts(
         year=year,
         month=month,
         calculation_version=calculation_version,
+        search=search,
         skip=skip,
         limit=limit,
     )
@@ -138,6 +224,7 @@ def list_risk_scores_root(
     year: Optional[int] = Query(None, description="Assessment year"),
     month: Optional[int] = Query(None, description="Assessment month"),
     calculation_version: Optional[str] = Query(None, description="Risk scoring methodology version"),
+    search: Optional[str] = Query(None, description="Search by district or state name"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     current_user: User = Depends(get_current_user),
@@ -153,6 +240,7 @@ def list_risk_scores_root(
         year=year,
         month=month,
         calculation_version=calculation_version,
+        search=search,
         skip=skip,
         limit=limit,
     )

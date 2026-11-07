@@ -6,6 +6,9 @@ import type {
   DistrictRiskDetailResponse,
   RiskFilterParams,
   RiskTrendsResponse,
+  StateRiskSummaryResponse,
+  RiskDistributionResponse,
+  TopRiskDistrictsResponse,
 } from '../types';
 
 export const riskApi = {
@@ -49,8 +52,67 @@ export const riskApi = {
         state_id: params?.state_id,
         district_id: params?.district_id,
         risk_level: params?.risk_level,
+        search: params?.search,
         skip: params?.skip || 0,
         limit: params?.limit || 50,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch aggregated risk profiles across all 36 active States/UTs.
+   */
+  getStateRiskSummary: async (
+    assessmentPeriod: string = '2026-11-01',
+    calculationVersion: string = 'risk-v2.0',
+    scoreType?: string
+  ): Promise<StateRiskSummaryResponse> => {
+    const response = await apiClient.get<StateRiskSummaryResponse>('/risk/states/summary', {
+      params: {
+        assessment_period: assessmentPeriod,
+        calculation_version: calculationVersion,
+        score_type: scoreType,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch risk level categorical breakdown, counts, percentages, and thresholds.
+   */
+  getRiskDistribution: async (
+    assessmentPeriod: string = '2026-11-01',
+    calculationVersion: string = 'risk-v2.0',
+    scoreType?: string
+  ): Promise<RiskDistributionResponse> => {
+    const response = await apiClient.get<RiskDistributionResponse>('/risk/distribution', {
+      params: {
+        assessment_period: assessmentPeriod,
+        calculation_version: calculationVersion,
+        score_type: scoreType,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch ranked list of highest-risk districts.
+   */
+  getTopRiskDistricts: async (
+    limit: number = 10,
+    stateId?: number,
+    assessmentPeriod: string = '2026-11-01',
+    calculationVersion: string = 'risk-v2.0',
+    scoreType?: string
+  ): Promise<TopRiskDistrictsResponse> => {
+    const response = await apiClient.get<TopRiskDistrictsResponse>('/risk/top-districts', {
+      params: {
+        limit,
+        state_id: stateId,
+        assessment_period: assessmentPeriod,
+        calculation_version: calculationVersion,
+        score_type: scoreType,
       },
     });
     return response.data;
@@ -109,3 +171,5 @@ export const riskApi = {
     return response.data;
   },
 };
+
+export default riskApi;

@@ -24,7 +24,7 @@ class RiskItemResponse(BaseModel):
     period_year: int
     period_month: int
     assessment_period: str
-    overall_risk_score: float
+    overall_risk_score: float = Field(..., description="Comparative relative threat index (0-100 scale based on nationwide percentile rankings; strictly an operational planning metric, not a crime probability)")
     risk_level: str
     score_type: str = "FORECAST"
     severity_index: float
@@ -56,7 +56,7 @@ class DistrictRiskDetailResponse(BaseModel):
     period_year: int
     period_month: int
     assessment_period: str
-    overall_risk_score: float
+    overall_risk_score: float = Field(..., description="Comparative relative threat index (0-100 scale based on nationwide percentile rankings; strictly an operational planning metric, not a crime probability)")
     risk_level: str
     score_type: str = "FORECAST"
     severity_index: float
@@ -141,3 +141,44 @@ class RiskTrendsResponse(BaseModel):
     district_id: Optional[int] = None
     district_name: Optional[str] = None
     trends: List[RiskTrendPoint]
+
+
+class StateRiskSummaryItem(BaseModel):
+    state_id: int
+    state_name: str
+    assessed_districts_count: int
+    mean_risk_score: float
+    highest_risk_score: float
+    highest_risk_district_name: Optional[str] = None
+    risk_level_counts: Dict[str, int]
+    primary_risk_level: str
+
+
+class StateRiskSummaryResponse(BaseModel):
+    assessment_period: str
+    score_type: str
+    calculation_version: str
+    total_states: int
+    items: List[StateRiskSummaryItem]
+
+
+class RiskDistributionResponse(BaseModel):
+    assessment_period: str
+    period_year: int
+    period_month: int
+    score_type: str
+    calculation_version: str
+    total_assessed_districts: int
+    distribution: Dict[str, int]
+    percentages: Dict[str, float]
+    thresholds: Dict[str, str]
+
+
+class TopRiskDistrictsResponse(BaseModel):
+    assessment_period: str
+    score_type: str
+    calculation_version: str
+    limit: int
+    state_id: Optional[int] = None
+    items: List[RiskItemResponse]
+

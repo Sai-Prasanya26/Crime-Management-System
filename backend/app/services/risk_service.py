@@ -26,6 +26,10 @@ from backend.app.schemas.risk import (
     RiskCalculateResponse,
     RiskTrendsResponse,
     RiskTrendPoint,
+    StateRiskSummaryItem,
+    StateRiskSummaryResponse,
+    RiskDistributionResponse,
+    TopRiskDistrictsResponse,
 )
 from backend.app.schemas.common import StandardListResponse
 
@@ -597,10 +601,11 @@ class RiskService:
         year: Optional[int] = None,
         month: Optional[int] = None,
         calculation_version: str = CALCULATION_VERSION,
+        search: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
     ) -> StandardListResponse[RiskItemResponse]:
-        """Lists paginated risk score records with optional filtering."""
+        """Lists paginated risk score records with optional filtering and search."""
         if year and month:
             py, pm = year, month
         elif assessment_period:
@@ -621,12 +626,123 @@ class RiskService:
             period_year=py,
             period_month=pm,
             calculation_version=calculation_version,
+            search=search,
             skip=skip,
             limit=limit,
         )
 
         return StandardListResponse[RiskItemResponse](
             total=total,
+            items=[RiskItemResponse(**item) for item in items],
+        )
+
+    @staticmethod
+    def get_state_risk_summary(
+        db: Session,
+        assessment_period: Optional[str] = "2026-11-01",
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        score_type: Optional[str] = None,
+        calculation_version: str = CALCULATION_VERSION,
+    ) -> StateRiskSummaryResponse:
+        """Computes and returns state-level aggregated risk comparisons across all 36 active States/UTs."""
+        if year and month:
+            py, pm = year, month
+        elif assessment_period:
+            try:
+                dt = datetime.strptime(assessment_period, "%Y-%m-%d").date()
+                py, pm = dt.year, dt.month
+            except ValueError:
+                py, pm = 2026, 11
+        else:
+            py, pm = 2026, 11
+
+        eff_version = calculation_version or CALCULATION_VERSION
+        items = RiskRepository.get_state_risk_summary(
+            db,
+            period_year=py,
+            period_month=pm,
+            calculation_version=eff_version,
+            score_type=score_type,
+        )
+        return StateRiskSummaryResponse(
+            assessment_period=f"{py:04d}-{pm:02d}-01",
+            score_type=score_type or "FORECAST",
+            calculation_version=eff_version,
+            total_states=len(items),
+            items=[StateRiskSummaryItem(**item) for item in items],
+        )
+
+    @staticmethod
+    def get_risk_distribution(
+        db: Session,
+        assessment_period: Optional[str] = "2026-11-01",
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        score_type: Optional[str] = None,
+        calculation_version: Optional[str] = CALCULATION_VERSION,
+    ) -> RiskDistributionResponse:
+        """Retrieves risk category distribution counts, percentages, and score thresholds."""
+        if year and month:
+            py, pm = year, month
+        elif assessment_period:
+            try:
+                dt = datetime.strptime(assessment_period, "%Y-%m-%d").date()
+                py, pm = dt.year, dt.month
+            except ValueError:
+                py, pm = 2026, 11
+        else:
+            py, pm = 2026, 11
+
+        eff_version = calculation_version or CALCULATION_VERSION
+        data = RiskRepository.get_risk_distribution(
+            db,
+            period_year=py,
+            period_month=pm,
+            calculation_version=eff_version,
+            score_type=score_type,
+        )
+        return RiskDistributionResponse(**data)
+
+    @staticmethod
+    def get_top_risk_districts(
+        db: Session,
+        limit: int = 10,
+        state_id: Optional[int] = None,
+        assessment_period: Optional[str] = "2026-11-01",
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        score_type: Optional[str] = None,
+        calculation_version: Optional[str] = CALCULATION_VERSION,
+    ) -> TopRiskDistrictsResponse:
+        """Retrieves the top N high-risk districts sorted by overall risk score."""
+        if year and month:
+            py, pm = year, month
+        elif assessment_period:
+            try:
+                dt = datetime.strptime(assessment_period, "%Y-%m-%d").date()
+                py, pm = dt.year, dt.month
+            except ValueError:
+                py, pm = 2026, 11
+        else:
+            py, pm = 2026, 11
+
+        eff_version = calculation_version or CALCULATION_VERSION
+        items = RiskRepository.get_top_risk_districts(
+            db,
+            limit=limit,
+            state_id=state_id,
+            period_year=py,
+            period_month=pm,
+            calculation_version=eff_version,
+            score_type=score_type,
+        )
+        return TopRiskDistrictsResponse(
+            assessment_period=f"{py:04d}-{pm:02d}-01",
+            score_type=score_type or "FORECAST",
+            calculation_version=eff_version,
+            limit=limit,
+            state_id=state_id,
             items=[RiskItemResponse(**item) for item in items],
         )
 

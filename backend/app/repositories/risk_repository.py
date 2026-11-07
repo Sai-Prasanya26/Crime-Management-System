@@ -411,10 +411,11 @@ class RiskRepository:
         period_year: int = 2026,
         period_month: int = 1,
         calculation_version: Optional[str] = None,
+        search: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
     ) -> Tuple[List[Dict[str, Any]], int]:
-        """Lists paginated risk score records with filtering."""
+        """Lists paginated risk score records with filtering and optional search."""
         where_clauses = [
             "r.period_year = :py",
             "r.period_month = :pm",
@@ -451,8 +452,15 @@ class RiskRepository:
                 params["dids"] = tuple(filter_district_ids)
 
         if risk_level is not None:
+            rl = risk_level.strip().upper()
+            if rl in ["MODERATE", "MEDIUM"]:
+                rl = "MODERATE"
             where_clauses.append("r.risk_level = :rl")
-            params["rl"] = risk_level.upper()
+            params["rl"] = rl
+
+        if search is not None and search.strip():
+            where_clauses.append("(d.district_name LIKE :search_term OR s.state_name LIKE :search_term)")
+            params["search_term"] = f"%{search.strip()}%"
 
         where_str = " AND ".join(where_clauses)
 
@@ -460,6 +468,7 @@ class RiskRepository:
             SELECT COUNT(*)
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
+            JOIN states s ON d.state_id = s.id
             WHERE {where_str}
         """)
         total = db.execute(count_sql, params).scalar() or 0
@@ -772,3 +781,162 @@ class RiskRepository:
             }
             for r in rows
         ]
+
+    @staticmethod
+    def get_state_risk_summary(
+        db: Session,
+        period_year: int = 2026,
+        period_month: int = 11,
+        calculation_version: Optional[str] = None,
+        score_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Computes aggregated risk summaries for all 36 active States/UTs.
+        Correctly maps newly reorganized jurisdictions (Telangana, Ladakh) via district_geography_mapping.
+        """
+        where_clauses = ["r.period_year = :py", "r.period_month = :pm"]
+        params: Dict[str, Any] = {"py": period_year, "pm": period_month}
+
+        if calculation_version:
+            where_clauses.append("r.calculation_version = :ver")
+            params["ver"] = calculation_version
+        if score_type:
+            where_clauses.append("r.score_type = :st")
+            params["st"] = score_type
+
+        where_str = " AND ".join(where_clauses)
+
+        sql = text(f"""
+            WITH state_mapped_risk AS (
+                SELECT 
+                    COALESCE(cs.id, s.id) AS effective_state_id,
+                    r.district_id,
+                    d.district_name,
+                    r.overall_risk_score,
+                    r.risk_level,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY COALESCE(cs.id, s.id) 
+                        ORDER BY r.overall_risk_score DESC, d.district_name ASC
+                    ) as rn
+                FROM crime_risk_scores r
+                JOIN districts d ON r.district_id = d.id
+                JOIN states s ON d.state_id = s.id
+                LEFT JOIN (
+                    SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
+                    FROM district_geography_mapping dgm
+                    JOIN districts cd ON dgm.current_district_id = cd.id
+                    JOIN states st ON cd.state_id = st.id
+                    WHERE st.is_active = 1
+                ) cs ON r.district_id = cs.historical_district_id AND (s.is_active = 0 OR s.id IN (14, 2))
+                WHERE {where_str}
+            )
+            SELECT 
+                s.id AS state_id,
+                s.state_name,
+                COUNT(smr.district_id) AS assessed_districts_count,
+                COALESCE(ROUND(AVG(smr.overall_risk_score), 2), 0.0) AS mean_risk_score,
+                COALESCE(ROUND(MAX(smr.overall_risk_score), 2), 0.0) AS highest_risk_score,
+                MAX(CASE WHEN smr.rn = 1 THEN smr.district_name END) AS highest_risk_district_name,
+                SUM(CASE WHEN smr.risk_level = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+                SUM(CASE WHEN smr.risk_level = 'MODERATE' THEN 1 ELSE 0 END) AS mod_count,
+                SUM(CASE WHEN smr.risk_level = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+                SUM(CASE WHEN smr.risk_level = 'CRITICAL' THEN 1 ELSE 0 END) AS crit_count
+            FROM states s
+            LEFT JOIN state_mapped_risk smr ON s.id = smr.effective_state_id
+            WHERE s.is_active = 1
+            GROUP BY s.id, s.state_name
+            ORDER BY mean_risk_score DESC, s.state_name ASC
+        """)
+
+        rows = db.execute(sql, params).fetchall()
+        results = []
+        for r in rows:
+            low_c = int(r[6] or 0)
+            mod_c = int(r[7] or 0)
+            high_c = int(r[8] or 0)
+            crit_c = int(r[9] or 0)
+            risk_counts = {
+                "LOW": low_c,
+                "MODERATE": mod_c,
+                "HIGH": high_c,
+                "CRITICAL": crit_c,
+            }
+
+            max_score = float(r[4])
+            if max_score >= 65.0 and crit_c > 0:
+                prim = "CRITICAL"
+            elif max_score >= 50.0 and high_c > 0:
+                prim = "HIGH"
+            elif max_score >= 35.0 and mod_c > 0:
+                prim = "MODERATE"
+            else:
+                prim = "LOW"
+
+            results.append({
+                "state_id": r[0],
+                "state_name": r[1],
+                "assessed_districts_count": int(r[2]),
+                "mean_risk_score": float(r[3]),
+                "highest_risk_score": max_score,
+                "highest_risk_district_name": r[5],
+                "risk_level_counts": risk_counts,
+                "primary_risk_level": prim,
+            })
+        return results
+
+    @staticmethod
+    def get_risk_distribution(
+        db: Session,
+        period_year: int = 2026,
+        period_month: int = 11,
+        calculation_version: Optional[str] = None,
+        score_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Returns risk level distribution counts, percentages, and score thresholds."""
+        ov = RiskRepository.get_overview(
+            db,
+            period_year=period_year,
+            period_month=period_month,
+            calculation_version=calculation_version,
+            score_type=score_type,
+        )
+        return {
+            "assessment_period": ov["assessment_period"],
+            "period_year": period_year,
+            "period_month": period_month,
+            "score_type": ov["score_type"],
+            "calculation_version": ov["methodology_version"],
+            "total_assessed_districts": ov["total_assessed_districts"],
+            "distribution": ov["risk_level_distribution"],
+            "percentages": ov["risk_level_percentages"],
+            "thresholds": {
+                "LOW": "< 35.0",
+                "MODERATE": "35.0 – 49.99",
+                "HIGH": "50.0 – 64.99",
+                "CRITICAL": ">= 65.0",
+            },
+        }
+
+    @staticmethod
+    def get_top_risk_districts(
+        db: Session,
+        limit: int = 10,
+        state_id: Optional[int] = None,
+        period_year: int = 2026,
+        period_month: int = 11,
+        calculation_version: Optional[str] = None,
+        score_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Returns the top N high-risk districts sorted by overall_risk_score descending."""
+        items, _ = RiskRepository.list_risk_scores(
+            db,
+            state_id=state_id,
+            period_year=period_year,
+            period_month=period_month,
+            calculation_version=calculation_version,
+            score_type=score_type,
+            skip=0,
+            limit=limit,
+        )
+        return items
+

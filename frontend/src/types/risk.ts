@@ -47,6 +47,9 @@ export interface RiskItem {
   factor_contributions?: FactorContributions | null;
   explanation_summary?: string | null;
   generated_at?: string | null;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
 }
 
 export interface RiskOverviewResponse {
@@ -125,6 +128,10 @@ export interface DistrictRiskDetailResponse {
   model_name?: string | null;
   forecast_origin_date?: string | null;
   generated_at?: string | null;
+  parent_district_id?: number | null;
+  parent_district_name?: string | null;
+  is_derived_from_parent?: boolean;
+  notes?: string | null;
 }
 
 export interface RiskListResponse {
@@ -139,8 +146,73 @@ export interface RiskFilterParams {
   score_type?: string;
   assessment_period?: string;
   calculation_version?: string;
+  search?: string;
   skip?: number;
   limit?: number;
+}
+
+export interface StateRiskSummaryItem {
+  state_id: number;
+  state_name: string;
+  assessed_districts_count: number;
+  mean_risk_score: number;
+  highest_risk_score: number;
+  highest_risk_district_name?: string | null;
+  risk_level_counts: {
+    LOW: number;
+    MODERATE: number;
+    HIGH: number;
+    CRITICAL: number;
+    [key: string]: number;
+  };
+  primary_risk_level: string;
+}
+
+export interface StateRiskSummaryResponse {
+  assessment_period: string;
+  score_type: string;
+  calculation_version: string;
+  total_states: number;
+  items: StateRiskSummaryItem[];
+}
+
+export interface RiskDistributionResponse {
+  assessment_period: string;
+  period_year: number;
+  period_month: number;
+  score_type: string;
+  calculation_version: string;
+  total_assessed_districts: number;
+  distribution: {
+    LOW: number;
+    MODERATE: number;
+    HIGH: number;
+    CRITICAL: number;
+    [key: string]: number;
+  };
+  percentages: {
+    LOW: number;
+    MODERATE: number;
+    HIGH: number;
+    CRITICAL: number;
+    [key: string]: number;
+  };
+  thresholds: {
+    LOW: string;
+    MODERATE: string;
+    HIGH: string;
+    CRITICAL: string;
+    [key: string]: string;
+  };
+}
+
+export interface TopRiskDistrictsResponse {
+  assessment_period: string;
+  score_type: string;
+  calculation_version: string;
+  limit: number;
+  state_id?: number | null;
+  items: RiskItem[];
 }
 
 export interface RiskTrendPoint {
