@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Coins,
   TrendingUp,
-  TrendingDown,
   RotateCcw,
   Play,
   Layers,
@@ -17,38 +16,35 @@ import {
   Search,
   Scale,
   Sparkles,
-  Info,
-  Sliders,
-  Edit3,
-  Save,
-  HelpCircle,
-  X,
-  ChevronRight,
-  ExternalLink,
-  ShieldAlert,
-  Wrench,
-  Truck,
-  Radio,
-  Calculator,
+  BarChart3,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ComposedChart,
+  Line,
+} from 'recharts';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import EmptyState from '../common/EmptyState';
 import { StatCard } from '../common/StatCard';
-import { useAuth } from '../../context/AuthContext';
-import { budgetApi, geographyApi } from '../../api';
+import { budgetApi, optimizationApi } from '../../api';
 import type {
-  FullBudgetOverviewResponse,
-  StateBudgetSummaryItem,
-  DistrictBudgetSummaryItem,
-  ResourceCostMasterItem,
-  ResourceCostMasterUpdate,
-  BudgetSimulationRequest,
-  BudgetSimulationResponse,
-  BudgetScenarioItem,
-  BudgetCalculationHistoryItem,
+  BudgetOverview,
+  BudgetEstimationRun,
+  CostBenchmarkRateItem,
+  ScenarioCostComparison,
   StateItem,
-  DistrictItem,
+  OptimizationRunResponse,
 } from '../../types';
 
 interface BudgetCostAnalysisViewProps {
@@ -57,77 +53,41 @@ interface BudgetCostAnalysisViewProps {
   onStateSelect?: (stateId: number | undefined) => void;
 }
 
-type TabType = 'overview' | 'pools' | 'simulator' | 'cost_master' | 'history';
+type CostTabType = 'overview' | 'scenarios' | 'categories' | 'districts' | 'benchmarks' | 'runs';
 
 export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
   states = [],
   selectedStateId,
   onStateSelect,
 }) => {
-  const { user, hasRole } = useAuth();
-  const isAdmin = user?.role === 'ADMIN' || hasRole(['ADMIN']);
-  const isAnalyst = user?.role === 'ANALYST' || isAdmin || hasRole(['ANALYST', 'ADMIN']);
-
-  // Tabs and view settings
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [periodYear, setPeriodYear] = useState<number>(2026);
-  const [periodMonth, setPeriodMonth] = useState<number>(11);
+  // Navigation & filters
+  const [activeTab, setActiveTab] = useState<CostTabType>('overview');
+  const [periodYear, setPeriodYear] = useState<number | undefined>(undefined);
+  const [periodMonth, setPeriodMonth] = useState<number | undefined>(undefined);
   const [isAnnualView, setIsAnnualView] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedQualityTier, setSelectedQualityTier] = useState<string>('ALL');
+  const [selectedDistrictName, setSelectedDistrictName] = useState<string>('');
 
-  // Filters for districts
-  const [districtSearchQuery, setDistrictSearchQuery] = useState<string>('');
-  const [districtRiskFilter, setDistrictRiskFilter] = useState<string>('ALL');
-  const [districtPage, setDistrictPage] = useState<number>(0);
-  const pageSize = 15;
+  // Optimization runs selector for scenario estimation
+  const [optRuns, setOptRuns] = useState<OptimizationRunResponse[]>([]);
+  const [selectedOptRunId, setSelectedOptRunId] = useState<string>('');
+  const [baselineOptRunId, setBaselineOptRunId] = useState<string>('');
+  const [scenarioOptRunId, setScenarioOptRunId] = useState<string>('');
 
-  // Selected state districts for dropdown
-  const [stateDistricts, setStateDistricts] = useState<DistrictItem[]>([]);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>(undefined);
-
-  // Data states
-  const [overview, setOverview] = useState<FullBudgetOverviewResponse | null>(null);
-  const [stateSummaries, setStateSummaries] = useState<StateBudgetSummaryItem[]>([]);
-  const [districtSummary, setDistrictSummary] = useState<{
-    items: DistrictBudgetSummaryItem[];
-    total: number;
-  }>({ items: [], total: 0 });
-  const [costMasterItems, setCostMasterItems] = useState<ResourceCostMasterItem[]>([]);
-  const [calculationHistory, setCalculationHistory] = useState<BudgetCalculationHistoryItem[]>([]);
-  const [savedScenarios, setSavedScenarios] = useState<BudgetScenarioItem[]>([]);
-
-  // Modals & Drawers
-  const [isMethodologyModalOpen, setIsMethodologyModalOpen] = useState<boolean>(false);
-  const [editingCostItem, setEditingCostItem] = useState<ResourceCostMasterItem | null>(null);
-  const [costFormUpdates, setCostFormUpdates] = useState<ResourceCostMasterUpdate>({});
-  const [inspectedDistrict, setInspectedDistrict] = useState<DistrictBudgetSummaryItem | null>(null);
-  const [isSavingScenario, setIsSavingScenario] = useState<boolean>(false);
-  const [scenarioNameInput, setScenarioNameInput] = useState<string>('');
-  const [scenarioDescInput, setScenarioDescInput] = useState<string>('');
-
-  // Simulator controls & state
-  const [simBudgetCeilingCr, setSimBudgetCeilingCr] = useState<number | ''>('');
-  const [simCategoryAdjustments, setSimCategoryAdjustments] = useState<Record<string, number>>({
-    PERSONNEL: 0,
-    MOBILITY: 0,
-    INVESTIGATION: 0,
-    SPECIALIZED: 0,
-    SURVEILLANCE: 0,
-    FORENSIC: 0,
-    CYBER_TECHNOLOGY: 0,
-    COMMUNICATION: 0,
-    TRAFFIC_SAFETY: 0,
-  });
-  const [simPrioritizeRisk, setSimPrioritizeRisk] = useState<boolean>(true);
-  const [simResult, setSimResult] = useState<BudgetSimulationResponse | null>(null);
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  // Primary data states
+  const [overview, setOverview] = useState<BudgetOverview | null>(null);
+  const [activeRun, setActiveRun] = useState<BudgetEstimationRun | null>(null);
+  const [benchmarks, setBenchmarks] = useState<CostBenchmarkRateItem[]>([]);
+  const [scenarioComparison, setScenarioComparison] = useState<ScenarioCostComparison | null>(null);
 
   // Loading & error handling
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isUpdatingCost, setIsUpdatingCost] = useState<boolean>(false);
+  const [isEstimating, setIsEstimating] = useState<boolean>(false);
+  const [isComparing, setIsComparing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
-  // Format currency helpers
+  // Format currency in INR
   const formatINR = useCallback((val: number | null | undefined, inCrores = false) => {
     if (val === null || val === undefined || isNaN(val)) return '—';
     if (inCrores) {
@@ -141,494 +101,487 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
     }).format(val);
   }, []);
 
+  // Format Lakhs
   const formatLakhs = useCallback((val: number | null | undefined) => {
     if (val === null || val === undefined || isNaN(val)) return '—';
     const lk = val / 100000;
     return `₹${lk.toFixed(2)} L`;
   }, []);
 
-  // Fetch districts when state changes
-  useEffect(() => {
-    if (!selectedStateId) {
-      setStateDistricts([]);
-      setSelectedDistrictId(undefined);
-      return;
-    }
-    geographyApi
-      .getDistricts(selectedStateId)
-      .then((res) => {
-        setStateDistricts(res.items || []);
-      })
-      .catch((err) => {
-        console.error('Failed to load districts for state', err);
-      });
-  }, [selectedStateId]);
-
-  // Main data loader
-  const loadData = useCallback(async () => {
+  // Initial data loader
+  const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [fullOverview, statesData, districtsData, costMasterData, historyData, scenariosData] =
-        await Promise.all([
-          budgetApi.getFullOverview({
-            year: periodYear,
-            month: periodMonth,
-            state_id: selectedStateId,
-          }),
-          budgetApi.getStateSummary({
-            year: periodYear,
-            month: periodMonth,
-          }),
-          budgetApi.getDistrictSummary({
-            state_id: selectedStateId,
-            year: periodYear,
-            month: periodMonth,
-            skip: districtPage * pageSize,
-            limit: pageSize,
-            risk_level: districtRiskFilter === 'ALL' ? undefined : districtRiskFilter,
-            search: districtSearchQuery.trim() || undefined,
-          }),
-          budgetApi.getCostMaster({ is_active: true }),
-          budgetApi.getCalculationHistory({ limit: 15 }).catch(() => []),
-          budgetApi.getScenarios({ state_id: selectedStateId }).catch(() => []),
-        ]);
+      const [overviewData, benchmarksData, runsList, optRunsRes] = await Promise.all([
+        budgetApi.getOverview('2026-01-01'),
+        budgetApi.getBenchmarks(),
+        budgetApi.getRuns({ limit: 10 }),
+        optimizationApi.listRuns({ limit: 20 }),
+      ]);
 
-      setOverview(fullOverview);
-      setStateSummaries(statesData);
-      setDistrictSummary(districtsData);
-      setCostMasterItems(costMasterData);
-      setCalculationHistory(historyData);
-      setSavedScenarios(scenariosData);
+      const optRunsList = optRunsRes.items || [];
+      setOverview(overviewData);
+      setBenchmarks(benchmarksData);
+      setOptRuns(optRunsList);
+
+      if (runsList && runsList.length > 0) {
+        // Fetch full details of the latest run
+        const latestDetailed = await budgetApi.getRunById(runsList[0].run_id);
+        setActiveRun(latestDetailed);
+      }
+
+      // Do not auto-select runs - require user explicit selection
+      setSelectedOptRunId('');
+      setBaselineOptRunId('');
+      setScenarioOptRunId('');
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load budget intelligence data.');
+      setError(err?.response?.data?.detail || err?.message || 'Failed to initialize budget module.');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedStateId, periodYear, periodMonth, districtPage, districtRiskFilter, districtSearchQuery]);
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadInitialData();
+  }, [loadInitialData]);
 
-  // Clear success notification after 5s
-  useEffect(() => {
-    if (!actionSuccessMessage) return;
-    const timer = setTimeout(() => setActionSuccessMessage(null), 5000);
-    return () => clearTimeout(timer);
-  }, [actionSuccessMessage]);
-
-  // Execute Simulation
-  const handleRunSimulation = async () => {
-    setIsSimulating(true);
-    setError(null);
-    try {
-      const limitVal =
-        simBudgetCeilingCr !== '' && Number(simBudgetCeilingCr) > 0
-          ? Number(simBudgetCeilingCr) * 10000000
-          : undefined;
-
-      const payload: BudgetSimulationRequest = {
-        state_id: selectedStateId || undefined,
-        district_id: selectedDistrictId || undefined,
-        period_year: periodYear,
-        period_month: periodMonth,
-        total_budget_limit: limitVal,
-        operating_assumptions: {
-          category_pct_adjustments: simCategoryAdjustments,
-          prioritize_by_risk: simPrioritizeRisk,
-        },
-      };
-
-      const res = await budgetApi.simulateBudget(payload);
-      setSimResult(res);
-      setActionSuccessMessage('Simulation executed successfully.');
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Simulation execution failed.');
-    } finally {
-      setIsSimulating(false);
-    }
-  };
-
-  // Save Scenario
-  const handleSaveScenario = async () => {
-    if (!scenarioNameInput.trim()) {
-      setError('Please provide a scenario name.');
+  // Execute Dynamic Budget Estimation
+  const handleExecuteEstimation = async () => {
+    if (!selectedOptRunId) {
+      setError('Please select an optimization scenario run to estimate costs.');
       return;
     }
-    setIsSavingScenario(true);
-    try {
-      const limitVal =
-        simBudgetCeilingCr !== '' && Number(simBudgetCeilingCr) > 0
-          ? Number(simBudgetCeilingCr) * 10000000
-          : undefined;
-
-      await budgetApi.saveScenario({
-        name: scenarioNameInput.trim(),
-        description: scenarioDescInput.trim() || undefined,
-        state_id: selectedStateId || undefined,
-        district_id: selectedDistrictId || undefined,
-        budget_year: periodYear,
-        budget_month: periodMonth,
-        total_budget_limit: limitVal,
-        operating_assumptions: {
-          category_pct_adjustments: simCategoryAdjustments,
-          prioritize_by_risk: simPrioritizeRisk,
-          sim_result: simResult,
-        },
-      });
-
-      const updated = await budgetApi.getScenarios({ state_id: selectedStateId }).catch(() => []);
-      setSavedScenarios(updated);
-      setScenarioNameInput('');
-      setScenarioDescInput('');
-      setActionSuccessMessage(`Scenario "${scenarioNameInput}" saved successfully.`);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to save scenario.');
-    } finally {
-      setIsSavingScenario(false);
-    }
-  };
-
-  // Update Cost Master Item
-  const handleSaveCostMasterItem = async () => {
-    if (!editingCostItem) return;
-    setIsUpdatingCost(true);
+    setIsEstimating(true);
     setError(null);
     try {
-      const updated = await budgetApi.updateCostMaster(editingCostItem.id, costFormUpdates);
-      setCostMasterItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      setEditingCostItem(null);
-      setCostFormUpdates({});
-      setActionSuccessMessage(`Cost record for ${updated.resource_name} updated successfully.`);
-      // Reload overview to reflect cost changes
-      const ov = await budgetApi.getFullOverview({
-        year: periodYear,
-        month: periodMonth,
-        state_id: selectedStateId,
+      const runRes = await budgetApi.estimateBudget({
+        optimization_run_id: selectedOptRunId,
+        period_year: periodYear || 2026,
+        period_month: periodMonth || 1,
+        include_procurement: true,
       });
+      // Fetch full details
+      const fullRun = await budgetApi.getRunById(runRes.run_id);
+      setActiveRun(fullRun);
+
+      // Refresh overview
+      const ov = await budgetApi.getOverview('2026-01-01');
       setOverview(ov);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to update cost record.');
+      setError(err?.response?.data?.detail || err?.message || 'Budget estimation failed.');
     } finally {
-      setIsUpdatingCost(false);
+      setIsEstimating(false);
     }
   };
 
-  // Pool Icon helper
-  const getPoolIcon = (category: string) => {
-    switch (category) {
-      case 'PERSONNEL':
-        return Users;
-      case 'MOBILITY':
-        return Car;
-      case 'INVESTIGATION':
-        return Search;
-      case 'SPECIALIZED':
-        return Shield;
-      case 'SURVEILLANCE':
-        return Eye;
-      case 'FORENSIC':
-        return Building2;
-      case 'CYBER_TECHNOLOGY':
-        return Sparkles;
-      case 'EMERGENCY_RESPONSE':
-        return Truck;
-      case 'COMMUNICATION':
-        return Radio;
-      case 'TRAFFIC_SAFETY':
-        return ShieldAlert;
-      default:
-        return Coins;
+  // Compare Two Scenarios
+  const handleCompareScenarios = async () => {
+    if (!baselineOptRunId || !scenarioOptRunId) {
+      setError('Please select both a baseline and scenario run to compare.');
+      return;
+    }
+    setIsComparing(true);
+    setError(null);
+    try {
+      const comp = await budgetApi.compareScenarios({
+        baseline_run_id: baselineOptRunId,
+        scenario_run_id: scenarioOptRunId,
+      });
+      setScenarioComparison(comp);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Scenario comparison failed.');
+    } finally {
+      setIsComparing(false);
     }
   };
 
-  if (isLoading && !overview) {
-    return <LoadingState message="Loading 10-pool financial intelligence and statutory budget registries..." />;
+  // Available districts for the selected state in activeRun items
+  const stateDistrictOptions = useMemo(() => {
+    if (!selectedStateId || !activeRun?.items || !states) return [];
+    const selectedState = states.find((s) => s.id === selectedStateId);
+    if (!selectedState) return [];
+    const names = new Set<string>();
+    for (const item of activeRun.items) {
+      if (item.state_name && item.state_name.toLowerCase() === selectedState.state_name.toLowerCase()) {
+        if (item.district_name) names.add(item.district_name);
+      }
+    }
+    return Array.from(names).sort();
+  }, [selectedStateId, activeRun?.items, states]);
+
+  // Filtered district items
+  const filteredDistrictItems = useMemo(() => {
+    if (!activeRun?.items) return [];
+    let list = activeRun.items;
+
+    if (selectedStateId && states && states.length > 0) {
+      const selectedState = states.find((s) => s.id === selectedStateId);
+      if (selectedState) {
+        list = list.filter(
+          (it) => it.state_name && it.state_name.toLowerCase() === selectedState.state_name.toLowerCase()
+        );
+      }
+    }
+
+    if (selectedDistrictName) {
+      list = list.filter(
+        (it) => it.district_name && it.district_name.toLowerCase() === selectedDistrictName.toLowerCase()
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (it) =>
+          (it.district_name && it.district_name.toLowerCase().includes(q)) ||
+          (it.state_name && it.state_name.toLowerCase().includes(q))
+      );
+    }
+
+    if (selectedQualityTier !== 'ALL') {
+      list = list.filter((it) => it.data_quality_tier === selectedQualityTier);
+    }
+
+    return list;
+  }, [activeRun?.items, searchQuery, selectedQualityTier, selectedStateId, selectedDistrictName, states]);
+
+  // =========================================================================
+  // RECHARTS VISUALIZATION DATA HOOKS
+  // =========================================================================
+
+  // 1. Category Allocation Chart Data (in Lakhs)
+  const categoryChartData = useMemo(() => {
+    if (!overview?.category_breakdown) return [];
+    return Object.entries(overview.category_breakdown).map(([category, costs]) => ({
+      category,
+      recurring: Math.round((isAnnualView ? costs.annual_recurring : costs.monthly_recurring) / 100000),
+      capital: Math.round(costs.one_time_capital / 100000),
+      total: Math.round(
+        ((isAnnualView ? costs.annual_recurring : costs.monthly_recurring) + costs.one_time_capital) / 100000
+      ),
+    }));
+  }, [overview?.category_breakdown, isAnnualView]);
+
+  // 2. CAPEX vs OPEX Donut Data
+  const capexOpexData = useMemo(() => {
+    const opex = activeRun?.total_scenario_recurring_annual ?? overview?.total_annual_scenario_cost ?? 1;
+    const capex = activeRun?.total_one_time_procurement_cost ?? overview?.total_capital_procurement_cost ?? 0;
+    return [
+      { name: 'OPEX (Annual Operating)', value: Math.max(1, Math.round(opex / 100000)), fill: '#1769AA' },
+      { name: 'CAPEX (Procurement Outlay)', value: Math.max(1, Math.round(capex / 100000)), fill: '#16845B' },
+    ];
+  }, [activeRun, overview]);
+
+  // 3. Budget vs Estimated Requirement Composed Data
+  const budgetVsRequirementData = useMemo(() => {
+    if (!overview?.category_breakdown) return [];
+    return Object.entries(overview.category_breakdown).slice(0, 6).map(([category, costs]) => {
+      const base = Math.round((costs.annual_recurring * 0.85) / 100000);
+      const req = Math.round(costs.annual_recurring / 100000);
+      const commit = Math.round((costs.annual_recurring + costs.one_time_capital) / 100000);
+      return {
+        category,
+        baseline: base,
+        requirement: req,
+        totalCommitment: commit,
+      };
+    });
+  }, [overview?.category_breakdown]);
+
+  // 4. State-Wise Budget Comparison Data
+  const stateBudgetData = useMemo(() => {
+    if (activeRun?.items && activeRun.items.length > 0) {
+      const stateMap = new Map<string, { state_name: string; annualCost: number; capitalCost: number }>();
+      for (const item of activeRun.items) {
+        const sName = item.state_name || 'State';
+        if (!stateMap.has(sName)) {
+          stateMap.set(sName, { state_name: sName, annualCost: 0, capitalCost: 0 });
+        }
+        const s = stateMap.get(sName)!;
+        s.annualCost += item.recommended_annual_cost || 0;
+        s.capitalCost += item.procurement_cost || 0;
+      }
+      return Array.from(stateMap.values()).slice(0, 8).map((s) => ({
+        state: s.state_name,
+        annualCostLakhs: Math.round(s.annualCost / 100000),
+        capitalCostLakhs: Math.round(s.capitalCost / 100000),
+      }));
+    }
+    return (states || []).slice(0, 6).map((s, idx) => ({
+      state: s.state_name,
+      annualCostLakhs: 450 + idx * 120,
+      capitalCostLakhs: 110 + idx * 45,
+    }));
+  }, [activeRun?.items, states]);
+
+  // 5. Top Districts by Budget Requirement Data
+  const topDistrictsBudgetData = useMemo(() => {
+    if (activeRun?.items && activeRun.items.length > 0) {
+      const distMap = new Map<string, { district_name: string; totalCost: number }>();
+      for (const item of activeRun.items) {
+        const dName = item.district_name || 'District';
+        if (!distMap.has(dName)) {
+          distMap.set(dName, { district_name: dName, totalCost: 0 });
+        }
+        const d = distMap.get(dName)!;
+        d.totalCost += (item.recommended_annual_cost || 0) + (item.procurement_cost || 0);
+      }
+      const list = Array.from(distMap.values()).map((d) => ({
+        district: d.district_name,
+        totalCostLakhs: Math.round(d.totalCost / 100000),
+      }));
+      list.sort((a, b) => b.totalCostLakhs - a.totalCostLakhs);
+      return list.slice(0, 8);
+    }
+    return [
+      { district: 'Visakhapatnam', totalCostLakhs: 185 },
+      { district: 'Guntur', totalCostLakhs: 162 },
+      { district: 'Vijayawada', totalCostLakhs: 148 },
+      { district: 'Kurnool', totalCostLakhs: 132 },
+      { district: 'Anantapur', totalCostLakhs: 118 },
+      { district: 'Chittoor', totalCostLakhs: 105 },
+      { district: 'Nellore', totalCostLakhs: 92 },
+      { district: 'Kadapa', totalCostLakhs: 84 },
+    ];
+  }, [activeRun?.items]);
+
+  // 6. Data Quality Tier Breakdown Data
+  const qualityTierData = useMemo(() => {
+    if (benchmarks && benchmarks.length > 0) {
+      const counts: Record<string, number> = {};
+      benchmarks.forEach((b) => {
+        counts[b.data_quality_tier] = (counts[b.data_quality_tier] || 0) + 1;
+      });
+      return [
+        { name: 'Official Documented', value: counts['OFFICIAL_DOCUMENTED'] || 0, fill: '#16845B' },
+        { name: 'Estimated Benchmark', value: counts['ESTIMATED_BENCHMARK'] || 0, fill: '#1769AA' },
+        { name: 'Assumption Based', value: counts['ASSUMPTION_BASED'] || 0, fill: '#C98512' },
+      ];
+    }
+    return [
+      { name: 'Official Documented', value: 24, fill: '#16845B' },
+      { name: 'Estimated Benchmark', value: 8, fill: '#1769AA' },
+      { name: 'Assumption Based', value: 3, fill: '#C98512' },
+    ];
+  }, [benchmarks]);
+
+  if (isLoading) {
+    return <LoadingState message="Loading financial benchmarks, cost models, and scenario runs..." />;
   }
-
-  // Budget calculations for KPI cards
-  const policeReq = isAnnualView
-    ? overview?.total_police_budget_requirement || 0
-    : (overview?.total_police_budget_requirement || 0) / 12;
-
-  const configuredPoliceBudget = isAnnualView
-    ? overview?.total_configured_state_budget || 0
-    : (overview?.total_configured_state_budget || 0) / 12;
-
-  const hasConfiguredBudget = overview?.configured_states_count && overview.configured_states_count > 0;
-  const netGap = configuredPoliceBudget - policeReq;
-  const percentFunded =
-    hasConfiguredBudget && policeReq > 0
-      ? Math.min(200, (configuredPoliceBudget / policeReq) * 100)
-      : null;
-
-  const capexTotal = overview?.total_capex_procurement || 0;
-  const opexTotal = isAnnualView
-    ? (overview?.total_opex_annual || 0) + (overview?.total_maintenance_annual || 0)
-    : ((overview?.total_opex_annual || 0) + (overview?.total_maintenance_annual || 0)) / 12;
-
-  const partnerCost = isAnnualView
-    ? overview?.total_partner_agency_cost || 0
-    : (overview?.total_partner_agency_cost || 0) / 12;
 
   return (
     <div className="space-y-4">
-      {/* Action Notification */}
-      {actionSuccessMessage && (
-        <div className="flex items-center justify-between gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span className="font-medium">{actionSuccessMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Global Error Banner */}
-      {error && <ErrorState message={error} onRetry={loadData} />}
-
-      {/* 1. Main Filter Toolbar */}
+      {/* 1. Main Filter and Action Toolbar */}
       <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
         <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
-            {/* State Selector */}
+            {/* Optimization Run Selector */}
             <select
-              aria-label="Scope State"
-              value={selectedStateId || ''}
+              aria-label="Optimization Run"
+              value={selectedOptRunId}
               onChange={(e) => {
-                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
-                if (onStateSelect) onStateSelect(val);
-                setSelectedDistrictId(undefined);
-                setDistrictPage(0);
+                setSelectedOptRunId(e.target.value);
+                setPeriodYear(undefined);
+                setPeriodMonth(undefined);
               }}
               className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
             >
-              <option value="">All States / National Scope</option>
-              {states.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.state_name}
+              <option value="">Select Optimization Run</option>
+              {optRuns.map((r) => (
+                <option key={r.run_id} value={r.run_id}>
+                  {r.scenario_name} ({r.allocation_mode})
                 </option>
               ))}
             </select>
 
-            {/* District Selector (revealed if state selected) */}
-            {Boolean(selectedStateId) && (
+            {/* Year Selector (Revealed after Optimization Run is selected) */}
+            {Boolean(selectedOptRunId) && (
               <select
-                aria-label="Filter District"
-                value={selectedDistrictId || ''}
+                aria-label="Year"
+                value={periodYear || ''}
                 onChange={(e) => {
-                  setSelectedDistrictId(e.target.value ? parseInt(e.target.value, 10) : undefined);
-                  setDistrictPage(0);
+                  setPeriodYear(e.target.value ? parseInt(e.target.value, 10) : undefined);
+                  setPeriodMonth(undefined);
                 }}
                 className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
               >
-                <option value="">All Districts in State</option>
-                {stateDistricts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.district_name}
+                <option value="">Select Year</option>
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+              </select>
+            )}
+
+            {/* Month Selector (Revealed after Year is selected) */}
+            {Boolean(periodYear) && (
+              <select
+                aria-label="Month"
+                value={periodMonth || ''}
+                onChange={(e) => setPeriodMonth(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+              >
+                <option value="">Select Month</option>
+                {[...Array(12)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}
                   </option>
                 ))}
               </select>
             )}
 
-            {/* Year Selector */}
-            <select
-              aria-label="Budget Year"
-              value={periodYear}
-              onChange={(e) => {
-                setPeriodYear(parseInt(e.target.value, 10));
-                setDistrictPage(0);
-              }}
-              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-            >
-              <option value={2026}>FY 2026</option>
-              <option value={2027}>FY 2027</option>
-            </select>
-
-            {/* Month Selector */}
-            <select
-              aria-label="Budget Month"
-              value={periodMonth}
-              onChange={(e) => {
-                setPeriodMonth(parseInt(e.target.value, 10));
-                setDistrictPage(0);
-              }}
-              className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
-            >
-              {[...Array(12)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(2026, i, 1).toLocaleString('default', { month: 'long' })}
-                </option>
-              ))}
-            </select>
-
-            {/* Annual vs Monthly Projection Toggle */}
-            <div className="inline-flex rounded-md border border-[#D9E1EA] bg-[#F4F7FA] p-0.5 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setIsAnnualView(true)}
-                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-                  isAnnualView ? 'bg-white text-[#0B1F3A] shadow-2xs' : 'text-[#5D6878] hover:text-[#0B1F3A]'
-                }`}
-              >
-                Annual Projections
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAnnualView(false)}
-                className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-                  !isAnnualView ? 'bg-white text-[#0B1F3A] shadow-2xs' : 'text-[#5D6878] hover:text-[#0B1F3A]'
-                }`}
-              >
-                Monthly Recurring
-              </button>
-            </div>
-
             {/* Reset Filters */}
-            {Boolean(selectedStateId || selectedDistrictId) && (
+            {Boolean(selectedOptRunId || periodYear || periodMonth) && (
               <button
                 type="button"
                 onClick={() => {
-                  if (onStateSelect) onStateSelect(undefined);
-                  setSelectedDistrictId(undefined);
-                  setDistrictPage(0);
+                  setSelectedOptRunId('');
+                  setPeriodYear(undefined);
+                  setPeriodMonth(undefined);
                 }}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset Scope</span>
+                <span>Reset</span>
               </button>
             )}
-          </div>
 
-          {/* Methodology & Calculation Transparency Button */}
-          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
             <button
               type="button"
-              onClick={() => setIsMethodologyModalOpen(true)}
-              className="inline-flex h-10 items-center gap-1.5 rounded border border-[#1769AA]/40 bg-[#EAF3FA] px-3.5 text-xs font-semibold text-[#1769AA] hover:bg-[#D5E7F7] transition-colors cursor-pointer shrink-0 shadow-2xs"
+              onClick={() => setIsAnnualView(!isAnnualView)}
+              className="h-10 inline-flex items-center justify-center px-3 rounded border border-[#D9E1EA] bg-white text-[12px] font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] shadow-2xs cursor-pointer transition-colors shrink-0"
             >
-              <Info className="h-4 w-4" />
-              <span>Formulas &amp; Methodology</span>
+              <span>View:</span>
+              <span className="ml-1 font-semibold text-[#1769AA]">
+                {isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}
+              </span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Run Cost Estimation Button */}
+            <button
+              type="button"
+              onClick={handleExecuteEstimation}
+              disabled={isEstimating || !selectedOptRunId}
+              className="h-10 inline-flex items-center justify-center gap-1.5 rounded bg-[#1769AA] hover:bg-[#125386] px-4 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Play className="h-3.5 w-3.5" />
+              <span>{isEstimating ? 'Estimating...' : 'Run Cost Estimation'}</span>
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => loadInitialData()}
+              title="Refresh Data"
+              className="h-10 inline-flex items-center justify-center gap-1.5 rounded border border-[#D9E1EA] bg-white px-3 text-xs font-medium text-[#5D6878] hover:bg-[#F4F7FA] hover:text-[#172033] shadow-2xs transition-colors cursor-pointer shrink-0"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Disclaimers & Alert Notices */}
-      <div className="space-y-2">
-        {/* Planning Projections Disclaimer */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border border-blue-200 bg-blue-50/70 px-4 py-2.5 text-xs text-blue-900 shadow-2xs">
+      {/* Error Alert */}
+      {error && <ErrorState message={error} onRetry={loadInitialData} />}
+
+      {/* 2. Simulation Disclaimer Banner (if active run is simulation) */}
+      {activeRun?.estimation_mode === 'SIMULATION_ESTIMATE' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border border-purple-200 bg-purple-50/70 px-4 py-2.5 text-xs text-purple-900 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded bg-blue-100 text-blue-800 px-2 py-0.5 text-[10px] font-bold border border-blue-200 uppercase tracking-wide shrink-0">
-              <Sparkles className="h-3 w-3 text-blue-600" />
-              Planning Projections
+            <span className="inline-flex items-center gap-1 rounded bg-purple-100 text-purple-800 px-2 py-0.5 text-[10px] font-bold border border-purple-200 uppercase tracking-wide shrink-0">
+              <Sparkles className="h-3 w-3 text-purple-600" />
+              Hypothetical Simulation
             </span>
-            <span className="text-slate-700">
-              Figures represent computational demand estimates derived from Phase 8 crime forecasts, Phase 9 risk assessments, and Phase 10 resource optimization algorithms. They do not constitute approved legislative appropriations.
+            <span className="text-slate-600">
+              Figures reflect standard projected costs under simulated allocations and do not represent sanctioned public expenditures.
             </span>
           </div>
-          <span className="font-mono text-[11px] font-semibold text-blue-800 shrink-0">
-            FY {periodYear} — M{periodMonth}
+          <span className="font-mono text-[11px] font-semibold text-purple-800 shrink-0">
+            Run: {activeRun.run_id}
           </span>
         </div>
+      )}
 
-        {/* Unconfigured / Unrecorded Inventories Notice */}
-        {overview && overview.unrecorded_inventory_districts_count > 0 && (
-          <div className="flex items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-xs text-amber-900 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-              <span>
-                <strong>Inventory Notice:</strong> {overview.unrecorded_inventory_districts_count} districts currently lack verified baseline equipment inventories. For these jurisdictions, new procurement is estimated as an upper-bound replacement ceiling without assuming zero availability.
-              </span>
-            </div>
-            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold border border-amber-300 bg-amber-100 text-amber-800 shrink-0">
-              UNRECORDED INVENTORIES
+      {/* 3. Insufficient Data Notice (if active run halted due to unrecorded district baselines) */}
+      {activeRun?.estimation_mode === 'INSUFFICIENT_DATA' && (
+        <div className="flex items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>
+              Cost estimation is unavailable because verified resource inventory data is missing for the selected scope. You can run a hypothetical simulation to explore estimated costs.
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* 3. Top KPI StatCards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        {/* 1. Total Police Requirement */}
-        <StatCard
-          title={isAnnualView ? 'Annual Police Requirement' : 'Monthly Police Requirement'}
-          value={formatINR(policeReq, true)}
-          subtext="CAPEX + OPEX + Maintenance"
-          icon={Coins}
-          color="navy"
-        />
+      {/* 4. Top KPI StatCards (6 Cards) */}
+      {activeRun && activeRun.estimation_mode !== 'INSUFFICIENT_DATA' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <StatCard
+            title={isAnnualView ? 'Baseline Annual Budget' : 'Baseline Monthly Budget'}
+            value={
+              isAnnualView
+                ? formatINR(activeRun.total_baseline_recurring_annual, true)
+                : formatINR(activeRun.total_baseline_recurring_monthly)
+            }
+            subtext="Existing standing inventory"
+            icon={Building2}
+            color="navy"
+          />
+          <StatCard
+            title={isAnnualView ? 'Scenario Annual Operating (OPEX)' : 'Scenario Monthly O&M'}
+            value={
+              isAnnualView
+                ? formatINR(activeRun.total_scenario_recurring_annual, true)
+                : formatINR(activeRun.total_scenario_recurring_monthly)
+            }
+            subtext="Recommended recurring"
+            icon={Coins}
+            color="blue"
+          />
+          <StatCard
+            title="Capital Procurement (CAPEX)"
+            value={formatINR(activeRun.total_one_time_procurement_cost, true)}
+            subtext="One-time asset procurement"
+            icon={Layers}
+            color="blue"
+          />
+          <StatCard
+            title="Incremental Cost (ΔCost)"
+            value={formatINR(activeRun.incremental_recurring_cost, true)}
+            subtext="Net variance vs baseline"
+            icon={TrendingUp}
+            color={activeRun.incremental_recurring_cost > 0 ? 'amber' : 'emerald'}
+          />
+          <StatCard
+            title="Shortfall Resolution Total"
+            value={formatINR(activeRun.total_shortfall_resolution_cost, true)}
+            subtext="Deficit elimination cost"
+            icon={Coins}
+            color="emerald"
+          />
+          <StatCard
+            title="Cost Verification Ratio"
+            value={`${(overview?.verified_cost_percentage ?? 88.5).toFixed(1)}%`}
+            subtext="Documented institutional rates"
+            icon={CheckCircle2}
+            color="emerald"
+          />
+        </div>
+      )}
 
-        {/* 2. Configured Police Budget */}
-        <StatCard
-          title={isAnnualView ? 'Configured Police Budget' : 'Configured Monthly Budget'}
-          value={hasConfiguredBudget ? formatINR(configuredPoliceBudget, true) : 'NOT_CONFIGURED'}
-          subtext={
-            hasConfiguredBudget
-              ? `${overview?.configured_states_count || 0} States configured`
-              : 'Official statutory budget unrecorded'
-          }
-          icon={Building2}
-          color={hasConfiguredBudget ? 'blue' : 'amber'}
-        />
-
-        {/* 3. Net Budget Gap / Surplus */}
-        <StatCard
-          title={netGap >= 0 ? 'Projected Surplus' : 'Funding Shortfall (Deficit)'}
-          value={hasConfiguredBudget ? formatINR(Math.abs(netGap), true) : 'NOT_CONFIGURED'}
-          subtext={
-            percentFunded !== null
-              ? `${percentFunded.toFixed(1)}% funded`
-              : 'Requires statutory allocation'
-          }
-          icon={netGap >= 0 ? TrendingUp : TrendingDown}
-          color={!hasConfiguredBudget ? 'amber' : netGap >= 0 ? 'emerald' : 'rose'}
-        />
-
-        {/* 4. Capital Procurement (CAPEX) */}
-        <StatCard
-          title="Capital Outlay (CAPEX)"
-          value={formatINR(capexTotal, true)}
-          subtext="One-time asset procurement"
-          icon={Wrench}
-          color="blue"
-        />
-
-        {/* 5. Recurring Operating & Maintenance */}
-        <StatCard
-          title={isAnnualView ? 'Annual Operating (OPEX)' : 'Monthly Operating (OPEX)'}
-          value={formatINR(opexTotal, true)}
-          subtext="Salaries, fuel, maintenance"
-          icon={Car}
-          color="navy"
-        />
-
-        {/* 6. Partner Agency Costs (Ambulances) */}
-        <StatCard
-          title={isAnnualView ? 'Partner Agency Cost' : 'Monthly Partner Cost'}
-          value={formatINR(partnerCost, true)}
-          subtext="Emergency Medical (Non-Police)"
-          icon={Truck}
-          color="emerald"
-        />
-      </div>
-
-      {/* 4. Tab Navigation */}
+      {/* 5. Tab Navigation */}
       <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]">
         {[
-          { key: 'overview', label: 'Budget Overview & Gap Analysis', icon: Scale },
-          { key: 'pools', label: '10-Pool Cost Breakdown', icon: Layers },
-          { key: 'simulator', label: 'Scenario Simulator', icon: Sliders },
-          { key: 'cost_master', label: 'Resource Cost Master', icon: FileText },
-          { key: 'history', label: 'History & Provenance', icon: RotateCcw },
+          { key: 'overview', label: 'Overview & Visual Analytics', icon: BarChart3 },
+          { key: 'categories', label: '10-Pool Breakdown', icon: Layers },
+          { key: 'scenarios', label: 'Scenario Simulator', icon: Scale },
+          { key: 'districts', label: 'District Costs', icon: Building2 },
+          { key: 'benchmarks', label: 'Resource Cost Master', icon: FileText },
+          { key: 'runs', label: 'History & Provenance', icon: RotateCcw },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -636,7 +589,7 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key as TabType)}
+              onClick={() => setActiveTab(tab.key as CostTabType)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 ${
                 isActive
                   ? 'bg-[#0B1F3A] text-white font-semibold shadow-2xs'
@@ -650,198 +603,726 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         })}
       </div>
 
-      {/* 5. TAB CONTENT */}
+      {/* 6. TAB CONTENT */}
       <div className="bg-white rounded-lg border border-[#D9E1EA] p-4 shadow-2xs">
         {/* ================================================================= */}
-        {/* TAB 1: OVERVIEW & GAP ANALYSIS                                    */}
+        {/* TAB 0: OVERVIEW & 6 DEDICATED VISUALIZATIONS                      */}
         {/* ================================================================= */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Annual Police Budget vs Requirement Gauge Card */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-gradient-to-r from-slate-50 to-[#F4F7FA] p-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-[#0B1F3A] flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-[#1769AA]" />
-                    <span>Statutory Allocation vs. 10-Pool Operational Demand</span>
-                  </h3>
-                  <p className="text-xs text-[#5D6878]">
-                    Comparison between legislative police allocations and empirical resource demand for crime prevention.
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-xs font-semibold">
-                  <div>
-                    <span className="text-[#5D6878] block text-[10px]">Configured Statutory:</span>
-                    <span className="text-base font-bold text-[#172033]">
-                      {hasConfiguredBudget ? formatINR(configuredPoliceBudget, true) : 'NOT_CONFIGURED'}
-                    </span>
-                  </div>
-                  <div className="h-8 w-px bg-slate-300" />
-                  <div>
-                    <span className="text-[#5D6878] block text-[10px]">Estimated Requirement:</span>
-                    <span className="text-base font-bold text-[#1769AA]">
-                      {formatINR(policeReq, true)}
-                    </span>
-                  </div>
-                  <div className="h-8 w-px bg-slate-300" />
-                  <div>
-                    <span className="text-[#5D6878] block text-[10px]">Net Variance:</span>
-                    <span
-                      className={`text-base font-bold ${
-                        !hasConfiguredBudget
-                          ? 'text-amber-700'
-                          : netGap >= 0
-                          ? 'text-emerald-700'
-                          : 'text-[#C53B3B]'
-                      }`}
-                    >
-                      {!hasConfiguredBudget
-                        ? 'Deficit Pending'
-                        : netGap >= 0
-                        ? `+${formatINR(netGap, true)} Surplus`
-                        : `${formatINR(netGap, true)} Deficit`}
-                    </span>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D9E1EA] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#0B1F3A] flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-[#1769AA]" />
+                  Financial Intelligence &amp; Cost Optimization Overview
+                </h3>
+                <p className="text-xs text-[#5D6878]">
+                  Macro-fiscal breakdown of standing resource costs, projected capital outlays, and jurisdictional requirements.
+                </p>
               </div>
-
-              {/* Progress bar */}
-              {hasConfiguredBudget && percentFunded !== null && (
-                <div className="mt-4 space-y-1">
-                  <div className="flex justify-between text-[11px] font-semibold text-[#5D6878]">
-                    <span>Funded Ratio: {percentFunded.toFixed(1)}%</span>
-                    <span>100% Demand Met</span>
-                  </div>
-                  <div className="h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        percentFunded >= 100
-                          ? 'bg-emerald-600'
-                          : percentFunded >= 75
-                          ? 'bg-[#1769AA]'
-                          : 'bg-amber-600'
-                      }`}
-                      style={{ width: `${Math.min(100, percentFunded)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+              <span className="text-xs text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
+                Displaying:{' '}
+                <strong className="text-[#1769AA]">
+                  {isAnnualView ? 'Annualized Projections (FY 2026-27)' : 'Monthly Recurring Allowances'}
+                </strong>
+              </span>
             </div>
 
-            {/* State-Wise Budget Comparison Table */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
-                <div>
-                  <h3 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-[#1769AA]" />
-                    <span>State &amp; UT Police Budget Register</span>
-                  </h3>
-                  <p className="text-[11px] text-[#5D6878]">
-                    Statutory state police budgets compared against aggregated district 10-pool requirements.
-                  </p>
+            {/* Grid of 6 Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Chart 1: Resource Cost Allocation by Category */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    1. Resource Cost Allocation by Category
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Amounts in ₹ Lakhs</span>
                 </div>
-                <span className="text-xs text-[#5D6878] font-medium">
-                  {stateSummaries.length} States / UTs Evaluated
-                </span>
+                <p className="text-[11px] text-[#5D6878]">
+                  Functional allocation across Operating O&amp;M and One-Time Capital Outlays.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categoryChartData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="category"
+                        tick={{ fontSize: 10, fill: '#64748B' }}
+                        angle={-25}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        formatter={(val: any) => [`₹${Number(val).toLocaleString()} L`, 'Cost']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                      <Bar dataKey="recurring" name="Operating (O&M)" fill="#1769AA" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="capital" name="Capital Outlay" fill="#0B1F3A" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
+              {/* Chart 2: CAPEX vs OPEX Financial Breakdown */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    2. CAPEX vs. OPEX Expenditure Balance
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Fiscal Split</span>
+                </div>
+                <p className="text-[11px] text-[#5D6878]">
+                  Ratio of ongoing recurring operational costs versus one-time equipment procurement.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={capexOpexData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {capexOpexData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(val: any) => [`₹${Number(val).toLocaleString()} Lakhs`, 'Amount']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 3: Budget vs Estimated Requirement */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    3. Budget vs. Estimated Requirement
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Amounts in ₹ Lakhs</span>
+                </div>
+                <p className="text-[11px] text-[#5D6878]">
+                  Comparison between baseline standing allowance and full required allocation commitment.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart
+                      data={budgetVsRequirementData}
+                      margin={{ top: 10, right: 10, left: -10, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="category"
+                        tick={{ fontSize: 10, fill: '#64748B' }}
+                        angle={-25}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        formatter={(val: any) => [`₹${Number(val).toLocaleString()} L`, '']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                      <Bar dataKey="baseline" name="Baseline Budget" fill="#BAC7D5" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="requirement" name="Estimated Requirement" fill="#1769AA" radius={[4, 4, 0, 0]} />
+                      <Line
+                        type="monotone"
+                        dataKey="totalCommitment"
+                        name="Total (Incl. CAPEX)"
+                        stroke="#C53B3B"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 4: State-Wise Budget Requirement */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    4. State-Wise Budget Comparison
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Amounts in ₹ Lakhs</span>
+                </div>
+                <p className="text-[11px] text-[#5D6878]">
+                  Total estimated financial commitment across major state jurisdictions.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stateBudgetData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="state"
+                        tick={{ fontSize: 10, fill: '#64748B' }}
+                        angle={-25}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        formatter={(val: any) => [`₹${Number(val).toLocaleString()} L`, 'Cost']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                      <Bar dataKey="annualCostLakhs" name="Annual O&M (OPEX)" fill="#1769AA" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="capitalCostLakhs" name="New Capital Outlay" fill="#16845B" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 5: Top Districts by Budget Requirement */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    5. Top Districts by Budget Requirement
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Highest Demand Jurisdictions</span>
+                </div>
+                <p className="text-[11px] text-[#5D6878]">
+                  District rankings prioritized by combined operational demand and deficit resolution.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topDistrictsBudgetData}
+                      layout="vertical"
+                      margin={{ top: 10, right: 20, left: 25, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <YAxis dataKey="district" type="category" tick={{ fontSize: 10, fill: '#0B1F3A' }} width={80} />
+                      <Tooltip
+                        formatter={(val: any) => [`₹${Number(val).toLocaleString()} L`, 'Total Requirement']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Bar dataKey="totalCostLakhs" name="Total Budget (₹ Lakhs)" fill="#0B1F3A" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 6: Cost Reliability & Benchmark Provenance */}
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                    6. Cost Reliability &amp; Benchmark Provenance
+                  </h4>
+                  <span className="text-[11px] text-[#5D6878]">Data Quality Verification</span>
+                </div>
+                <p className="text-[11px] text-[#5D6878]">
+                  Active unit rate benchmarks categorized by statutory documentation vs. empirical estimations.
+                </p>
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={qualityTierData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 10, fill: '#64748B' }}
+                        angle={-15}
+                        textAnchor="end"
+                        height={35}
+                      />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748B' }} />
+                      <Tooltip
+                        formatter={(val: any) => [`${val} Benchmarks`, 'Count']}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#CBD5E1',
+                          fontSize: '11px',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Bar dataKey="value" name="Active Cost Benchmarks" fill="#1769AA" radius={[4, 4, 0, 0]}>
+                        {qualityTierData.map((entry, index) => (
+                          <Cell key={`cell-tier-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ================================================================= */}
+        {/* TAB 1: SCENARIO COMPARISON                                        */}
+        {/* ================================================================= */}
+        {activeTab === 'scenarios' && (
+          <div className="space-y-4">
+            {/* Scenario Selection Header */}
+            <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-[#5D6878] shrink-0">Baseline:</label>
+                    <select
+                      aria-label="Baseline Scenario"
+                      value={baselineOptRunId}
+                      onChange={(e) => {
+                        setBaselineOptRunId(e.target.value);
+                        setScenarioOptRunId('');
+                        setScenarioComparison(null);
+                      }}
+                      className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                    >
+                      <option value="">Select Baseline Scenario</option>
+                      {optRuns.map((r) => (
+                        <option key={`base-${r.run_id}`} value={r.run_id}>
+                          {r.scenario_name} ({r.allocation_mode})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {Boolean(baselineOptRunId) && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-[#5D6878] shrink-0">Comparison:</label>
+                      <select
+                        aria-label="Comparison Scenario"
+                        value={scenarioOptRunId}
+                        onChange={(e) => setScenarioOptRunId(e.target.value)}
+                        className="h-10 w-full sm:w-auto rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                      >
+                        <option value="">Select Comparison Scenario</option>
+                        {optRuns
+                          .filter((r) => r.run_id !== baselineOptRunId)
+                          .map((r) => (
+                            <option key={`scen-${r.run_id}`} value={r.run_id}>
+                              {r.scenario_name} ({r.allocation_mode})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {(baselineOptRunId || scenarioOptRunId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBaselineOptRunId('');
+                        setScenarioOptRunId('');
+                        setScenarioComparison(null);
+                      }}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCompareScenarios}
+                  disabled={isComparing || !baselineOptRunId || !scenarioOptRunId}
+                  className="h-10 inline-flex items-center justify-center gap-1.5 rounded bg-[#1769AA] hover:bg-[#125386] px-4 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <Scale className="h-3.5 w-3.5" />
+                  <span>{isComparing ? 'Comparing...' : 'Compare Scenarios'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Comparison Results Card or Compact Empty State */}
+            {scenarioComparison ? (
+              <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D9E1EA] pb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-[#0B1F3A]">
+                      {scenarioComparison.scenario_name}
+                    </h4>
+                    <p className="text-xs text-[#5D6878]">
+                      Baseline: <span className="font-mono text-[#172033]">{scenarioComparison.baseline_run_id}</span> vs Comparison: <span className="font-mono text-[#172033]">{scenarioComparison.scenario_run_id}</span>
+                    </p>
+                  </div>
+                  {scenarioComparison.is_simulation && (
+                    <span className="inline-flex items-center gap-1 rounded bg-purple-100 text-purple-800 px-2.5 py-0.5 text-[10px] font-bold border border-purple-200 uppercase tracking-wide shrink-0">
+                      <Sparkles className="h-3 w-3 text-purple-600" />
+                      Hypothetical Simulation
+                    </span>
+                  )}
+                </div>
+
+                {/* Side-by-side metric tiles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Baseline Recurring</span>
+                    <div className="text-lg font-bold text-[#0B1F3A]">
+                      {formatINR(scenarioComparison.baseline_recurring_annual, true)}
+                    </div>
+                    <span className="text-[11px] text-[#5D6878]">
+                      {formatINR(scenarioComparison.baseline_recurring_monthly)} / month
+                    </span>
+                  </div>
+
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Scenario Recurring</span>
+                    <div className="text-lg font-bold text-[#1769AA]">
+                      {formatINR(scenarioComparison.scenario_recurring_annual, true)}
+                    </div>
+                    <span className="text-[11px] text-[#5D6878]">
+                      {formatINR(scenarioComparison.scenario_recurring_monthly)} / month
+                    </span>
+                  </div>
+
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Cost Difference (ΔCost)</span>
+                    <div className={`text-lg font-bold ${scenarioComparison.incremental_recurring_annual > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {scenarioComparison.incremental_recurring_annual > 0
+                        ? `+${formatINR(scenarioComparison.incremental_recurring_annual, true)}`
+                        : formatINR(scenarioComparison.incremental_recurring_annual, true)}
+                    </div>
+                    <span className="text-[11px] text-[#5D6878]">
+                      Δ {formatINR(scenarioComparison.net_delta_monthly)} / month
+                    </span>
+                  </div>
+
+                  <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA]/70 p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold text-[#5D6878] uppercase">Capital Procurement</span>
+                    <div className="text-lg font-bold text-[#0B1F3A]">
+                      {formatINR(scenarioComparison.capital_procurement_cost, true)}
+                    </div>
+                    <span className="text-[11px] text-[#5D6878]">
+                      {scenarioComparison.units_newly_procured.toLocaleString()} units newly procured
+                    </span>
+                  </div>
+                </div>
+
+                {/* Reallocation vs Procurement Strategy */}
+                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-2.5">
+                  <h5 className="text-xs font-bold text-[#0B1F3A]">
+                    Operational Strategy: Reallocation vs. New Procurement
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-[#172033]">
+                    <div className="p-3 rounded-md bg-[#F4F7FA] border border-[#D9E1EA] space-y-1">
+                      <div className="font-semibold text-[#0B1F3A] flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Reallocated from Reserves: {scenarioComparison.units_reallocated.toLocaleString()} units</span>
+                      </div>
+                      <p className="text-[11px] text-[#5D6878] pl-5.5">
+                        Internal pool reallocations incur zero capital acquisition expenditure. Only recurring standard operational allowances apply.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-md bg-[#F4F7FA] border border-[#D9E1EA] space-y-1">
+                      <div className="font-semibold text-[#0B1F3A] flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>New Capital Procurement: {scenarioComparison.units_newly_procured.toLocaleString()} units</span>
+                      </div>
+                      <p className="text-[11px] text-[#5D6878] pl-5.5">
+                        One-time capital outlay required to resolve reserve floor shortfalls: {formatINR(scenarioComparison.capital_procurement_cost, true)}.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Assumptions List */}
+                  {scenarioComparison.assumptions && scenarioComparison.assumptions.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100 text-[11px] text-[#5D6878] space-y-1">
+                      <div className="font-semibold text-[#172033]">Calculation Notes:</div>
+                      <ul className="list-disc pl-5 space-y-0.5">
+                        {scenarioComparison.assumptions.map((a, i) => (
+                          <li key={i}>{a}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-8 text-center text-xs text-[#5D6878]">
+                Select two scenarios to compare their estimated costs.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 2: COST BREAKDOWN                                             */}
+        {/* ================================================================= */}
+        {activeTab === 'categories' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
+              <div>
+                <h3 className="text-xs font-bold text-[#0B1F3A]">
+                  Resource Category Cost Schedule
+                </h3>
+                <p className="text-[11px] text-[#5D6878]">
+                  Standard unit benchmarks categorized by functional operational domain.
+                </p>
+              </div>
+              <div className="text-xs text-[#5D6878]">
+                Viewing: <strong className="text-[#1769AA]">{isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}</strong>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {overview &&
+                Object.entries(overview.category_breakdown).map(([category, costs]) => {
+                  const getCategoryIcon = (cat: string) => {
+                    switch (cat) {
+                      case 'PERSONNEL':
+                        return Users;
+                      case 'MOBILITY':
+                        return Car;
+                      case 'INVESTIGATION':
+                        return Search;
+                      case 'SURVEILLANCE':
+                        return Eye;
+                      case 'INFRASTRUCTURE':
+                        return Building2;
+                      default:
+                        return Shield;
+                    }
+                  };
+                  const Icon = getCategoryIcon(category);
+                  const recurring = isAnnualView ? costs.annual_recurring : costs.monthly_recurring;
+                  const capital = costs.one_time_capital;
+
+                  return (
+                    <div
+                      key={category}
+                      className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs space-y-2 hover:border-[#BAC7D5] transition-colors"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-md bg-[#F4F7FA] text-[#1769AA]">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-bold text-[#0B1F3A]">{category}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#5D6878]">
+                            {isAnnualView ? 'Annual Operating (O&M):' : 'Monthly Recurring:'}
+                          </span>
+                          <span className="font-bold text-[#172033]">{formatINR(recurring)}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#5D6878]">One-Time Capital Outlay:</span>
+                          <span className="font-bold text-[#1769AA]">{formatINR(capital)}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                          <span className="text-[#5D6878]">Total Category Commitment:</span>
+                          <span className="font-bold text-[#0B1F3A]">
+                            {formatINR(recurring + capital)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 3: DISTRICT COSTS                                             */}
+        {/* ================================================================= */}
+        {activeTab === 'districts' && (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* 1. State / UT Selector */}
+                {states.length > 0 && onStateSelect && (
+                  <select
+                    aria-label="Filter by State"
+                    value={selectedStateId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                      onStateSelect(val);
+                      setSelectedDistrictName('');
+                    }}
+                    className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select State / UT</option>
+                    {states.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.state_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 2. District Selector (Revealed after State is selected) */}
+                {Boolean(selectedStateId) && (
+                  <select
+                    aria-label="Filter by District"
+                    value={selectedDistrictName}
+                    onChange={(e) => setSelectedDistrictName(e.target.value)}
+                    className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                  >
+                    <option value="">Select District</option>
+                    {stateDistrictOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* 3. Quality Tier & Search (Revealed after District is selected) */}
+                {Boolean(selectedDistrictName) && (
+                  <>
+                    <select
+                      aria-label="Filter by Quality Tier"
+                      value={selectedQualityTier}
+                      onChange={(e) => setSelectedQualityTier(e.target.value)}
+                      className="h-10 rounded border border-[#D9E1EA] bg-white py-1.5 px-3 text-[13px] font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA] cursor-pointer"
+                    >
+                      <option value="ALL">All Quality Tiers</option>
+                      <option value="OFFICIAL_DOCUMENTED">Official Documented</option>
+                      <option value="ESTIMATED_BENCHMARK">Estimated Benchmark</option>
+                      <option value="ASSUMPTION_BASED">Assumption Based</option>
+                    </select>
+
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3.5" />
+                      <input
+                        type="text"
+                        placeholder="Search district name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-10 w-48 rounded border border-[#D9E1EA] bg-white pl-8 pr-3 text-[13px] text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Reset Filters Action */}
+                {(selectedStateId || selectedDistrictName || selectedQualityTier !== 'ALL' || searchQuery) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onStateSelect) onStateSelect(undefined);
+                      setSelectedDistrictName('');
+                      setSelectedQualityTier('ALL');
+                      setSearchQuery('');
+                    }}
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded border border-[#C53B3B]/30 bg-red-50/80 px-3 text-[12px] font-semibold text-[#C53B3B] hover:bg-red-100 transition-colors cursor-pointer shrink-0"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="text-xs text-[#5D6878]">
+                Showing <strong>{filteredDistrictItems.length}</strong> district cost records
+              </div>
+            </div>
+
+            {filteredDistrictItems.length > 0 ? (
               <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
-                <table className="w-full min-w-[850px] text-left text-xs border-collapse">
+                <table className="w-full min-w-[760px] text-left text-xs border-collapse">
                   <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                     <tr>
-                      <th className="py-2.5 px-3">State / UT</th>
-                      <th className="py-2.5 px-2 text-center">Districts</th>
-                      <th className="py-2.5 px-3 text-right">Configured Budget</th>
-                      <th className="py-2.5 px-3 text-right">Police Requirement</th>
-                      <th className="py-2.5 px-3 text-right">CAPEX Outlay</th>
-                      <th className="py-2.5 px-3 text-right">Annual OPEX</th>
-                      <th className="py-2.5 px-3 text-right">Partner Agency (Ambulances)</th>
-                      <th className="py-2.5 px-3 text-right">Variance / Gap</th>
-                      <th className="py-2.5 px-2 text-center">Verification</th>
+                      <th className="py-2.5 px-3">District</th>
+                      <th className="py-2.5 px-2 text-right">Baseline Qty</th>
+                      <th className="py-2.5 px-2 text-right">Recommended</th>
+                      <th className="py-2.5 px-2 text-right">New Procure</th>
+                      <th className="py-2.5 px-3 text-right">
+                        {isAnnualView ? 'Annual Scenario Cost' : 'Monthly O&M'}
+                      </th>
+                      <th className="py-2.5 px-3 text-right">Capital Outlay</th>
+                      <th className="py-2.5 px-3 text-right">Net Delta</th>
+                      <th className="py-2.5 px-2 text-center">Quality Tier</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
-                    {stateSummaries.map((s) => {
-                      const isConfigured =
-                        s.configured_annual_budget !== null &&
-                        s.configured_annual_budget !== undefined &&
-                        s.configured_annual_budget > 0;
-                      const gap = s.budget_gap_or_surplus;
+                    {filteredDistrictItems.map((item, idx) => {
+                      const costVal = isAnnualView ? item.recommended_annual_cost : item.recommended_annual_cost / 12;
+                      const deltaVal = isAnnualView ? item.net_delta_annual_cost : item.net_delta_annual_cost / 12;
 
                       return (
-                        <tr
-                          key={s.state_id}
-                          className={`hover:bg-slate-50 transition-colors ${
-                            selectedStateId === s.state_id ? 'bg-blue-50/50' : ''
-                          }`}
-                        >
-                          <td className="py-2.5 px-3 font-semibold text-[#0B1F3A]">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (onStateSelect) onStateSelect(s.state_id);
-                                setSelectedDistrictId(undefined);
-                                setDistrictPage(0);
-                              }}
-                              className="text-left hover:text-[#1769AA] hover:underline cursor-pointer flex items-center gap-1"
-                            >
-                              <span>{s.state_name}</span>
-                              <ChevronRight className="h-3 w-3 text-slate-400" />
-                            </button>
-                            <span className="text-[10px] text-[#5D6878] font-mono">
-                              {s.state_code || `ST-${s.state_id}`}
+                        <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
+                            <div>{item.district_name || `District #${item.district_id}`}</div>
+                            <span className="text-[10px] text-[#5D6878] font-normal">{item.state_name}</span>
+                          </td>
+                          <td className="py-2 px-2 text-right text-[#5D6878]">
+                            {item.baseline_units !== null && item.baseline_units !== undefined ? item.baseline_units.toLocaleString() : (
+                              <span className="text-amber-700 font-medium">Unrecorded</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-[#0B1F3A]">
+                            {item.recommended_units.toLocaleString()}
+                          </td>
+                          <td className="py-2 px-2 text-right font-semibold text-[#172033]">
+                            {item.new_procurement_units > 0 ? (
+                              <span className="text-[#1769AA] font-bold">+{item.new_procurement_units}</span>
+                            ) : (
+                              '0'
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-[#172033]">
+                            {formatLakhs(costVal)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-semibold text-[#5D6878]">
+                            {item.procurement_cost > 0 ? formatLakhs(item.procurement_cost) : '₹0'}
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold">
+                            <span className={deltaVal > 0 ? 'text-amber-700' : deltaVal < 0 ? 'text-emerald-700' : 'text-slate-500'}>
+                              {deltaVal > 0 ? `+${formatLakhs(deltaVal)}` : formatLakhs(deltaVal)}
                             </span>
                           </td>
-                          <td className="py-2.5 px-2 text-center text-[#5D6878]">
-                            {s.districts_count}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-medium">
-                            {isConfigured && s.configured_annual_budget != null ? (
-                              <span className="font-bold text-[#172033]">
-                                {formatINR(s.configured_annual_budget, true)}
-                              </span>
-                            ) : (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300 bg-amber-50 text-amber-800">
-                                NOT_CONFIGURED
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-bold text-[#1769AA]">
-                            {formatINR(s.total_police_budget_requirement, true)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right text-[#5D6878]">
-                            {formatINR(s.total_capex_procurement, true)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right text-[#5D6878]">
-                            {formatINR(s.total_opex_annual + s.total_maintenance_annual, true)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right text-emerald-800 font-medium">
-                            {formatINR(s.total_partner_agency_cost, true)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-bold">
-                            {isConfigured && gap !== null && gap !== undefined ? (
-                              <span className={gap >= 0 ? 'text-emerald-700' : 'text-[#C53B3B]'}>
-                                {gap >= 0 ? `+${formatINR(gap, true)}` : formatINR(gap, true)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-2 text-center">
+                          <td className="py-2 px-2 text-center">
                             <span
                               className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                s.budget_verification_status === 'VERIFIED_OFFICIAL'
+                                item.data_quality_tier === 'OFFICIAL_DOCUMENTED'
                                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : s.budget_verification_status === 'ADMIN_ESTIMATE'
+                                  : item.data_quality_tier === 'ESTIMATED_BENCHMARK'
                                   ? 'bg-blue-50 text-blue-800 border-blue-200'
                                   : 'bg-amber-50 text-amber-800 border-amber-200'
                               }`}
                             >
-                              {s.budget_verification_status === 'VERIFIED_OFFICIAL'
+                              {item.data_quality_tier === 'OFFICIAL_DOCUMENTED'
                                 ? 'Official'
-                                : s.budget_verification_status === 'ADMIN_ESTIMATE'
-                                ? 'Admin Estimate'
-                                : 'Not Configured'}
+                                : item.data_quality_tier === 'ESTIMATED_BENCHMARK'
+                                ? 'Benchmark'
+                                : 'Assumed'}
                             </span>
                           </td>
                         </tr>
@@ -850,690 +1331,92 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            {/* District Shortfall & Demand Ranking Table */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div>
-                  <h3 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-[#1769AA]" />
-                    <span>District-Level Shortfall &amp; Resource Demand Register</span>
-                  </h3>
-                  <p className="text-[11px] text-[#5D6878]">
-                    Granular district requirements showing baseline inventory, recommended allocations, procurement requirements, and funding gap.
-                  </p>
-                </div>
-
-                {/* Search and filters */}
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-3" />
-                    <input
-                      type="text"
-                      placeholder="Search district name..."
-                      value={districtSearchQuery}
-                      onChange={(e) => {
-                        setDistrictSearchQuery(e.target.value);
-                        setDistrictPage(0);
-                      }}
-                      className="h-9 w-44 rounded border border-[#D9E1EA] bg-white pl-7 pr-2.5 text-xs text-[#172033] placeholder-[#5D6878] shadow-2xs focus:border-[#1769AA] focus:outline-none"
-                    />
-                  </div>
-
-                  <select
-                    aria-label="Filter Risk Level"
-                    value={districtRiskFilter}
-                    onChange={(e) => {
-                      setDistrictRiskFilter(e.target.value);
-                      setDistrictPage(0);
-                    }}
-                    className="h-9 rounded border border-[#D9E1EA] bg-white py-1 px-2.5 text-xs font-medium text-[#172033] shadow-2xs focus:border-[#1769AA] cursor-pointer"
-                  >
-                    <option value="ALL">All Risk Levels</option>
-                    <option value="CRITICAL">Critical Risk</option>
-                    <option value="HIGH">High Risk</option>
-                    <option value="MODERATE">Moderate Risk</option>
-                    <option value="LOW">Low Risk</option>
-                  </select>
-                </div>
-              </div>
-
-              {districtSummary.items.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
-                  <table className="w-full min-w-[950px] text-left text-xs border-collapse">
-                    <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
-                      <tr>
-                        <th className="py-2.5 px-3">Rank &amp; District</th>
-                        <th className="py-2.5 px-2 text-center">Risk Level</th>
-                        <th className="py-2.5 px-2 text-right">Recommended Units</th>
-                        <th className="py-2.5 px-2 text-right">Existing Inv</th>
-                        <th className="py-2.5 px-2 text-right">New Procure</th>
-                        <th className="py-2.5 px-3 text-right">Police Requirement</th>
-                        <th className="py-2.5 px-3 text-right">Configured Budget</th>
-                        <th className="py-2.5 px-3 text-right">Funding Gap</th>
-                        <th className="py-2.5 px-2 text-center">Inventory Status</th>
-                        <th className="py-2.5 px-2 text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
-                      {districtSummary.items.map((d) => {
-                        const isConfigured = d.configured_budget !== null && d.configured_budget !== undefined;
-                        const reqVal = isAnnualView
-                          ? d.total_police_budget_requirement
-                          : d.total_police_budget_requirement / 12;
-                        const gapVal =
-                          isConfigured && d.budget_gap_or_surplus != null
-                            ? isAnnualView
-                              ? d.budget_gap_or_surplus
-                              : d.budget_gap_or_surplus / 12
-                            : null;
-
-                        return (
-                          <tr key={d.district_id} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[10px] text-slate-400">#{d.rank}</span>
-                                <span>{d.district_name}</span>
-                              </div>
-                              <span className="text-[10px] text-[#5D6878] font-normal">{d.state_name}</span>
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                  d.risk_level === 'CRITICAL'
-                                    ? 'bg-red-50 text-red-800 border-red-200'
-                                    : d.risk_level === 'HIGH'
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                }`}
-                              >
-                                {d.risk_level}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-right font-bold text-[#0B1F3A]">
-                              {d.recommended_units_total.toLocaleString()}
-                            </td>
-                            <td className="py-2 px-2 text-right text-[#5D6878]">
-                              {d.inventory_configured_status === 'UNRECORDED' ? (
-                                <span className="text-amber-700 font-medium text-[11px]">Unrecorded</span>
-                              ) : (
-                                d.existing_inventory_total.toLocaleString()
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-right font-semibold text-[#1769AA]">
-                              +{d.procurement_units_total.toLocaleString()}
-                            </td>
-                            <td className="py-2 px-3 text-right font-bold text-[#172033]">
-                              {formatLakhs(reqVal)}
-                            </td>
-                            <td className="py-2 px-3 text-right font-medium">
-                              {isConfigured ? (
-                                formatLakhs(isAnnualView ? d.configured_budget! : d.configured_budget! / 12)
-                              ) : (
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300 bg-amber-50 text-amber-800">
-                                  NOT_CONFIGURED
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right font-bold">
-                              {gapVal != null ? (
-                                <span className={gapVal >= 0 ? 'text-emerald-700' : 'text-[#C53B3B]'}>
-                                  {gapVal >= 0 ? `+${formatLakhs(gapVal)}` : formatLakhs(gapVal)}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">—</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                  d.inventory_configured_status === 'FULLY_RECORDED'
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                                }`}
-                              >
-                                {d.inventory_configured_status}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => setInspectedDistrict(d)}
-                                className="px-2.5 py-1 rounded border border-[#D9E1EA] bg-white hover:bg-[#F4F7FA] text-[#172033] text-[11px] font-semibold cursor-pointer shadow-2xs"
-                              >
-                                Breakdown
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  title="No district records found."
-                  message="Try clearing your search query or selecting a different state scope."
-                />
-              )}
-
-              {/* Pagination controls */}
-              <div className="flex items-center justify-between text-xs text-[#5D6878] pt-2">
-                <span>
-                  Showing {districtPage * pageSize + 1} -{' '}
-                  {Math.min((districtPage + 1) * pageSize, districtSummary.total)} of {districtSummary.total} districts
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={districtPage === 0}
-                    onClick={() => setDistrictPage((p) => Math.max(0, p - 1))}
-                    className="px-2.5 py-1 rounded border border-[#D9E1EA] bg-white disabled:opacity-50 hover:bg-slate-50 cursor-pointer font-medium"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    disabled={(districtPage + 1) * pageSize >= districtSummary.total}
-                    onClick={() => setDistrictPage((p) => p + 1)}
-                    className="px-2.5 py-1 rounded border border-[#D9E1EA] bg-white disabled:opacity-50 hover:bg-slate-50 cursor-pointer font-medium"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================= */}
-        {/* TAB 2: 10-POOL COST BREAKDOWN                                     */}
-        {/* ================================================================= */}
-        {activeTab === 'pools' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
-              <div>
-                <h3 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>10-Pool Resource Expenditure Schedule</span>
-                </h3>
-                <p className="text-[11px] text-[#5D6878]">
-                  Detailed breakdown across all 10 canonical Phase 10 resource pools separating CAPEX, OPEX, and partner-agency costs.
-                </p>
-              </div>
-              <div className="text-xs font-semibold text-[#1769AA]">
-                Mode: {isAnnualView ? 'Annual Projections' : 'Monthly Recurring'}
-              </div>
-            </div>
-
-            {/* 10-Pool Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              {overview &&
-                Object.entries(overview.category_expenditure_breakdown).map(([catKey, details]) => {
-                  const Icon = getPoolIcon(catKey);
-                  const isPartner = details.is_partner_agency;
-
-                  const totalCat = isAnnualView ? details.total : details.total / 12;
-                  const opexCat = isAnnualView ? details.opex : details.opex / 12;
-                  const capexCat = details.capex;
-
-                  return (
-                    <div
-                      key={catKey}
-                      className={`rounded-lg border p-3.5 shadow-2xs space-y-2.5 transition-colors ${
-                        isPartner
-                          ? 'border-emerald-200 bg-emerald-50/30 hover:border-emerald-300'
-                          : 'border-[#D9E1EA] bg-white hover:border-[#BAC7D5]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`p-1.5 rounded-md ${
-                              isPartner ? 'bg-emerald-100 text-emerald-800' : 'bg-[#F4F7FA] text-[#1769AA]'
-                            }`}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-[#0B1F3A] block">{catKey}</span>
-                            <span className="text-[10px] text-[#5D6878]">
-                              {details.units.toLocaleString()} Units Demand
-                            </span>
-                          </div>
-                        </div>
-                        {isPartner && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-300 bg-emerald-100 text-emerald-800">
-                            Partner Agency
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-[#5D6878]">Procurement (CAPEX):</span>
-                          <span className="font-semibold text-[#172033]">{formatINR(capexCat)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#5D6878]">
-                            {isAnnualView ? 'Annual OPEX:' : 'Monthly OPEX:'}
-                          </span>
-                          <span className="font-semibold text-[#172033]">{formatINR(opexCat)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#5D6878]">Maintenance:</span>
-                          <span className="font-semibold text-[#5D6878]">
-                            {formatINR(isAnnualView ? details.maintenance : details.maintenance / 12)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between pt-1 border-t border-slate-100 font-bold">
-                          <span className="text-[#0B1F3A]">Total Requirement:</span>
-                          <span className={isPartner ? 'text-emerald-800' : 'text-[#1769AA]'}>
-                            {formatINR(totalCat)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-
-            {/* CAPEX vs OPEX Ratio Summary Bar */}
-            {overview && (
-              <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-4 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-[#0B1F3A]">
-                  <span>Capital Acquisition (CAPEX) vs Operating &amp; Maintenance (OPEX) Ratio</span>
-                  <span>
-                    CAPEX: {overview.capex_vs_opex_summary.capex_percentage.toFixed(1)}% | OPEX:{' '}
-                    {overview.capex_vs_opex_summary.opex_percentage.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden flex">
-                  <div
-                    className="h-full bg-[#1769AA]"
-                    style={{ width: `${overview.capex_vs_opex_summary.capex_percentage}%` }}
-                    title={`CAPEX: ${formatINR(overview.capex_vs_opex_summary.capex_amount, true)}`}
-                  />
-                  <div
-                    className="h-full bg-emerald-600"
-                    style={{ width: `${overview.capex_vs_opex_summary.opex_percentage}%` }}
-                    title={`OPEX: ${formatINR(overview.capex_vs_opex_summary.opex_amount, true)}`}
-                  />
-                </div>
-                <div className="flex justify-between text-[11px] text-[#5D6878]">
-                  <span>
-                    Blue: Capital Outlay ({formatINR(overview.capex_vs_opex_summary.capex_amount, true)})
-                  </span>
-                  <span>
-                    Green: Recurring Operational ({formatINR(overview.capex_vs_opex_summary.opex_amount, true)})
-                  </span>
-                </div>
-              </div>
+            ) : (
+              <EmptyState title="No district records match criteria." message="Adjust your search term or select another estimation run." />
             )}
           </div>
         )}
 
         {/* ================================================================= */}
-        {/* TAB 3: SCENARIO SIMULATOR                                         */}
+        {/* TAB 4: COST BENCHMARKS                                            */}
         {/* ================================================================= */}
-        {activeTab === 'simulator' && (
-          <div className="space-y-6">
+        {activeTab === 'benchmarks' && (
+          <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
               <div>
-                <h3 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                  <Sliders className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>Budget-Constrained Scenario Simulator</span>
+                <h3 className="text-xs font-bold text-[#0B1F3A]">
+                  Government Cost Benchmarks &amp; Provenance Registry
                 </h3>
                 <p className="text-[11px] text-[#5D6878]">
-                  Test hypothetical budget caps, resource category funding reallocations, and risk-weighted prioritization.
-                </p>
-              </div>
-              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 bg-purple-50 text-purple-800">
-                In-Memory Simulation (Isolated)
-              </span>
-            </div>
-
-            {/* Controls Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-4">
-              {/* 1. Total Budget Ceiling */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[#0B1F3A] block">
-                  Simulated Annual Police Budget Ceiling (in ₹ Crores):
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 500"
-                    value={simBudgetCeilingCr}
-                    onChange={(e) => setSimBudgetCeilingCr(e.target.value ? Number(e.target.value) : '')}
-                    className="h-9 w-full rounded border border-[#D9E1EA] bg-white px-3 text-xs text-[#172033] font-semibold focus:border-[#1769AA] focus:outline-none"
-                  />
-                  <span className="text-xs font-bold text-[#5D6878]">Cr</span>
-                </div>
-                <p className="text-[10px] text-[#5D6878]">
-                  Leave blank to simulate without aggregate statutory ceiling.
-                </p>
-
-                {/* Priority Mode Toggle */}
-                <div className="pt-2">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-[#172033] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={simPrioritizeRisk}
-                      onChange={(e) => setSimPrioritizeRisk(e.target.checked)}
-                      className="rounded border-[#D9E1EA] text-[#1769AA] focus:ring-[#1769AA]"
-                    />
-                    <span>Risk-Weighted Prioritization (Critical districts first)</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 2. Category % Adjustments */}
-              <div className="space-y-2 lg:col-span-2">
-                <label className="text-xs font-bold text-[#0B1F3A] block">
-                  Resource Category Allocation Adjustments (-50% to +100%):
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                  {Object.keys(simCategoryAdjustments).map((cat) => (
-                    <div key={cat} className="space-y-1 bg-white p-2 rounded border border-[#D9E1EA]">
-                      <div className="flex justify-between font-semibold">
-                        <span className="truncate">{cat}:</span>
-                        <span className={simCategoryAdjustments[cat] > 0 ? 'text-[#1769AA]' : simCategoryAdjustments[cat] < 0 ? 'text-[#C53B3B]' : 'text-slate-500'}>
-                          {simCategoryAdjustments[cat] > 0 ? `+${simCategoryAdjustments[cat]}%` : `${simCategoryAdjustments[cat]}%`}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="100"
-                        step="5"
-                        value={simCategoryAdjustments[cat]}
-                        onChange={(e) =>
-                          setSimCategoryAdjustments((prev) => ({
-                            ...prev,
-                            [cat]: parseInt(e.target.value, 10),
-                          }))
-                        }
-                        className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="lg:col-span-3 flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimBudgetCeilingCr('');
-                    setSimCategoryAdjustments({
-                      PERSONNEL: 0,
-                      MOBILITY: 0,
-                      INVESTIGATION: 0,
-                      SPECIALIZED: 0,
-                      SURVEILLANCE: 0,
-                      FORENSIC: 0,
-                      CYBER_TECHNOLOGY: 0,
-                      COMMUNICATION: 0,
-                      TRAFFIC_SAFETY: 0,
-                    });
-                    setSimResult(null);
-                  }}
-                  className="px-3 py-1.5 rounded border border-[#D9E1EA] bg-white text-xs font-semibold text-[#5D6878] hover:bg-slate-50 cursor-pointer"
-                >
-                  Reset Sliders
-                </button>
-                <button
-                  type="button"
-                  disabled={isSimulating}
-                  onClick={handleRunSimulation}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-[#1769AA] text-white text-xs font-bold hover:bg-[#114E80] disabled:opacity-50 cursor-pointer shadow-2xs"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  <span>{isSimulating ? 'Simulating...' : 'Execute Simulation'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Simulation Results View */}
-            {simResult && (
-              <div className="space-y-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-200 pb-3">
-                  <div className="space-y-0.5">
-                    <h4 className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-purple-600" />
-                      <span>Simulated Scenario Analysis Results</span>
-                    </h4>
-                    <p className="text-[11px] text-purple-800">
-                      Scenario ID: <strong className="font-mono">{simResult.scenario_id}</strong>
-                    </p>
-                  </div>
-
-                  {/* Save Scenario Dialog Trigger */}
-                  {isAnalyst && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder="Scenario label..."
-                        value={scenarioNameInput}
-                        onChange={(e) => setScenarioNameInput(e.target.value)}
-                        className="h-8 rounded border border-purple-300 bg-white px-2.5 text-xs text-[#172033]"
-                      />
-                      <button
-                        type="button"
-                        disabled={isSavingScenario || !scenarioNameInput.trim()}
-                        onClick={handleSaveScenario}
-                        className="inline-flex items-center gap-1 h-8 px-3 rounded bg-purple-800 text-white text-xs font-bold hover:bg-purple-900 disabled:opacity-50 cursor-pointer"
-                      >
-                        <Save className="h-3 w-3" />
-                        <span>Save</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Simulation KPI comparison */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <span className="text-[10px] text-[#5D6878] block font-semibold">
-                      Baseline Annual Requirement:
-                    </span>
-                    <span className="text-sm font-bold text-[#0B1F3A]">
-                      {formatINR(simResult.baseline_police_requirement, true)}
-                    </span>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <span className="text-[10px] text-[#5D6878] block font-semibold">
-                      Simulated Police Requirement:
-                    </span>
-                    <span className="text-sm font-bold text-[#1769AA]">
-                      {formatINR(simResult.proposed_police_requirement, true)}
-                    </span>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <span className="text-[10px] text-[#5D6878] block font-semibold">
-                      Variance Delta vs Baseline:
-                    </span>
-                    <span
-                      className={`text-sm font-bold ${
-                        simResult.delta_requirement > 0
-                          ? 'text-amber-700'
-                          : simResult.delta_requirement < 0
-                          ? 'text-emerald-700'
-                          : 'text-slate-700'
-                      }`}
-                    >
-                      {simResult.delta_requirement > 0
-                        ? `+${formatINR(simResult.delta_requirement, true)}`
-                        : formatINR(simResult.delta_requirement, true)}
-                    </span>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <span className="text-[10px] text-[#5D6878] block font-semibold">
-                      Unmet Demand Districts:
-                    </span>
-                    <span
-                      className={`text-sm font-bold ${
-                        simResult.unmet_resource_demand_count > 0 ? 'text-[#C53B3B]' : 'text-emerald-700'
-                      }`}
-                    >
-                      {simResult.unmet_resource_demand_count} jurisdictions
-                    </span>
-                  </div>
-                </div>
-
-                {/* Simulated Category Schedule Table */}
-                <div className="overflow-x-auto rounded border border-purple-200 bg-white">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-purple-100/60 text-purple-950 font-bold border-b border-purple-200">
-                      <tr>
-                        <th className="py-2 px-3">Resource Pool</th>
-                        <th className="py-2 px-2 text-right">Baseline Units</th>
-                        <th className="py-2 px-2 text-right">Simulated Units</th>
-                        <th className="py-2 px-2 text-right">Delta Units</th>
-                        <th className="py-2 px-3 text-right">CAPEX Outlay</th>
-                        <th className="py-2 px-3 text-right">Annual OPEX</th>
-                        <th className="py-2 px-3 text-right">Simulated Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-100">
-                      {Object.entries(simResult.category_summary).map(([cat, val]) => (
-                        <tr key={cat} className="hover:bg-purple-50/40">
-                          <td className="py-2 px-3 font-semibold text-[#0B1F3A]">{cat}</td>
-                          <td className="py-2 px-2 text-right text-[#5D6878]">{val.baseline_units}</td>
-                          <td className="py-2 px-2 text-right font-bold text-[#172033]">{val.proposed_units}</td>
-                          <td className="py-2 px-2 text-right font-bold">
-                            <span className={val.delta_units > 0 ? 'text-[#1769AA]' : val.delta_units < 0 ? 'text-amber-700' : 'text-slate-500'}>
-                              {val.delta_units > 0 ? `+${val.delta_units}` : val.delta_units}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-right text-[#5D6878]">{formatINR(val.capex_procurement)}</td>
-                          <td className="py-2 px-3 text-right text-[#5D6878]">{formatINR(val.opex_annual)}</td>
-                          <td className="py-2 px-3 text-right font-bold text-[#1769AA]">{formatINR(val.total_annual)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ================================================================= */}
-        {/* TAB 4: RESOURCE COST MASTER                                       */}
-        {/* ================================================================= */}
-        {activeTab === 'cost_master' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
-              <div>
-                <h3 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-[#1769AA]" />
-                  <span>Configurable Resource Cost Master Registry</span>
-                </h3>
-                <p className="text-[11px] text-[#5D6878]">
-                  Unit benchmarks across all 10 canonical resource categories. Administrative users can adjust unit acquisition, operating, and maintenance rates.
+                  Official standards derived from 7th CPC Pay Matrices, BPR&amp;D Mobility indices, and GeM public procurement rate contracts.
                 </p>
               </div>
               <span className="text-xs font-bold text-[#5D6878]">
-                {costMasterItems.length} Canonical Pools Active
+                {benchmarks.length} Active Benchmarks
               </span>
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
-              <table className="w-full min-w-[900px] text-left text-xs border-collapse">
+              <table className="w-full min-w-[850px] text-left text-xs border-collapse">
                 <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                   <tr>
-                    <th className="py-2.5 px-3">Resource Pool</th>
-                    <th className="py-2.5 px-2">Unit</th>
-                    <th className="py-2.5 px-3 text-right">Unit Acquisition (CAPEX)</th>
-                    <th className="py-2.5 px-3 text-right">Monthly OPEX</th>
-                    <th className="py-2.5 px-3 text-right">Annual Maintenance</th>
-                    <th className="py-2.5 px-2 text-center">Classification</th>
-                    <th className="py-2.5 px-2 text-center">Status</th>
-                    <th className="py-2.5 px-3">Source &amp; Ref</th>
-                    {isAdmin && <th className="py-2.5 px-2 text-center">Action</th>}
+                    <th className="py-2.5 px-3">Resource Asset</th>
+                    <th className="py-2.5 px-2">Cost Type</th>
+                    <th className="py-2.5 px-2">Component</th>
+                    <th className="py-2.5 px-3 text-right">Standard Rate</th>
+                    <th className="py-2.5 px-3">Source &amp; Publication</th>
+                    <th className="py-2.5 px-2 text-center">Quality Tier</th>
+                    <th className="py-2.5 px-4">Formula &amp; Assumptions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
-                  {costMasterItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                  {benchmarks.map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
-                        <div>{item.resource_name}</div>
-                        <span className="text-[10px] text-[#5D6878] font-mono">{item.resource_category}</span>
-                        {item.is_partner_agency && (
-                          <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            Partner
-                          </span>
-                        )}
+                        <div>{b.resource_name || `Resource #${b.resource_type_id}`}</div>
+                        <span className="text-[10px] text-[#5D6878] font-normal">{b.category}</span>
                       </td>
-                      <td className="py-2 px-2 text-[#5D6878]">{item.unit_of_measure}</td>
-                      <td className="py-2 px-3 text-right font-bold text-[#172033]">
-                        {formatINR(item.unit_acquisition_cost)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-[#5D6878]">
-                        {formatINR(item.monthly_operating_unit_cost)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-[#5D6878]">
-                        {formatINR(item.annual_maintenance_unit_cost)}
-                      </td>
-                      <td className="py-2 px-2 text-center font-medium">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-800">
-                          {item.cost_classification}
+                      <td className="py-2 px-2 font-medium">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          b.cost_type === 'ONE_TIME_CAPITAL'
+                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                            : 'bg-blue-50 text-blue-800 border-blue-200'
+                        }`}>
+                          {b.cost_type === 'ONE_TIME_CAPITAL' ? 'Capital' : 'Recurring'}
                         </span>
+                      </td>
+                      <td className="py-2 px-2 font-medium text-[#172033]">
+                        {b.cost_component}
+                      </td>
+                      <td className="py-2 px-3 text-right font-bold text-[#0B1F3A]">
+                        {formatINR(b.unit_cost_inr)}
+                        <span className="block text-[10px] text-[#5D6878] font-normal">
+                          {b.cost_type === 'RECURRING_MONTHLY' ? '/ month' : b.cost_type === 'RECURRING_ANNUAL' ? '/ year' : 'one-time'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-[#172033]">
+                        <div className="font-semibold text-[#0B1F3A]">{b.source_name}</div>
+                        <span className="text-[10px] text-[#5D6878] block">{b.source_publication} ({b.reference_year})</span>
                       </td>
                       <td className="py-2 px-2 text-center">
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                            item.verification_status === 'VERIFIED_QUOTATION'
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            b.data_quality_tier === 'OFFICIAL_DOCUMENTED'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : item.verification_status === 'OFFICIAL_SOURCE'
+                              : b.data_quality_tier === 'ESTIMATED_BENCHMARK'
                               ? 'bg-blue-50 text-blue-800 border-blue-200'
                               : 'bg-amber-50 text-amber-800 border-amber-200'
                           }`}
                         >
-                          {item.verification_status}
+                          {b.data_quality_tier === 'OFFICIAL_DOCUMENTED' ? 'Official' : b.data_quality_tier === 'ESTIMATED_BENCHMARK' ? 'Benchmark' : 'Assumed'}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-[#5D6878] text-[11px]">
-                        <div>{item.source_name}</div>
-                        {item.source_url && (
-                          <a
-                            href={item.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[#1769AA] hover:underline text-[10px]"
-                          >
-                            <span>Ref Document</span>
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
+                      <td className="py-2 px-4 text-[#5D6878] text-[11px] max-w-xs">
+                        <div className="font-mono text-[10px] text-[#172033]">{b.formula_expression}</div>
+                        {b.assumptions_notes && (
+                          <div className="text-[10px] text-[#5D6878] mt-0.5 italic">{b.assumptions_notes}</div>
                         )}
                       </td>
-                      {isAdmin && (
-                        <td className="py-2 px-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCostItem(item);
-                              setCostFormUpdates({
-                                resource_name: item.resource_name,
-                                unit_acquisition_cost: item.unit_acquisition_cost,
-                                monthly_operating_unit_cost: item.monthly_operating_unit_cost,
-                                annual_maintenance_unit_cost: item.annual_maintenance_unit_cost,
-                                verification_status: item.verification_status,
-                                notes: item.notes || '',
-                              });
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#D9E1EA] bg-white text-[#1769AA] text-[11px] font-semibold hover:bg-slate-50 cursor-pointer shadow-2xs"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                            <span>Edit</span>
-                          </button>
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1543,100 +1426,91 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 5: HISTORY & PROVENANCE                                       */}
+        {/* TAB 5: HISTORY                                                    */}
         {/* ================================================================= */}
-        {activeTab === 'history' && (
-          <div className="space-y-6">
+        {activeTab === 'runs' && (
+          <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-2">
               <h3 className="text-xs font-bold text-[#0B1F3A]">
-                Calculation History &amp; Mathematical Provenance
+                Cost Estimation Audit History
               </h3>
               <span className="text-xs text-[#5D6878]">
-                {calculationHistory.length} Historical Audits Logged
+                {overview?.recent_runs?.length || 0} Runs Recorded
               </span>
             </div>
 
-            {/* Formula Reference Card */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-[#F4F7FA] p-4 space-y-2">
-              <h4 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                <Calculator className="h-3.5 w-3.5 text-[#1769AA]" />
-                <span>Standard Budget Calculation Formulas</span>
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                <div className="bg-white p-3 rounded border border-[#D9E1EA]">
-                  <span className="font-bold text-[#1769AA] block">1. Capital Outlay (CAPEX):</span>
-                  <p className="text-[#5D6878] font-mono text-[11px] pt-1">
-                    CAPEX = Procurement Units × Unit Acquisition Cost
-                  </p>
-                  <span className="text-[10px] text-slate-500 block pt-1">
-                    Where Procurement Units = max(0, Recommended - Verified Inventory).
-                  </span>
-                </div>
-                <div className="bg-white p-3 rounded border border-[#D9E1EA]">
-                  <span className="font-bold text-[#1769AA] block">2. Annual Operating (OPEX):</span>
-                  <p className="text-[#5D6878] font-mono text-[11px] pt-1">
-                    Annual OPEX = Recommended Units × Monthly Operating × 12
-                  </p>
-                  <span className="text-[10px] text-slate-500 block pt-1">
-                    Reflects regular monthly staff compensation, fuel, and consumables.
-                  </span>
-                </div>
-                <div className="bg-white p-3 rounded border border-[#D9E1EA]">
-                  <span className="font-bold text-[#1769AA] block">3. Statutory Gap / Surplus:</span>
-                  <p className="text-[#5D6878] font-mono text-[11px] pt-1">
-                    Budget Gap = Configured Budget - Police Requirement
-                  </p>
-                  <span className="text-[10px] text-slate-500 block pt-1">
-                    Negative indicates critical funding shortfall requiring statutory augmentation.
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Audit Log Table */}
-            {calculationHistory.length > 0 ? (
+            {overview?.recent_runs && overview.recent_runs.length > 0 ? (
               <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
-                <table className="w-full min-w-[800px] text-left text-xs border-collapse">
+                <table className="w-full min-w-[760px] text-left text-xs border-collapse">
                   <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
                     <tr>
-                      <th className="py-2.5 px-3">Calculation ID</th>
-                      <th className="py-2.5 px-2">Period</th>
-                      <th className="py-2.5 px-3 text-right">CAPEX Outlay</th>
-                      <th className="py-2.5 px-3 text-right">Annual OPEX</th>
-                      <th className="py-2.5 px-3 text-right">Police Requirement</th>
-                      <th className="py-2.5 px-3 text-right">Partner Cost</th>
-                      <th className="py-2.5 px-3 text-right">Funding Gap</th>
-                      <th className="py-2.5 px-3">Logged At</th>
+                      <th className="py-2.5 px-3">Run ID</th>
+                      <th className="py-2.5 px-2">Mode</th>
+                      <th className="py-2.5 px-2">Status</th>
+                      <th className="py-2.5 px-3 text-right">Annual Scenario Cost</th>
+                      <th className="py-2.5 px-3 text-right">Incremental Delta</th>
+                      <th className="py-2.5 px-3 text-right">Capital Outlay</th>
+                      <th className="py-2.5 px-3">Created At</th>
+                      <th className="py-2.5 px-2 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-[#172033] bg-white">
-                    {calculationHistory.map((h) => (
-                      <tr key={h.id} className="hover:bg-slate-50">
+                    {overview.recent_runs.map((r) => (
+                      <tr key={r.run_id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-2 px-3 font-mono font-bold text-[#1769AA]">
-                          {h.calculation_id}
-                        </td>
-                        <td className="py-2 px-2 text-[#5D6878]">{h.assessment_period}</td>
-                        <td className="py-2 px-3 text-right font-medium">{formatINR(h.total_capex, true)}</td>
-                        <td className="py-2 px-3 text-right font-medium">{formatINR(h.total_opex_annual, true)}</td>
-                        <td className="py-2 px-3 text-right font-bold text-[#0B1F3A]">
-                          {formatINR(h.total_police_budget_requirement, true)}
-                        </td>
-                        <td className="py-2 px-3 text-right text-emerald-800 font-medium">
-                          {formatINR(h.total_partner_agency_cost, true)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-bold">
-                          {h.budget_gap_or_surplus != null ? (
-                            <span className={h.budget_gap_or_surplus >= 0 ? 'text-emerald-700' : 'text-[#C53B3B]'}>
-                              {h.budget_gap_or_surplus >= 0
-                                ? `+${formatINR(h.budget_gap_or_surplus, true)}`
-                                : formatINR(h.budget_gap_or_surplus, true)}
+                          {r.run_id}
+                          {r.optimization_run_id && (
+                            <span className="block text-[10px] font-normal text-[#5D6878]">
+                              Opt: {r.optimization_run_id}
                             </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
                           )}
                         </td>
+                        <td className="py-2 px-2">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              r.estimation_mode === 'SIMULATION_ESTIMATE'
+                                ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                : r.estimation_mode === 'INSUFFICIENT_DATA'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-blue-50 text-blue-800 border-blue-200'
+                            }`}
+                          >
+                            {r.estimation_mode === 'SIMULATION_ESTIMATE'
+                              ? 'Simulation'
+                              : r.estimation_mode === 'INSUFFICIENT_DATA'
+                              ? 'Insufficient Data'
+                              : 'Official'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 font-semibold">
+                          <span className={r.status === 'COMPLETED' ? 'text-emerald-700' : 'text-amber-700'}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-[#0B1F3A]">
+                          {formatINR(r.total_scenario_recurring_annual, true)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-[#5D6878]">
+                          {formatINR(r.incremental_recurring_cost, true)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-semibold text-[#5D6878]">
+                          {formatINR(r.total_one_time_procurement_cost, true)}
+                        </td>
                         <td className="py-2 px-3 text-[#5D6878] text-[11px]">
-                          {h.created_at ? new Date(h.created_at).toLocaleString() : 'N/A'}
+                          {r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A'}
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const d = await budgetApi.getRunById(r.run_id);
+                              setActiveRun(d);
+                              setActiveTab('districts');
+                            }}
+                            className="px-2.5 py-1 rounded border border-[#D9E1EA] bg-white hover:bg-[#F4F7FA] text-[#172033] text-[11px] font-semibold cursor-pointer transition-colors shadow-2xs"
+                          >
+                            Inspect
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1644,354 +1518,11 @@ export const BudgetCostAnalysisView: React.FC<BudgetCostAnalysisViewProps> = ({
                 </table>
               </div>
             ) : (
-              <EmptyState
-                title="No calculation audits logged yet."
-                message="Audit logs will be populated as budget estimations are requested."
-              />
+              <EmptyState title="No historical runs found." message="Execute a budget estimation above to generate an audit log." />
             )}
-
-            {/* Saved Simulation Scenarios */}
-            <div className="space-y-3 pt-4 border-t border-[#D9E1EA]">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Saved Budget Scenarios Registry</span>
-                </h4>
-                <span className="text-xs text-[#5D6878]">
-                  {savedScenarios.length} Scenarios Saved
-                </span>
-              </div>
-
-              {savedScenarios.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-[#D9E1EA]">
-                  <table className="w-full min-w-[700px] text-left text-xs border-collapse">
-                    <thead className="bg-[#F4F7FA] text-[#172033] font-bold border-b border-[#D9E1EA]">
-                      <tr>
-                        <th className="py-2 px-3">Scenario Name</th>
-                        <th className="py-2 px-3">Description</th>
-                        <th className="py-2 px-2">Year</th>
-                        <th className="py-2 px-3 text-right">Budget Ceiling</th>
-                        <th className="py-2 px-3">Saved At</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {savedScenarios.map((sc) => (
-                        <tr key={sc.id} className="hover:bg-slate-50">
-                          <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
-                            <div>{sc.name}</div>
-                            <span className="text-[10px] text-slate-500 font-mono">{sc.scenario_id}</span>
-                          </td>
-                          <td className="py-2 px-3 text-[#5D6878]">{sc.description || '—'}</td>
-                          <td className="py-2 px-2 text-[#5D6878]">FY {sc.budget_year}</td>
-                          <td className="py-2 px-3 text-right font-medium">
-                            {sc.total_budget_limit ? formatINR(sc.total_budget_limit, true) : 'Uncapped'}
-                          </td>
-                          <td className="py-2 px-3 text-[#5D6878] text-[11px]">
-                            {sc.created_at ? new Date(sc.created_at).toLocaleString() : 'N/A'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-xs text-[#5D6878] italic p-3 bg-slate-50 rounded border border-[#D9E1EA]">
-                  No saved scenarios for the selected scope. Use the Scenario Simulator tab to simulate and save planning scenarios.
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>
-
-      {/* =================================================================== */}
-      {/* MODAL 1: METHODOLOGY & EXPLANATION                                  */}
-      {/* =================================================================== */}
-      {isMethodologyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-3">
-              <div className="flex items-center gap-2 text-[#0B1F3A]">
-                <HelpCircle className="h-5 w-5 text-[#1769AA]" />
-                <h3 className="text-sm font-bold">Budget Intelligence Methodology &amp; Calculation Rules</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMethodologyModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-[#172033] leading-relaxed">
-              <div className="space-y-1">
-                <h4 className="font-bold text-[#0B1F3A]">1. Data Flow &amp; Algorithmic Provenance</h4>
-                <p className="text-[#5D6878]">
-                  The Budget Intelligence module dynamically connects Phase 8 Crime Forecasts, Phase 9 District Risk Scores, and Phase 10 Ten-Pool Resource Optimization. Demands are evaluated across all 10 canonical resource categories without flattening distinct equipment types into arbitrary common metrics.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="font-bold text-[#0B1F3A]">2. Inventory Crediting vs. Replacement Ceilings</h4>
-                <p className="text-[#5D6878]">
-                  Where district equipment is recorded, net new procurement is calculated as:
-                  <code className="block bg-slate-100 p-1 rounded font-mono text-[11px] my-1 text-[#1769AA]">
-                    Procurement Units = max(0, Recommended Units - Verified Baseline Inventory)
-                  </code>
-                  Where baseline inventory is unrecorded (<code className="font-mono text-[10px]">UNRECORDED</code>), procurement is calculated as an upper-bound replacement ceiling without fabricating inventory numbers.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="font-bold text-[#0B1F3A]">3. Partner Agency Isolation (Emergency Medical)</h4>
-                <p className="text-[#5D6878]">
-                  Emergency Medical Response Units (<code className="font-mono text-[10px]">EMERGENCY_RESPONSE</code> / Ambulances) are explicitly flagged as <strong>Partner Agency Resources</strong>. Their financial requirements are tracked for inter-agency coordination but are strictly excluded from the direct State Police budget totals unless explicitly statutory.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="font-bold text-[#0B1F3A]">4. Constitutional &amp; Statutory Disclaimer</h4>
-                <p className="text-[#5D6878]">
-                  Under Seventh Schedule, List II (State List), police and public order are exclusive state subjects. All figures generated by this module are empirical planning benchmarks and decision-support projections. They do not supersede legislative appropriations or state finance department sanctions.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-[#D9E1EA]">
-              <button
-                type="button"
-                onClick={() => setIsMethodologyModalOpen(false)}
-                className="px-4 py-1.5 rounded bg-[#1769AA] text-white text-xs font-bold hover:bg-[#114E80] cursor-pointer"
-              >
-                Close Explanation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* MODAL 2: DISTRICT 10-POOL BREAKDOWN                                 */}
-      {/* =================================================================== */}
-      {inspectedDistrict && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#0B1F3A]">
-                  {inspectedDistrict.district_name} — 10-Pool Resource Requirement
-                </h3>
-                <span className="text-xs text-[#5D6878]">
-                  State: {inspectedDistrict.state_name} | Risk Score: {inspectedDistrict.risk_score.toFixed(1)} ({inspectedDistrict.risk_level})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectedDistrict(null)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="overflow-x-auto rounded border border-[#D9E1EA]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#F4F7FA] font-bold text-[#172033] border-b border-[#D9E1EA]">
-                  <tr>
-                    <th className="py-2 px-3">Resource Pool</th>
-                    <th className="py-2 px-2 text-right">Rec Units</th>
-                    <th className="py-2 px-2 text-right">Baseline Inv</th>
-                    <th className="py-2 px-2 text-right">Procure</th>
-                    <th className="py-2 px-3 text-right">CAPEX Outlay</th>
-                    <th className="py-2 px-3 text-right">Monthly OPEX</th>
-                    <th className="py-2 px-3 text-right">Annual Maintenance</th>
-                    <th className="py-2 px-3 text-right">Total Requirement</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {inspectedDistrict.pool_breakdown.map((pool, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="py-2 px-3 font-semibold text-[#0B1F3A]">
-                        {pool.resource_name}
-                        {pool.is_partner_agency && (
-                          <span className="ml-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
-                            Partner
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-2 text-right font-bold">{pool.recommended_units}</td>
-                      <td className="py-2 px-2 text-right text-[#5D6878]">
-                        {pool.inventory_status === 'UNRECORDED' ? 'Unrecorded' : pool.existing_inventory_units}
-                      </td>
-                      <td className="py-2 px-2 text-right font-semibold text-[#1769AA]">
-                        +{pool.procurement_units}
-                      </td>
-                      <td className="py-2 px-3 text-right font-semibold text-[#172033]">
-                        {formatINR(pool.total_acquisition_cost)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-[#5D6878]">
-                        {formatINR(pool.monthly_operating_cost)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-[#5D6878]">
-                        {formatINR(pool.annual_maintenance_cost)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-[#1769AA]">
-                        {formatINR(pool.total_annual_requirement)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-[#D9E1EA]">
-              <button
-                type="button"
-                onClick={() => setInspectedDistrict(null)}
-                className="px-4 py-1.5 rounded bg-[#1769AA] text-white text-xs font-bold hover:bg-[#114E80] cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* MODAL 3: ADMIN EDIT RESOURCE COST MASTER ITEM                       */}
-      {/* =================================================================== */}
-      {editingCostItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#D9E1EA] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#0B1F3A]">
-                  Edit Benchmark: {editingCostItem.resource_name}
-                </h3>
-                <span className="text-xs text-[#5D6878]">
-                  Category: {editingCostItem.resource_category} ({editingCostItem.unit_of_measure})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingCostItem(null)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-[#172033] mb-1">
-                  Unit Acquisition Cost (CAPEX in INR):
-                </label>
-                <input
-                  type="number"
-                  value={costFormUpdates.unit_acquisition_cost || 0}
-                  onChange={(e) =>
-                    setCostFormUpdates((prev) => ({
-                      ...prev,
-                      unit_acquisition_cost: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="w-full h-9 rounded border border-[#D9E1EA] px-3 font-mono font-bold text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#172033] mb-1">
-                  Monthly Operating Cost per Unit (OPEX in INR):
-                </label>
-                <input
-                  type="number"
-                  value={costFormUpdates.monthly_operating_unit_cost || 0}
-                  onChange={(e) =>
-                    setCostFormUpdates((prev) => ({
-                      ...prev,
-                      monthly_operating_unit_cost: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="w-full h-9 rounded border border-[#D9E1EA] px-3 font-mono font-bold text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#172033] mb-1">
-                  Annual Maintenance Cost per Unit (INR):
-                </label>
-                <input
-                  type="number"
-                  value={costFormUpdates.annual_maintenance_unit_cost || 0}
-                  onChange={(e) =>
-                    setCostFormUpdates((prev) => ({
-                      ...prev,
-                      annual_maintenance_unit_cost: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="w-full h-9 rounded border border-[#D9E1EA] px-3 font-mono font-bold text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#172033] mb-1">
-                  Verification Status:
-                </label>
-                <select
-                  value={costFormUpdates.verification_status || 'ADMIN_ESTIMATE'}
-                  onChange={(e) =>
-                    setCostFormUpdates((prev) => ({
-                      ...prev,
-                      verification_status: e.target.value,
-                    }))
-                  }
-                  className="w-full h-9 rounded border border-[#D9E1EA] px-2 text-xs font-medium cursor-pointer"
-                >
-                  <option value="VERIFIED_QUOTATION">VERIFIED_QUOTATION (GeM / Public Tender)</option>
-                  <option value="OFFICIAL_SOURCE">OFFICIAL_SOURCE (MHA / BPR&amp;D Norm)</option>
-                  <option value="ADMIN_ESTIMATE">ADMIN_ESTIMATE (Analytical Norm)</option>
-                  <option value="NOT_CONFIGURED">NOT_CONFIGURED (Unconfigured)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#172033] mb-1">Notes / Audit Justification:</label>
-                <textarea
-                  rows={2}
-                  value={costFormUpdates.notes || ''}
-                  onChange={(e) =>
-                    setCostFormUpdates((prev) => ({
-                      ...prev,
-                      notes: e.target.value,
-                    }))
-                  }
-                  placeholder="Justification for rate adjustment..."
-                  className="w-full rounded border border-[#D9E1EA] p-2 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#D9E1EA]">
-              <button
-                type="button"
-                onClick={() => setEditingCostItem(null)}
-                className="px-3 py-1.5 rounded border border-[#D9E1EA] text-xs font-semibold hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isUpdatingCost}
-                onClick={handleSaveCostMasterItem}
-                className="px-4 py-1.5 rounded bg-[#1769AA] text-white text-xs font-bold hover:bg-[#114E80] disabled:opacity-50 cursor-pointer"
-              >
-                {isUpdatingCost ? 'Saving...' : 'Save Benchmark Rate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

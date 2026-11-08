@@ -26,6 +26,7 @@ import {
   HeartPulse,
   Radio,
   Gauge,
+  MapPin,
 } from 'lucide-react';
 import { StatCard } from '../common/StatCard';
 import LoadingState from '../common/LoadingState';
@@ -197,6 +198,11 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [riskFilter, setRiskFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Tactical Geographical Workspace State
+  const [activeTacticalDistrictId, setActiveTacticalDistrictId] = useState<number | null>(null);
+  const [tacticalRiskFilter, setTacticalRiskFilter] = useState<string>('ALL');
+  const [tacticalSearch, setTacticalSearch] = useState<string>('');
 
   // Drill-Down Drawer / Modal
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictCrimeAllocationItem | null>(null);
@@ -430,6 +436,83 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
     if (!optimizationResult?.pool_summaries) return 0;
     return Object.values(optimizationResult.pool_summaries).reduce((acc, p) => acc + (p.capacity || 0), 0);
   }, [optimizationResult]);
+
+  // District Groups for Geographical Tactical Allocation Workspace
+  const districtGroups = useMemo(() => {
+    if (!optimizationResult?.allocations) return [];
+    const map = new Map<
+      number,
+      {
+        district_id: number;
+        district_name: string;
+        state_name: string;
+        risk_score: number;
+        risk_level: string;
+        priority_weight: number;
+        total_demanded: number;
+        total_allocated: number;
+        total_shortage: number;
+        coverage_pct: number;
+        pools: Record<string, DistrictCrimeAllocationItem>;
+        top_predicted_crimes: any[];
+        representativeItem: DistrictCrimeAllocationItem;
+      }
+    >();
+
+    for (const item of optimizationResult.allocations) {
+      if (!map.has(item.district_id)) {
+        map.set(item.district_id, {
+          district_id: item.district_id,
+          district_name: item.district_name,
+          state_name: item.state_name,
+          risk_score: item.risk_score,
+          risk_level: item.risk_level,
+          priority_weight: (item as any).priority_weight || 0,
+          total_demanded: 0,
+          total_allocated: 0,
+          total_shortage: 0,
+          coverage_pct: 0,
+          pools: {},
+          top_predicted_crimes: item.top_predicted_crimes || [],
+          representativeItem: item,
+        });
+      }
+      const d = map.get(item.district_id)!;
+      d.pools[item.resource_category] = item;
+      d.total_demanded += item.demanded_quantity;
+      d.total_allocated += item.allocated_quantity;
+      d.total_shortage += item.shortage;
+    }
+
+    const list = Array.from(map.values()).map((d) => ({
+      ...d,
+      coverage_pct: d.total_demanded > 0 ? (d.total_allocated / d.total_demanded) * 100 : 100,
+    }));
+
+    list.sort((a, b) => b.risk_score - a.risk_score);
+    return list;
+  }, [optimizationResult?.allocations]);
+
+  const activeTacticalDistrict = useMemo(() => {
+    if (!districtGroups.length) return null;
+    if (activeTacticalDistrictId) {
+      const found = districtGroups.find((d) => d.district_id === activeTacticalDistrictId);
+      if (found) return found;
+    }
+    return districtGroups[0];
+  }, [districtGroups, activeTacticalDistrictId]);
+
+  const filteredTacticalDistricts = useMemo(() => {
+    let list = districtGroups;
+    if (tacticalRiskFilter !== 'ALL') {
+      list = list.filter((d) => d.risk_level === tacticalRiskFilter);
+    }
+    if (tacticalSearch.trim()) {
+      const q = tacticalSearch.toLowerCase().trim();
+      list = list.filter((d) => d.district_name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [districtGroups, tacticalRiskFilter, tacticalSearch]);
 
   if (isLoading) {
     return <LoadingState message="Integrating Phase 8 crime forecasts & Phase 9 risk assessments into MILP solver..." />;
@@ -982,6 +1065,348 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* 3.5 Geographical Police Resource Allocation Workspace */}
+          {optimizationResult && districtGroups.length > 0 && (
+            <div className="rounded-xl border border-[#D9E1EA] bg-white shadow-xs overflow-hidden">
+              <div className="border-b border-[#D9E1EA] bg-gradient-to-r from-[#F4F7FA] to-white p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-[#1769AA]/10 text-[#1769AA]">
+                      <MapPin className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0B1F3A] flex items-center gap-2">
+                        Tactical Police Resource Deployment Workspace
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1769AA]/10 text-[#1769AA] border border-[#1769AA]/20">
+                          Phase 10 Geo-Tactical
+                        </span>
+                      </h3>
+                      <p className="text-xs text-[#5D6878]">
+                        Multi-district tactical allocation planning console calibrated by Phase 8 crime forecasts and Phase 9 risk rankings.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-[#5D6878] bg-white px-3 py-1.5 rounded-lg border border-[#D9E1EA] shrink-0">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>
+                      MILP Solver: <strong>{optimizationResult.solver_status}</strong>
+                    </span>
+                    <span className="text-slate-300">|</span>
+                    <span>{optimizationResult.execution_duration_ms}ms</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#D9E1EA]">
+                {/* LEFT: Geographical District Selector & Risk Rankings (5 cols) */}
+                <div className="lg:col-span-5 p-4 space-y-3 bg-[#F6F8FB]/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                      Jurisdictional Districts ({districtGroups.length})
+                    </span>
+                    <span className="text-[11px] text-[#5D6878]">
+                      State: <strong>{optimizationResult.state_name}</strong>
+                    </span>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Search district..."
+                        value={tacticalSearch}
+                        onChange={(e) => setTacticalSearch(e.target.value)}
+                        className="w-full h-8 pl-8 pr-2 text-xs rounded-lg border border-[#D9E1EA] bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                      />
+                    </div>
+                    <select
+                      value={tacticalRiskFilter}
+                      onChange={(e) => setTacticalRiskFilter(e.target.value)}
+                      className="h-8 px-2 text-xs rounded-lg border border-[#D9E1EA] bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#1769AA]"
+                    >
+                      <option value="ALL">All Risk</option>
+                      <option value="CRITICAL">Critical</option>
+                      <option value="HIGH">High</option>
+                      <option value="MODERATE">Moderate</option>
+                      <option value="LOW">Low</option>
+                    </select>
+                  </div>
+
+                  {/* District Cards List */}
+                  <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
+                    {filteredTacticalDistricts.map((d, idx) => {
+                      const isSelected = activeTacticalDistrict?.district_id === d.district_id;
+                      const isCritical = d.risk_level === 'CRITICAL';
+                      const isHigh = d.risk_level === 'HIGH';
+                      const isMod = d.risk_level === 'MODERATE';
+
+                      const riskBadgeClass = isCritical
+                        ? 'bg-red-50 text-[#C53B3B] border-red-200'
+                        : isHigh
+                        ? 'bg-amber-50 text-[#C98512] border-amber-200'
+                        : isMod
+                        ? 'bg-blue-50 text-[#1769AA] border-blue-200'
+                        : 'bg-emerald-50 text-[#16845B] border-emerald-200';
+
+                      return (
+                        <button
+                          key={d.district_id}
+                          type="button"
+                          onClick={() => setActiveTacticalDistrictId(d.district_id)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#1769AA] bg-white shadow-xs ring-2 ring-[#1769AA]/20'
+                              : 'border-[#D9E1EA] bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-slate-400">#{idx + 1}</span>
+                                <h4 className="text-xs font-bold text-[#0B1F3A] truncate">{d.district_name}</h4>
+                              </div>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Demanded: <strong>{d.total_demanded.toLocaleString()}</strong> &bull; Allocated:{' '}
+                                <strong>{d.total_allocated.toLocaleString()}</strong>
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span
+                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${riskBadgeClass}`}
+                              >
+                                {d.risk_level}
+                              </span>
+                              <span className="block text-[10px] font-semibold text-slate-600 mt-0.5">
+                                Risk: {d.risk_score.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress bar & shortage notice */}
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500">
+                              <span>Coverage</span>
+                              <span className="font-bold text-slate-700">{d.coverage_pct.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-1.5 rounded-full ${
+                                  d.coverage_pct >= 90
+                                    ? 'bg-emerald-500'
+                                    : d.coverage_pct >= 60
+                                    ? 'bg-amber-500'
+                                    : 'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.min(100, d.coverage_pct)}%` }}
+                              />
+                            </div>
+                            {d.total_shortage > 0 && (
+                              <div className="text-[10px] font-semibold text-[#C53B3B] flex items-center justify-between pt-0.5">
+                                <span>Deficit:</span>
+                                <span>-{d.total_shortage.toLocaleString()} units</span>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* RIGHT: Detailed District 10-Pool Tactical Console (7 cols) */}
+                <div className="lg:col-span-7 p-5 space-y-4 bg-white">
+                  {activeTacticalDistrict ? (
+                    <>
+                      {/* District Tactical Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9E1EA] pb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-bold text-[#0B1F3A]">
+                              {activeTacticalDistrict.district_name}
+                            </h4>
+                            <span className="text-xs text-[#5D6878]">({activeTacticalDistrict.state_name})</span>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                activeTacticalDistrict.risk_level === 'CRITICAL'
+                                  ? 'bg-red-50 text-[#C53B3B] border-red-200'
+                                  : activeTacticalDistrict.risk_level === 'HIGH'
+                                  ? 'bg-amber-50 text-[#C98512] border-amber-200'
+                                  : 'bg-blue-50 text-[#1769AA] border-blue-200'
+                              }`}
+                            >
+                              {activeTacticalDistrict.risk_level} &bull; Score:{' '}
+                              {activeTacticalDistrict.risk_score.toFixed(1)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#5D6878] mt-0.5">
+                            Allocations solved under integer MILP demand constraints across all 10 specialized resource
+                            pools.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDistrictDetail(activeTacticalDistrict.representativeItem)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1769AA] text-white hover:bg-[#125386] transition-colors cursor-pointer shadow-2xs self-start sm:self-auto shrink-0"
+                        >
+                          <Scale className="h-3.5 w-3.5" />
+                          <span>Explain Math &amp; Formulas</span>
+                        </button>
+                      </div>
+
+                      {/* Quick Metrics Bar */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="p-2.5 rounded-lg bg-[#F4F7FA] border border-[#D9E1EA]">
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">Total Demanded</span>
+                          <span className="text-sm font-bold text-[#0B1F3A]">
+                            {activeTacticalDistrict.total_demanded.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#F4F7FA] border border-[#D9E1EA]">
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">Total Allocated</span>
+                          <span className="text-sm font-bold text-[#1769AA]">
+                            {activeTacticalDistrict.total_allocated.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#F4F7FA] border border-[#D9E1EA]">
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">District Shortage</span>
+                          <span
+                            className={`text-sm font-bold ${
+                              activeTacticalDistrict.total_shortage > 0 ? 'text-[#C53B3B]' : 'text-[#16845B]'
+                            }`}
+                          >
+                            {activeTacticalDistrict.total_shortage > 0
+                              ? `-${activeTacticalDistrict.total_shortage.toLocaleString()}`
+                              : '0'}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#F4F7FA] border border-[#D9E1EA]">
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">Coverage Rate</span>
+                          <span className="text-sm font-bold text-slate-800">
+                            {activeTacticalDistrict.coverage_pct.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 10 Resource Pools Grid */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                            Ten-Pool Allocation Schedule
+                          </span>
+                          <span className="text-[11px] text-slate-500">Target: {assessmentPeriod}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                          {Object.keys(POOL_METADATA).map((poolKey) => {
+                            const meta = POOL_METADATA[poolKey];
+                            const Icon = meta.icon;
+                            const poolAlloc = activeTacticalDistrict.pools[poolKey];
+                            const demanded = poolAlloc?.demanded_quantity ?? 0;
+                            const allocated = poolAlloc?.allocated_quantity ?? 0;
+                            const shortage = poolAlloc?.shortage ?? 0;
+                            const coverage =
+                              poolAlloc?.coverage_percentage ??
+                              (demanded > 0 ? (allocated / demanded) * 100 : 100);
+                            const status = poolAlloc?.status ?? (demanded === 0 ? 'SATISFIED' : 'STANDBY');
+
+                            const statusClass =
+                              status === 'SATISFIED'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : status === 'PARTIAL'
+                                ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                : status === 'DEFICIT'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-rose-50 text-rose-800 border-rose-200';
+
+                            return (
+                              <div
+                                key={poolKey}
+                                className="p-3 rounded-lg border border-[#D9E1EA] bg-[#F6F8FB]/30 hover:bg-white hover:border-[#BAC7D5] transition-all space-y-2"
+                              >
+                                <div className="flex items-start justify-between gap-1.5">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`p-1.5 rounded-md ${meta.bgLight} ${meta.textColor}`}>
+                                      <Icon className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h5 className="text-xs font-bold text-[#0B1F3A] truncate">{meta.name}</h5>
+                                      <span className="text-[10px] text-slate-500 block truncate">{meta.subtext}</span>
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} shrink-0`}
+                                  >
+                                    {status}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                                  <div>
+                                    <span className="text-[9px] text-slate-500 block">Demanded</span>
+                                    <span className="font-bold text-slate-800 text-[11px]">{demanded}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[9px] text-slate-500 block">Allocated</span>
+                                    <span className={`font-bold text-[11px] ${meta.textColor}`}>{allocated}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[9px] text-slate-500 block">Shortage</span>
+                                    <span
+                                      className={`font-bold text-[11px] ${
+                                        shortage > 0 ? 'text-[#C53B3B]' : 'text-slate-600'
+                                      }`}
+                                    >
+                                      {shortage > 0 ? `-${shortage}` : '0'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                                  <div
+                                    className={`h-1 rounded-full ${meta.barColor}`}
+                                    style={{ width: `${Math.min(100, coverage)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Top Predicted Crime Drivers for Selected District */}
+                      {activeTacticalDistrict.top_predicted_crimes &&
+                        activeTacticalDistrict.top_predicted_crimes.length > 0 && (
+                          <div className="pt-2 border-t border-[#D9E1EA]">
+                            <span className="text-[11px] font-bold text-[#0B1F3A] block mb-1.5">
+                              Top Predicted Incident Drivers (Phase 8 Forecasts)
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {activeTacticalDistrict.top_predicted_crimes.slice(0, 4).map((c: any, cidx: number) => (
+                                <span
+                                  key={cidx}
+                                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#F4F7FA] text-slate-700 border border-[#D9E1EA]"
+                                >
+                                  {c.crime_name || c.crime_type_name || 'Crime'}:{' '}
+                                  <strong>{Math.round(c.predicted_count || 0)}</strong>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-[#5D6878]">
+                      Select a district from the jurisdiction list to inspect its tactical allocation.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
