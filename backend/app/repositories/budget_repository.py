@@ -10,7 +10,16 @@ Data access layer for:
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, text
-from backend.app.models.budget import CostBenchmarkRate, BudgetEstimationRun, BudgetEstimationItem
+from backend.app.models.budget import (
+    CostBenchmarkRate,
+    BudgetEstimationRun,
+    BudgetEstimationItem,
+    ResourceCostMaster,
+    StateBudget,
+    DistrictBudgetAllocation,
+    BudgetScenario,
+    BudgetCalculationHistory,
+)
 from backend.app.models.resources import ResourceType
 from backend.app.models.geography import District, State
 from backend.app.models.optimization import OptimizationRun, OptimizationAllocation
@@ -261,4 +270,213 @@ class BudgetRepository:
             .order_by(desc(BudgetEstimationRun.created_at))
             .first()
         )
+
+    # =========================================================================
+    # ResourceCostMaster Data Access
+    # =========================================================================
+
+    @staticmethod
+    def get_cost_master_items(
+        db: Session,
+        category: Optional[str] = None,
+        is_active: bool = True,
+    ) -> List[ResourceCostMaster]:
+        query = db.query(ResourceCostMaster)
+        if is_active:
+            query = query.filter(ResourceCostMaster.is_active == True)
+        if category:
+            query = query.filter(ResourceCostMaster.resource_category == category.upper())
+        return query.order_by(ResourceCostMaster.id).all()
+
+    @staticmethod
+    def get_cost_master_by_id(db: Session, rcm_id: int) -> Optional[ResourceCostMaster]:
+        return db.query(ResourceCostMaster).filter(ResourceCostMaster.id == rcm_id).first()
+
+    @staticmethod
+    def get_cost_master_by_resource_type(db: Session, resource_type_id: int) -> Optional[ResourceCostMaster]:
+        return db.query(ResourceCostMaster).filter(ResourceCostMaster.resource_type_id == resource_type_id, ResourceCostMaster.is_active == True).first()
+
+    @staticmethod
+    def create_cost_master(db: Session, data: Dict[str, Any]) -> ResourceCostMaster:
+        rcm = ResourceCostMaster(**data)
+        db.add(rcm)
+        db.commit()
+        db.refresh(rcm)
+        return rcm
+
+    @staticmethod
+    def update_cost_master(db: Session, rcm_id: int, updates: Dict[str, Any]) -> Optional[ResourceCostMaster]:
+        rcm = db.query(ResourceCostMaster).filter(ResourceCostMaster.id == rcm_id).first()
+        if not rcm:
+            return None
+        for k, v in updates.items():
+            if v is not None:
+                setattr(rcm, k, v)
+        db.commit()
+        db.refresh(rcm)
+        return rcm
+
+    @staticmethod
+    def delete_cost_master(db: Session, rcm_id: int) -> bool:
+        rcm = db.query(ResourceCostMaster).filter(ResourceCostMaster.id == rcm_id).first()
+        if not rcm:
+            return False
+        rcm.is_active = False
+        db.commit()
+        return True
+
+    # =========================================================================
+    # StateBudget Data Access
+    # =========================================================================
+
+    @staticmethod
+    def get_state_budgets(
+        db: Session,
+        year: int = 2026,
+        state_id: Optional[int] = None,
+    ) -> List[StateBudget]:
+        query = db.query(StateBudget).options(joinedload(StateBudget.state)).filter(StateBudget.budget_year == year, StateBudget.is_active == True)
+        if state_id is not None:
+            query = query.filter(StateBudget.state_id == state_id)
+        return query.order_by(StateBudget.state_id).all()
+
+    @staticmethod
+    def get_state_budget_by_state(db: Session, state_id: int, year: int = 2026) -> Optional[StateBudget]:
+        return (
+            db.query(StateBudget)
+            .options(joinedload(StateBudget.state))
+            .filter(StateBudget.state_id == state_id, StateBudget.budget_year == year, StateBudget.is_active == True)
+            .first()
+        )
+
+    @staticmethod
+    def upsert_state_budget(db: Session, data: Dict[str, Any]) -> StateBudget:
+        state_id = data.get("state_id")
+        year = data.get("budget_year", 2026)
+        existing = db.query(StateBudget).filter(StateBudget.state_id == state_id, StateBudget.budget_year == year).first()
+        if existing:
+            for k, v in data.items():
+                if v is not None:
+                    setattr(existing, k, v)
+            db.commit()
+            db.refresh(existing)
+            return existing
+        else:
+            sb = StateBudget(**data)
+            db.add(sb)
+            db.commit()
+            db.refresh(sb)
+            return sb
+
+    # =========================================================================
+    # DistrictBudgetAllocation Data Access
+    # =========================================================================
+
+    @staticmethod
+    def get_district_budgets(
+        db: Session,
+        year: int = 2026,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> Tuple[List[DistrictBudgetAllocation], int]:
+        query = (
+            db.query(DistrictBudgetAllocation)
+            .options(joinedload(DistrictBudgetAllocation.district), joinedload(DistrictBudgetAllocation.state))
+            .filter(DistrictBudgetAllocation.budget_year == year, DistrictBudgetAllocation.is_active == True)
+        )
+        if state_id is not None:
+            query = query.filter(DistrictBudgetAllocation.state_id == state_id)
+        if district_id is not None:
+            query = query.filter(DistrictBudgetAllocation.district_id == district_id)
+        
+        total = query.count()
+        items = query.order_by(DistrictBudgetAllocation.district_id).offset(skip).limit(limit).all()
+        return items, total
+
+    @staticmethod
+    def get_district_budget_by_district(db: Session, district_id: int, year: int = 2026) -> Optional[DistrictBudgetAllocation]:
+        return (
+            db.query(DistrictBudgetAllocation)
+            .options(joinedload(DistrictBudgetAllocation.district), joinedload(DistrictBudgetAllocation.state))
+            .filter(DistrictBudgetAllocation.district_id == district_id, DistrictBudgetAllocation.budget_year == year, DistrictBudgetAllocation.is_active == True)
+            .first()
+        )
+
+    @staticmethod
+    def upsert_district_budget(db: Session, data: Dict[str, Any]) -> DistrictBudgetAllocation:
+        district_id = data.get("district_id")
+        year = data.get("budget_year", 2026)
+        existing = db.query(DistrictBudgetAllocation).filter(DistrictBudgetAllocation.district_id == district_id, DistrictBudgetAllocation.budget_year == year).first()
+        if existing:
+            for k, v in data.items():
+                if v is not None:
+                    setattr(existing, k, v)
+            db.commit()
+            db.refresh(existing)
+            return existing
+        else:
+            dba = DistrictBudgetAllocation(**data)
+            db.add(dba)
+            db.commit()
+            db.refresh(dba)
+            return dba
+
+    # =========================================================================
+    # BudgetScenario Data Access
+    # =========================================================================
+
+    @staticmethod
+    def list_budget_scenarios(
+        db: Session,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+    ) -> List[BudgetScenario]:
+        query = db.query(BudgetScenario).options(joinedload(BudgetScenario.state), joinedload(BudgetScenario.district))
+        if state_id is not None:
+            query = query.filter(BudgetScenario.state_id == state_id)
+        if district_id is not None:
+            query = query.filter(BudgetScenario.district_id == district_id)
+        return query.order_by(desc(BudgetScenario.created_at)).all()
+
+    @staticmethod
+    def get_budget_scenario_by_id(db: Session, scenario_id: str) -> Optional[BudgetScenario]:
+        return db.query(BudgetScenario).filter(BudgetScenario.scenario_id == scenario_id).first()
+
+    @staticmethod
+    def create_budget_scenario(db: Session, data: Dict[str, Any]) -> BudgetScenario:
+        scen = BudgetScenario(**data)
+        db.add(scen)
+        db.commit()
+        db.refresh(scen)
+        return scen
+
+    # =========================================================================
+    # BudgetCalculationHistory Data Access
+    # =========================================================================
+
+    @staticmethod
+    def save_budget_calculation_history(db: Session, data: Dict[str, Any]) -> BudgetCalculationHistory:
+        hist = BudgetCalculationHistory(**data)
+        db.add(hist)
+        db.commit()
+        db.refresh(hist)
+        return hist
+
+    @staticmethod
+    def list_budget_calculation_history(
+        db: Session,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> List[BudgetCalculationHistory]:
+        return (
+            db.query(BudgetCalculationHistory)
+            .options(joinedload(BudgetCalculationHistory.state), joinedload(BudgetCalculationHistory.district))
+            .order_by(desc(BudgetCalculationHistory.created_at))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
 
