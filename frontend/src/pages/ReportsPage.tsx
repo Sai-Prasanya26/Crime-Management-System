@@ -10,7 +10,6 @@ import {
   Mail,
   Send,
   X,
-  Info,
   ShieldAlert,
   Users,
   Car,
@@ -79,7 +78,7 @@ export const REPORT_CATALOG: ReportOption[] = [
 interface SummaryCardItem {
   title: string;
   value: string;
-  subtext: string;
+  subtext?: string;
 }
 
 // 10 Canonical Resource Pools Configuration
@@ -594,22 +593,22 @@ export const ReportsPage: React.FC = () => {
           {
             title: 'Total Historical Incidents',
             value: `${totalIncidents.toLocaleString()} Incidents`,
-            subtext: `Clearance Rate: ${clearanceRate.toFixed(1)}%`,
+            subtext: clearanceRate > 0 ? `Clearance: ${clearanceRate.toFixed(1)}%` : undefined,
           },
           {
             title: 'Most Affected Category',
             value: topCategory ? topCategory.category_name : 'None',
-            subtext: topCategory ? `${topCategory.incident_count.toLocaleString()} Incidents (${topCategory.percentage.toFixed(1)}%)` : '—',
+            subtext: topCategory ? `${topCategory.incident_count.toLocaleString()} Incidents (${topCategory.percentage.toFixed(1)}%)` : undefined,
           },
           {
             title: 'Highest-Crime Year',
             value: highestYear ? highestYear.period : '—',
-            subtext: highestYear ? `${highestYear.incident_count.toLocaleString()} Incidents recorded` : 'Historical peak',
+            subtext: highestYear ? `${highestYear.incident_count.toLocaleString()} Incidents` : undefined,
           },
           {
             title: 'Year-on-Year Trend',
             value: yoyChange !== null ? `${yoyChange >= 0 ? '+' : ''}${yoyChange.toFixed(1)}%` : '—',
-            subtext: trendItems.length >= 2 ? `${trendItems[trendItems.length - 1]?.period} vs ${trendItems[trendItems.length - 2]?.period}` : 'Annual rate of change',
+            subtext: trendItems.length >= 2 ? `${trendItems[trendItems.length - 1]?.period} vs ${trendItems[trendItems.length - 2]?.period}` : undefined,
           },
         ];
 
@@ -673,24 +672,22 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'Total Predicted Crimes',
               value: `${targetInt.toLocaleString()} Crimes`,
-              subtext: `Target: ${formattedPeriod}`,
             },
             {
               title: 'Active Crime Types',
               value: `${positiveTypes.length} Types`,
-              subtext: `Out of ${reconciledTypes.length} canonical categories`,
             },
             {
               title: 'Highest Predicted Type',
               value: topType ? topType.crime_name : 'None',
-              subtext: topType ? `${topType.display_count} Crimes projected` : '—',
+              subtext: topType ? `${topType.display_count} Crimes` : undefined,
             },
             {
               title: 'Baseline Comparison',
               value: pred.baseline_count !== null && pred.baseline_count !== undefined ? `${Math.round(pred.baseline_count).toLocaleString()} Crimes` : '—',
               subtext: typeof pred.percentage_change === 'number'
-                ? `${pred.percentage_change >= 0 ? '+' : ''}${pred.percentage_change.toFixed(1)}% vs 2025 baseline`
-                : 'Historical baseline comparison',
+                ? `${pred.percentage_change >= 0 ? '+' : ''}${pred.percentage_change.toFixed(1)}% vs baseline`
+                : undefined,
             },
           ];
 
@@ -743,22 +740,19 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'Total Predicted Crimes',
               value: `${Math.round(totalStateForecast).toLocaleString()} Crimes`,
-              subtext: `Across ${targetStateName}`,
             },
             {
               title: 'Districts Forecasted',
               value: `${items.length} Districts`,
-              subtext: `${positiveDistricts.length} units with projected incidents`,
             },
             {
               title: 'Highest-Volume District',
               value: topDistrict?.district_name || '—',
-              subtext: topDistrict ? `${Math.round(topDistrict.predicted_crime_count).toLocaleString()} Crimes` : '—',
+              subtext: topDistrict ? `${Math.round(topDistrict.predicted_crime_count).toLocaleString()} Crimes` : undefined,
             },
             {
               title: 'District Average',
               value: `${Math.round(totalStateForecast / (items.length || 1)).toLocaleString()} Crimes`,
-              subtext: 'Mean run-rate per district',
             },
           ];
 
@@ -818,22 +812,19 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'National Predicted Crimes',
               value: `${Math.round(nationalTotal).toLocaleString()} Crimes`,
-              subtext: 'Projected National Volume',
             },
             {
               title: 'States & UTs Forecasted',
               value: Object.keys(stateForecastMap).length.toString(),
-              subtext: '36 Administrative Units',
             },
             {
               title: 'Highest-Volume State',
               value: topState ? topState[0] : '—',
-              subtext: topState ? `${Math.round(topState[1]).toLocaleString()} Crimes` : '—',
+              subtext: topState ? `${Math.round(topState[1]).toLocaleString()} Crimes` : undefined,
             },
             {
               title: 'Average per State',
               value: `${Math.round(nationalTotal / (Object.keys(stateForecastMap).length || 1)).toLocaleString()} Crimes`,
-              subtext: 'State Run-Rate',
             },
           ];
 
@@ -930,24 +921,21 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'Risk Score',
+              title: 'Composite Risk Score',
               value: `${risk.overall_risk_score.toFixed(1)} / 100`,
-              subtext: 'Index Scale 0–100',
             },
             {
-              title: 'Risk Level',
+              title: 'Risk Level Classification',
               value: risk.risk_level,
-              subtext: `Band: ${risk.overall_risk_score >= 75 ? 'Critical (≥75)' : risk.overall_risk_score >= 50 ? 'High (50–74.9)' : risk.overall_risk_score >= 40 ? 'Moderate (40–49.9)' : 'Low (<40)'}`,
             },
             {
-              title: 'Jurisdiction Assessed',
+              title: 'Assessed Jurisdiction',
               value: risk.district_name || targetDistrictName,
-              subtext: `${risk.state_name || targetStateName} Police Jurisdiction`,
             },
             {
-              title: 'Relative Standing',
-              value: relativeRank ? `Rank ${relativeRank.rank} of ${relativeRank.total}` : 'Evaluated',
-              subtext: `Primary Driver: ${risk.strongest_driver || 'Incident Volume'}`,
+              title: 'Primary Risk Driver',
+              value: risk.strongest_driver || 'Incident Volume',
+              subtext: relativeRank ? `Rank ${relativeRank.rank} of ${relativeRank.total}` : undefined,
             },
           ];
 
@@ -998,24 +986,21 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'Mean Risk Score',
+              title: 'Composite Risk Score',
               value: `${avgScore.toFixed(1)} / 100`,
-              subtext: 'State Risk Index',
             },
             {
-              title: 'Primary Risk Level',
+              title: 'Risk Level Classification',
               value: primaryLevel,
-              subtext: `${highCount} High / Critical Districts`,
+            },
+            {
+              title: 'Assessed Jurisdiction',
+              value: targetStateName,
             },
             {
               title: 'Districts Assessed',
-              value: items.length.toString(),
-              subtext: `${targetStateName} Jurisdictions`,
-            },
-            {
-              title: 'Evaluation Period',
-              value: formattedPeriod,
-              subtext: 'Assessment Horizon',
+              value: `${items.length} Districts`,
+              subtext: `${highCount} High/Critical`,
             },
           ];
 
@@ -1064,24 +1049,20 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'National Mean Risk',
+              title: 'Composite Risk Score',
               value: `${avgScore.toFixed(1)} / 100`,
-              subtext: 'Composite National Index',
             },
             {
-              title: 'Primary Risk Level',
+              title: 'Risk Level Classification',
               value: primaryLevel,
-              subtext: 'National Assessment Level',
             },
             {
-              title: 'States & UTs Assessed',
-              value: items.length.toString(),
-              subtext: `${totalDistricts.toLocaleString()} Total Districts`,
+              title: 'Assessed Jurisdiction',
+              value: 'All India',
             },
             {
-              title: 'Evaluation Horizon',
-              value: formattedPeriod,
-              subtext: 'Operational Month',
+              title: 'Districts Assessed',
+              value: `${totalDistricts.toLocaleString()} Districts`,
             },
           ];
 
@@ -1177,22 +1158,19 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'Active Resource Pools',
               value: `${activePoolsCount} Pools`,
-              subtext: 'With positive operational demand',
             },
             {
               title: 'Recommended Personnel',
-              value: personnelPool ? `${personnelPool.recommended} Officers` : '—',
-              subtext: 'Unit-specific tactical staffing',
+              value: personnelPool ? `${personnelPool.recommended.toLocaleString()} Officers` : '—',
             },
             {
               title: 'Pools with Shortages',
               value: `${shortageCount} Pools`,
-              subtext: shortageCount === 0 ? 'No shortfall detected' : 'Requires reallocation',
+              subtext: shortageCount > 0 ? `${shortageCount} shortfalls` : 'No shortage',
             },
             {
               title: 'Fully Covered Pools',
               value: `${coveredCount} of ${activePoolsCount || 10} Pools`,
-              subtext: `${Math.round((coveredCount / (activePoolsCount || 10)) * 100)}% capacity coverage`,
             },
           ];
 
@@ -1269,22 +1247,19 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'Active Resource Pools',
               value: `${statePools.length} Pools`,
-              subtext: `Aggregated across ${items.length} districts`,
             },
             {
               title: 'Recommended Personnel',
               value: personnelPool ? `${personnelPool.recommended.toLocaleString()} Officers` : '—',
-              subtext: 'Statewide officer deployment',
             },
             {
-              title: 'Districts Assessed',
-              value: `${items.length} Districts`,
-              subtext: targetStateName,
+              title: 'Pools with Shortages',
+              value: '0 Pools',
+              subtext: 'No shortage',
             },
             {
-              title: 'Allocation Horizon',
-              value: formattedPeriod,
-              subtext: 'Operational Month',
+              title: 'Fully Covered Pools',
+              value: `${statePools.length} of ${statePools.length} Pools`,
             },
           ];
 
@@ -1351,24 +1326,21 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'Active Tactical Pools',
+              title: 'Active Resource Pools',
               value: `${poolBreakdown.length} Pools`,
-              subtext: 'Standardized BPR&D categories',
             },
             {
-              title: 'National Police Staffing',
+              title: 'Recommended Personnel',
               value: personnelPool ? `${personnelPool.recommended.toLocaleString()} Officers` : '—',
-              subtext: 'Aggregated national requirement',
             },
             {
-              title: 'Jurisdictions Covered',
-              value: `${fullOverview.configured_states_count} States/UTs`,
-              subtext: 'Statutory national coverage',
+              title: 'Pools with Shortages',
+              value: '0 Pools',
+              subtext: 'No shortage',
             },
             {
-              title: 'Coverage Status',
-              value: '100% Satisfied',
-              subtext: 'Zero structural shortfall',
+              title: 'Fully Covered Pools',
+              value: `${poolBreakdown.length} of ${poolBreakdown.length} Pools`,
             },
           ];
 
@@ -1418,14 +1390,12 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'Estimated Police Cost',
+              title: 'Total Police Cost',
               value: formatINR(budget.total_police_budget_requirement),
-              subtext: 'Direct Police Expenditure',
             },
             {
               title: 'Available Budget',
               value: budget.configured_budget !== null && budget.configured_budget !== undefined ? formatINR(budget.configured_budget) : 'Not Available',
-              subtext: budget.budget_verification_status || 'Sanctioned Treasury Allocation',
             },
             {
               title: 'Budget Balance',
@@ -1433,15 +1403,12 @@ export const ReportsPage: React.FC = () => {
                 ? `${budget.budget_gap_or_surplus >= 0 ? '+' : ''}${formatINR(budget.budget_gap_or_surplus)}`
                 : 'Cannot Calculate',
               subtext: budget.budget_gap_or_surplus !== null && budget.budget_gap_or_surplus !== undefined
-                ? budget.budget_gap_or_surplus >= 0
-                  ? 'Operating Surplus'
-                  : 'Operating Deficit'
-                : 'Budget baseline unconfigured',
+                ? (budget.budget_gap_or_surplus >= 0 ? 'Surplus' : 'Deficit')
+                : undefined,
             },
             {
               title: 'Partner Agency Cost',
               value: formatINR(budget.total_partner_agency_cost),
-              subtext: 'Health Dept. Ambulances (Separate)',
             },
           ];
 
@@ -1510,22 +1477,19 @@ export const ReportsPage: React.FC = () => {
             {
               title: 'Total Police Cost',
               value: formatINR(overview.total_police_budget_requirement),
-              subtext: `${distSummaryRes.total} Districts in ${targetStateName}`,
             },
             {
               title: 'Available State Budget',
               value: overview.total_configured_state_budget ? formatINR(overview.total_configured_state_budget) : 'Not Available',
-              subtext: 'Sanctioned State Allocation',
             },
             {
               title: 'State Budget Balance',
               value: overview.total_budget_gap_or_surplus !== null ? `${overview.total_budget_gap_or_surplus >= 0 ? '+' : ''}${formatINR(overview.total_budget_gap_or_surplus)}` : 'Cannot Calculate',
-              subtext: (overview.total_budget_gap_or_surplus || 0) >= 0 ? 'Operating Surplus' : 'Operating Deficit',
+              subtext: overview.total_budget_gap_or_surplus !== null ? ((overview.total_budget_gap_or_surplus || 0) >= 0 ? 'Surplus' : 'Deficit') : undefined,
             },
             {
               title: 'Partner Agency Cost',
               value: formatINR(overview.total_partner_agency_cost),
-              subtext: 'Health Dept. EMTs (Isolated)',
             },
           ];
 
@@ -1575,24 +1539,21 @@ export const ReportsPage: React.FC = () => {
 
           const cards: SummaryCardItem[] = [
             {
-              title: 'National Police Requirement',
+              title: 'Total Police Cost',
               value: formatINR(overview.total_police_budget_requirement),
-              subtext: 'Combined Police Expenditure',
             },
             {
               title: 'Available Budget',
               value: formatINR(overview.total_configured_state_budget),
-              subtext: '36 States/UTs Combined',
             },
             {
-              title: 'National Budget Balance',
+              title: 'Budget Balance',
               value: formatINR(overview.total_budget_gap_or_surplus),
-              subtext: overview.total_budget_gap_or_surplus >= 0 ? 'Operating Surplus' : 'Operating Deficit',
+              subtext: overview.total_budget_gap_or_surplus >= 0 ? 'Surplus' : 'Deficit',
             },
             {
               title: 'Partner Agency Cost',
               value: formatINR(overview.total_partner_agency_cost),
-              subtext: 'Health Department (Isolated)',
             },
           ];
 
@@ -3027,16 +2988,16 @@ export const ReportsPage: React.FC = () => {
         {hasGeneratedReport && !isGenerating && (
           <div className="rounded-xl border border-[#D9E1EA] bg-white shadow-2xs overflow-hidden print:border-none print:shadow-none p-5 print:p-0 space-y-4">
             {/* Common Header */}
-            <div className="border-b border-[#D9E1EA] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="border-b border-[#E2E8F0] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h1 className="text-lg font-bold text-[#0B1F3A]">{reportDisplayTitle}</h1>
-                <div className="text-xs text-[#5D6878] mt-0.5 font-medium">
-                  Scope: <strong className="text-[#0B1F3A] font-semibold">{reportLocationSubtitle}</strong>
+                <h1 className="text-xl font-bold text-[#0B1F3A]">{reportDisplayTitle}</h1>
+                <div className="text-xs text-[#5D6878] mt-0.5">
+                  Location: <span className="font-semibold text-[#0B1F3A]">{reportLocationSubtitle}</span>
                 </div>
               </div>
               <div className="text-left sm:text-right text-xs text-[#5D6878]">
                 <div>
-                  Reporting Period: <span className="font-semibold text-[#0B1F3A]">{formatPeriod(selectedPeriod)}</span>
+                  Period: <span className="font-semibold text-[#0B1F3A]">{formatPeriod(selectedPeriod)}</span>
                 </div>
                 <div>
                   Generated: <span className="text-[#0B1F3A] font-medium">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -3048,10 +3009,10 @@ export const ReportsPage: React.FC = () => {
             {currentCards.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 avoid-break">
                 {currentCards.map((sc, idx) => (
-                  <div key={idx} className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                  <div key={idx} className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">{sc.title}</div>
                     <div className="text-base font-bold text-[#0B1F3A] mt-1">{sc.value}</div>
-                    <div className="text-[11px] text-[#5D6878] mt-0.5">{sc.subtext}</div>
+                    {sc.subtext && <div className="text-[11px] text-[#5D6878] mt-0.5">{sc.subtext}</div>}
                   </div>
                 ))}
               </div>
@@ -3062,15 +3023,6 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'CRIME_STATISTICS' && statisticsData && (
               <div className="space-y-4">
-                {/* Short Data-Backed Plain-Language Interpretation */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-[#0B1F3A]">
-                  <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-[#0B1F3A]">Operational Summary:</span>
-                    <span className="text-[#5D6878]">{statisticsData.interpretation}</span>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Section 1: Historical Crime Trend */}
                   <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
@@ -3153,15 +3105,6 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'CRIME_PREDICTIONS' && predictionData && (
               <div className="space-y-4">
-                {/* Short Data-Backed Plain-Language Interpretation */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-[#0B1F3A]">
-                  <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-[#0B1F3A]">Forecast Interpretation:</span>
-                    <span className="text-[#5D6878]">{predictionData.interpretation}</span>
-                  </div>
-                </div>
-
                 {/* Section 1: Prediction Summary */}
                 <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Prediction Summary</h2>
@@ -3195,12 +3138,7 @@ export const ReportsPage: React.FC = () => {
 
                 {/* Section 2: Predicted Crime Breakdown */}
                 <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Predicted Crime Breakdown</h2>
-                    <span className="text-[11px] text-[#5D6878] italic">
-                      * Crime-type breakdown derived from historical district proportions applied to ML forecast.
-                    </span>
-                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Predicted Crime Breakdown</h2>
                   <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -3226,6 +3164,9 @@ export const ReportsPage: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                  <div className="text-[11px] text-[#5D6878] mt-1.5">
+                    Note: Crime-type breakdown is derived from historical proportions applied to machine learning forecast.
                   </div>
                 </div>
 
@@ -3283,61 +3224,10 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'RISK_ASSESSMENT' && riskData && (
               <div className="space-y-4">
-                {/* Methodological Clarification Callout */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-[#0B1F3A]">
-                  <AlertCircle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-amber-900">Risk Assessment Methodology Notice:</span>
-                    <span className="text-amber-800">{riskData.clarification}</span>
-                  </div>
-                </div>
-
-                {/* Plain-Language Interpretation */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-[#0B1F3A]">
-                  <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-[#0B1F3A]">Risk Summary:</span>
-                    <span className="text-[#5D6878]">{riskData.interpretation}</span>
-                  </div>
-                </div>
-
-                {/* Section 1: Risk Summary */}
-                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Risk Summary</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs">
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Composite Risk Score</span>
-                      <span className="text-base font-bold text-[#0B1F3A]">{riskData.riskScore.toFixed(1)} / 100</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Risk Level Classification</span>
-                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold mt-1 ${
-                        riskData.riskLevel === 'CRITICAL'
-                          ? 'bg-red-100 text-red-800'
-                          : riskData.riskLevel === 'HIGH'
-                          ? 'bg-amber-100 text-amber-800'
-                          : riskData.riskLevel === 'MODERATE'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        {riskData.riskLevel}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Assessed Jurisdiction</span>
-                      <span className="font-semibold text-[#0B1F3A]">{riskData.jurisdiction}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Primary Risk Driver</span>
-                      <span className="font-semibold text-[#1769AA]">{riskData.strongestDriver}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Risk Factor Contributions (For District Scope) */}
+                {/* Section 1: Risk Factor Contributions (For District Scope) */}
                 {riskData.factorContributions.length > 0 && (
                   <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Risk Factor Contributions</h2>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Risk Factor Contributions</h2>
                     <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#5D6878] border-b border-[#E2E8F0]">
@@ -3361,11 +3251,12 @@ export const ReportsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Section 3: Risk Comparison or Ranking */}
+                {/* Section 2: Risk Comparison or Ranking */}
                 {riskData.rankingRows.length > 0 && (
                   <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
                     <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
-                      {activeScope === 'ALL_INDIA' ? '3. State / UT Risk Rankings' : '3. Jurisdictional Risk Comparison'}
+                      {riskData.factorContributions.length > 0 ? '2. ' : '1. '}
+                      {activeScope === 'ALL_INDIA' ? 'State / UT Risk Rankings' : 'Jurisdictional Risk Comparison'}
                     </h2>
                     <div className="border border-[#E2E8F0] rounded-lg overflow-hidden max-h-56 overflow-y-auto">
                       <table className="w-full text-left text-xs">
@@ -3395,6 +3286,10 @@ export const ReportsPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                <div className="text-[11px] text-[#5D6878] mt-1.5">
+                  Note: Risk score is a relative assessment index based on crime patterns, not the probability that a crime will occur.
+                </div>
               </div>
             )}
 
@@ -3403,46 +3298,9 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'RESOURCE_ALLOCATION' && resourceData && (
               <div className="space-y-4">
-                {/* Methodological Clarification Callout */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-[#0B1F3A]">
-                  <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-[#0B1F3A]">Optimization Notice:</span>
-                    <span className="text-[#5D6878]">{resourceData.clarification}</span>
-                  </div>
-                </div>
-
-                {/* Section 1: Resource Requirement Summary */}
+                {/* Section 1: Resource-wise Allocation Table (5 Exact Columns) */}
                 <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Resource Requirement Summary</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs">
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Active Resource Pools</span>
-                      <span className="text-sm font-bold text-[#0B1F3A]">{resourceData.activePoolsCount} Pools</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Recommended Personnel</span>
-                      <span className="text-sm font-bold text-[#1769AA]">{resourceData.keyPoolRecommended}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Pools with Shortages</span>
-                      <span className="text-sm font-bold text-slate-800">{resourceData.shortageCount} Pools</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Fully Covered Pools</span>
-                      <span className="text-sm font-bold text-emerald-700">{resourceData.coveredCount} of {resourceData.activePoolsCount || 10} Pools</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Resource-wise Allocation Table (5 Exact Columns) */}
-                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Resource-wise Allocation Table</h2>
-                    <span className="text-[11px] text-[#5D6878] italic">
-                      * Emergency Response is administered by partner health agency.
-                    </span>
-                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Resource-wise Allocation Table</h2>
                   <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -3492,11 +3350,14 @@ export const ReportsPage: React.FC = () => {
                       </table>
                     </div>
                   </div>
+                  <div className="text-[11px] text-[#5D6878] mt-1.5">
+                    Note: Emergency Response is administered by partner health agency.
+                  </div>
                 </div>
 
-                {/* Section 3: Shortage Summary */}
+                {/* Section 2: Shortage Summary */}
                 <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">3. Shortage Summary</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Shortage Summary</h2>
                   <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs">
                     {resourceData.shortageCount === 0 ? (
                       <div className="flex items-center gap-2 text-emerald-800">
@@ -3527,15 +3388,6 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'BUDGET_ANALYSIS' && budgetData && (
               <div className="space-y-4">
-                {/* Calculation Formula Callout */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-[#0B1F3A]">
-                  <Info className="h-4 w-4 text-[#1769AA] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block text-[#0B1F3A]">Budget Formula:</span>
-                    <span className="text-[#5D6878]">{budgetData.calculationNote}</span>
-                  </div>
-                </div>
-
                 {/* Summary Breakdown Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Section 1: Police Expenditure Breakdown */}
@@ -3632,12 +3484,7 @@ export const ReportsPage: React.FC = () => {
 
                 {/* Section 4: Partner Agency Cost (Separate) */}
                 <div className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-3 text-xs flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                  <div>
-                    <span className="font-bold text-slate-900 block">4. Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)</span>
-                    <span className="text-[11px] text-slate-500">
-                      Funded under inter-departmental health accounts and strictly excluded from police departmental budget accounts.
-                    </span>
-                  </div>
+                  <span className="font-bold text-slate-900">4. Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)</span>
                   <span className="font-mono font-bold text-slate-900 text-sm">{formatINR(budgetData.partnerCost)}</span>
                 </div>
 
@@ -3681,55 +3528,49 @@ export const ReportsPage: React.FC = () => {
               <div className="space-y-4">
                 {/* 4 Core Summary Cards for Comprehensive Dossier */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 avoid-break">
-                  <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">Historical Crimes</div>
                     <div className="text-base font-bold text-[#0B1F3A] mt-1">
                       {comprehensiveData.historical.status === 'success'
                         ? comprehensiveData.historical.totalIncidents.toLocaleString()
                         : '—'}
                     </div>
-                    <div className="text-[11px] text-[#5D6878] mt-0.5">
-                      {comprehensiveData.historical.status === 'success'
-                        ? `Clearance: ${comprehensiveData.historical.clearanceRatePct.toFixed(1)}%`
-                        : 'Data pending'}
-                    </div>
+                    {comprehensiveData.historical.status === 'success' && (
+                      <div className="text-[11px] text-[#5D6878] mt-0.5">
+                        {`Clearance: ${comprehensiveData.historical.clearanceRatePct.toFixed(1)}%`}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">Predicted Crimes</div>
                     <div className="text-base font-bold text-[#0B1F3A] mt-1">
                       {comprehensiveData.prediction.status === 'success'
                         ? `${formatPredictedCount(comprehensiveData.prediction.projectedIncidents)} Crimes`
                         : '—'}
                     </div>
-                    <div className="text-[11px] text-[#5D6878] mt-0.5">
-                      {comprehensiveData.prediction.status === 'success' ? (
-                        comprehensiveData.prediction.baselineCount !== null
-                          ? `Baseline: ${comprehensiveData.prediction.baselineCount} (${(comprehensiveData.prediction.percentageChange || 0) >= 0 ? '+' : ''}${comprehensiveData.prediction.percentageChange ?? 0}%)`
-                          : comprehensiveData.prediction.intervalLower !== null && comprehensiveData.prediction.intervalUpper !== null
-                          ? `Range: [${Math.round(comprehensiveData.prediction.intervalLower)} – ${Math.round(comprehensiveData.prediction.intervalUpper)}]`
-                          : `Target: ${comprehensiveData.periodFormatted}`
-                      ) : (
-                        'Model pending'
-                      )}
-                    </div>
+                    {comprehensiveData.prediction.status === 'success' && typeof comprehensiveData.prediction.percentageChange === 'number' && (
+                      <div className="text-[11px] text-[#5D6878] mt-0.5">
+                        {`${comprehensiveData.prediction.percentageChange >= 0 ? '+' : ''}${comprehensiveData.prediction.percentageChange}% vs baseline`}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">Risk Score</div>
                     <div className="text-base font-bold text-[#0B1F3A] mt-1">
                       {comprehensiveData.risk.status === 'success'
                         ? `${comprehensiveData.risk.riskScore.toFixed(1)} / 100`
                         : '—'}
                     </div>
-                    <div className="text-[11px] font-semibold text-[#1769AA] mt-0.5">
-                      {comprehensiveData.risk.status === 'success'
-                        ? `Level: ${comprehensiveData.risk.riskLevel}`
-                        : 'Assessment pending'}
-                    </div>
+                    {comprehensiveData.risk.status === 'success' && (
+                      <div className="text-[11px] font-semibold text-[#1769AA] mt-0.5">
+                        {`Level: ${comprehensiveData.risk.riskLevel}`}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="rounded-lg border border-[#D9E1EA] bg-white p-3 shadow-2xs">
+                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">Available Budget</div>
                     <div className="text-base font-bold text-[#0B1F3A] mt-1">
                       {comprehensiveData.budget.status === 'success'
@@ -3738,15 +3579,11 @@ export const ReportsPage: React.FC = () => {
                           : 'Not Available'
                         : '—'}
                     </div>
-                    <div className="text-[11px] text-[#5D6878] mt-0.5">
-                      {comprehensiveData.budget.status === 'success' ? (
-                        comprehensiveData.budget.netBalance !== null
-                          ? `Balance: ${formatINR(comprehensiveData.budget.netBalance)} (${comprehensiveData.budget.balanceStatus === 'SURPLUS' ? 'Surplus' : 'Deficit'})`
-                          : 'Balance: Cannot Calculate'
-                      ) : (
-                        'Budget pending'
-                      )}
-                    </div>
+                    {comprehensiveData.budget.status === 'success' && comprehensiveData.budget.netBalance !== null && (
+                      <div className="text-[11px] text-[#5D6878] mt-0.5">
+                        {`${comprehensiveData.budget.balanceStatus === 'SURPLUS' ? 'Surplus' : 'Deficit'}`}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3804,13 +3641,8 @@ export const ReportsPage: React.FC = () => {
                 </div>
 
                 {/* Section 2: Crime Prediction */}
-                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-3 avoid-break">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Crime Prediction</h2>
-                    <span className="text-[11px] text-[#5D6878] italic">
-                      * Breakdown derived from historical proportions applied to ML forecast.
-                    </span>
-                  </div>
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-3 avoid-break">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Crime Prediction</h2>
                   {comprehensiveData.prediction.status === 'error' ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
                       Crime prediction model temporarily unavailable.
@@ -3866,12 +3698,15 @@ export const ReportsPage: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
+                      <div className="text-[11px] text-[#5D6878] mt-1.5">
+                        Note: Crime-type breakdown is derived from historical proportions applied to machine learning forecast.
+                      </div>
                     </>
                   )}
                 </div>
 
                 {/* Section 3: Crime Risk Assessment */}
-                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-3 avoid-break">
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-3 avoid-break">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">3. Crime Risk Assessment</h2>
                     <div className="text-xs">
@@ -3881,108 +3716,109 @@ export const ReportsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-2 text-[11px] text-amber-900">
-                    Risk score is a relative assessment index based on crime patterns. It is not the probability that a crime will occur.
-                  </div>
-
                   {comprehensiveData.risk.status === 'error' ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
                       Risk assessment data temporarily unavailable.
                     </div>
                   ) : (
-                    <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#5D6878] border-b border-[#E2E8F0]">
-                          <tr>
-                            {comprehensiveData.scope === 'DISTRICT' ? (
-                              <>
-                                <th className="px-3 py-1.5">Risk Factor</th>
-                                <th className="px-3 py-1.5 text-right">Contribution</th>
-                              </>
-                            ) : (
-                              <>
-                                <th className="px-3 py-1.5">
-                                  {comprehensiveData.scope === 'STATE' ? 'District' : 'State / UT'}
-                                </th>
-                                <th className="px-3 py-1.5 text-right">Risk Score</th>
-                                <th className="px-3 py-1.5 text-center">Risk Level</th>
-                              </>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {comprehensiveData.risk.tableRows.slice(0, 15).map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/50">
+                    <>
+                      <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#5D6878] border-b border-[#E2E8F0]">
+                            <tr>
                               {comprehensiveData.scope === 'DISTRICT' ? (
                                 <>
-                                  <td className="px-3 py-1.5 text-slate-800 font-medium">{row.factor_name}</td>
-                                  <td className="px-3 py-1.5 text-right font-medium text-[#0B1F3A]">{row.contribution}</td>
+                                  <th className="px-3 py-1.5">Risk Factor</th>
+                                  <th className="px-3 py-1.5 text-right">Contribution</th>
                                 </>
                               ) : (
                                 <>
-                                  <td className="px-3 py-1.5 text-slate-800 font-medium">{row.district_name || row.state_name}</td>
-                                  <td className="px-3 py-1.5 text-right font-medium text-[#0B1F3A]">{row.risk_score || row.mean_risk_score}</td>
-                                  <td className="px-3 py-1.5 text-center text-slate-600">{row.risk_level || row.primary_risk_level}</td>
+                                  <th className="px-3 py-1.5">
+                                    {comprehensiveData.scope === 'STATE' ? 'District' : 'State / UT'}
+                                  </th>
+                                  <th className="px-3 py-1.5 text-right">Risk Score</th>
+                                  <th className="px-3 py-1.5 text-center">Risk Level</th>
                                 </>
                               )}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {comprehensiveData.risk.tableRows.slice(0, 15).map((row, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                {comprehensiveData.scope === 'DISTRICT' ? (
+                                  <>
+                                    <td className="px-3 py-1.5 text-slate-800 font-medium">{row.factor_name}</td>
+                                    <td className="px-3 py-1.5 text-right font-medium text-[#0B1F3A]">{row.contribution}</td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-3 py-1.5 text-slate-800 font-medium">{row.district_name || row.state_name}</td>
+                                    <td className="px-3 py-1.5 text-right font-medium text-[#0B1F3A]">{row.risk_score || row.mean_risk_score}</td>
+                                    <td className="px-3 py-1.5 text-center text-slate-600">{row.risk_level || row.primary_risk_level}</td>
+                                  </>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="text-[11px] text-[#5D6878] mt-1.5">
+                        Note: Risk score is a relative assessment index based on crime patterns, not the probability that a crime will occur.
+                      </div>
+                    </>
                   )}
                 </div>
 
                 {/* Section 4: Resource Allocation */}
-                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-3 avoid-break">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">4. Resource Allocation</h2>
-                    <span className="text-[11px] text-[#5D6878] italic">
-                      * Optimizer recommended allocations under capacity constraints.
-                    </span>
-                  </div>
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-3 avoid-break">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">4. Resource Allocation</h2>
 
                   {comprehensiveData.resources.status === 'error' ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
                       Resource allocation calculations temporarily unavailable.
                     </div>
                   ) : (
-                    <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#5D6878] border-b border-[#E2E8F0]">
-                          <tr>
-                            <th className="px-3 py-1.5">Resource Pool</th>
-                            <th className="px-3 py-1.5 text-right">Required Units</th>
-                            <th className="px-3 py-1.5 text-right">Recommended Units</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {comprehensiveData.resources.tableRows.map((p, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/50">
-                              <td className="px-3 py-1.5 text-slate-800 font-medium">
-                                {p.resourceName}
-                                {p.isPartner && (
-                                  <span className="ml-2 text-[9px] text-amber-700 font-bold bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
-                                    Partner Agency
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-3 py-1.5 text-right text-slate-700 font-mono">
-                                {p.demandedUnits.toLocaleString()} {p.unit}
-                              </td>
-                              <td className="px-3 py-1.5 text-right font-bold text-[#0B1F3A] font-mono">
-                                {p.recommendedUnits.toLocaleString()} {p.unit}
-                              </td>
+                    <>
+                      <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#5D6878] border-b border-[#E2E8F0]">
+                            <tr>
+                              <th className="px-3 py-1.5">Resource Pool</th>
+                              <th className="px-3 py-1.5 text-right">Required Units</th>
+                              <th className="px-3 py-1.5 text-right">Recommended Units</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {comprehensiveData.resources.tableRows.map((p, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="px-3 py-1.5 text-slate-800 font-medium">
+                                  {p.resourceName}
+                                  {p.isPartner && (
+                                    <span className="ml-2 text-[9px] text-amber-700 font-bold bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
+                                      Partner Agency
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-1.5 text-right text-slate-700 font-mono">
+                                  {p.demandedUnits.toLocaleString()} {p.unit}
+                                </td>
+                                <td className="px-3 py-1.5 text-right font-bold text-[#0B1F3A] font-mono">
+                                  {p.recommendedUnits.toLocaleString()} {p.unit}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="text-[11px] text-[#5D6878] mt-1.5">
+                        Note: Emergency Response is administered by partner health agency.
+                      </div>
+                    </>
                   )}
                 </div>
 
                 {/* Section 5: Budget Analysis */}
-                <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 space-y-3 avoid-break">
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-3 avoid-break">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">5. Budget Analysis</h2>
 
                   {comprehensiveData.budget.status === 'error' ? (
@@ -4053,10 +3889,7 @@ export const ReportsPage: React.FC = () => {
 
                       {/* Partner Agency Cost Separated */}
                       <div className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-2.5 text-xs flex justify-between items-center">
-                        <div>
-                          <span className="font-semibold text-slate-900">Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)</span>
-                          <span className="text-[10px] text-slate-500 block">Separated from police departmental budget accounts</span>
-                        </div>
+                        <span className="font-semibold text-slate-900">Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)</span>
                         <span className="font-bold text-slate-900 text-xs font-mono">{formatINR(comprehensiveData.budget.partnerCost)}</span>
                       </div>
                     </>
