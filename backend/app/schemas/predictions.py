@@ -18,6 +18,9 @@ class PredictionItemResponse(BaseModel):
     predicted_crime_count: float
     prediction_interval_lower: Optional[float] = None
     prediction_interval_upper: Optional[float] = None
+    display_predicted_count: Optional[int] = None
+    display_interval_lower: Optional[int] = None
+    display_interval_upper: Optional[int] = None
     confidence_lower: Optional[float] = None
     confidence_upper: Optional[float] = None
     forecast_status: str = "CURRENT_FUTURE_FORECAST"
@@ -111,6 +114,9 @@ class ActualVsPredictedPoint(BaseModel):
     predicted_count: Optional[float] = None
     prediction_interval_lower: Optional[float] = None
     prediction_interval_upper: Optional[float] = None
+    display_predicted_count: Optional[int] = None
+    display_interval_lower: Optional[int] = None
+    display_interval_upper: Optional[int] = None
     confidence_lower: Optional[float] = None
     confidence_upper: Optional[float] = None
     forecast_status: Optional[str] = None
@@ -184,6 +190,9 @@ class DistrictMonthPredictionResponse(BaseModel):
     parent_baseline_count: Optional[float] = None
     prediction_interval_lower: Optional[float] = None
     prediction_interval_upper: Optional[float] = None
+    display_predicted_count: Optional[int] = None
+    display_interval_lower: Optional[int] = None
+    display_interval_upper: Optional[int] = None
     has_baseline: bool
     baseline_year: Optional[int] = None
     baseline_month: Optional[int] = None
@@ -204,6 +213,7 @@ class CategoryForecastItem(BaseModel):
     category_name: str
     severity_weight: float
     predicted_count: float
+    display_predicted_count: Optional[int] = None
     historical_baseline_count: Optional[float] = None
     baseline_period: Optional[str] = None
     numerical_change: Optional[float] = None
@@ -221,6 +231,7 @@ class CrimeTypeForecastItem(BaseModel):
     category_name: str
     severity_level: str  # "LOW", "MEDIUM", "HIGH", "CRITICAL"
     predicted_count: float
+    display_predicted_count: Optional[int] = None
     historical_baseline_count: Optional[float] = None
     baseline_period: Optional[str] = None
     numerical_change: Optional[float] = None
@@ -246,6 +257,7 @@ class PredictionBreakdownResponse(BaseModel):
     is_forecast: bool
     is_historical: bool
     total_predicted_count: float
+    total_display_predicted_count: Optional[int] = None
     total_actual_count: Optional[int] = None
     parent_baseline_count: Optional[float] = None
     reconciliation_difference: float = 0.0

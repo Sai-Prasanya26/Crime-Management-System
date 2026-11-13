@@ -43,8 +43,8 @@ class TestMLPredictionsPhase8(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
-        self.assertEqual(data["total_predictions"], 21760)
-        self.assertEqual(data["districts_covered"], 640)
+        self.assertEqual(data["total_predictions"], 23252)
+        self.assertEqual(data["districts_covered"], 790)
         self.assertEqual(data["active_model_name"], "HGBR production forecasting model v1")
         self.assertEqual(data["active_model_version"], "v1.0.0")
         self.assertEqual(data["algorithm"], "HistGradientBoostingRegressor")
@@ -180,7 +180,7 @@ class TestMLPredictionsPhase8(unittest.TestCase):
             self.assertEqual(incidents_count, 191679, "Historical incidents count must remain exactly 191,679")
 
             predictions_count = db.execute(text("SELECT COUNT(*) FROM crime_predictions")).scalar()
-            self.assertEqual(predictions_count, 21760, "Predictions count must be 21,760")
+            self.assertEqual(predictions_count, 23728, "Predictions count must be 23,728")
 
             active_states = db.execute(text("SELECT COUNT(*) FROM states WHERE is_active = 1")).scalar()
             self.assertEqual(active_states, 36, "Active states/UTs must be 36")

@@ -41,6 +41,8 @@ class CrimePrediction(Base):
     prediction_interval_lower = Column(DECIMAL(10, 2), nullable=True)
     prediction_interval_upper = Column(DECIMAL(10, 2), nullable=True)
     forecast_status = Column(String(30), nullable=False, default="CURRENT_FUTURE_FORECAST")
+    is_derived_from_parent = Column(Boolean, nullable=False, default=False)
+    parent_district_id = Column(Integer, ForeignKey("districts.id", ondelete="SET NULL"), nullable=True)
     forecast_origin_date = Column(Date, nullable=True)
     horizon_step = Column(Integer, nullable=True)
     is_latest = Column(Boolean, nullable=False, default=True)
@@ -55,6 +57,6 @@ class CrimePrediction(Base):
     )
 
     # Relationships
-    district = relationship("District", back_populates="predictions")
+    district = relationship("District", back_populates="predictions", foreign_keys=[district_id])
     crime_type = relationship("CrimeType", back_populates="predictions")
     model = relationship("MLModel", back_populates="predictions")

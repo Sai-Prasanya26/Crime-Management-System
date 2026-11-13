@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   ShieldCheck,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +25,16 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Check if directed here due to token expiration (from React Router state or sessionStorage fallback)
+  const [sessionExpiredNotice] = useState<boolean>(() => {
+    const fromState = (location.state as any)?.sessionExpired;
+    const fromStorage = sessionStorage.getItem('cms_session_expired') === 'true';
+    if (fromStorage) {
+      sessionStorage.removeItem('cms_session_expired');
+    }
+    return Boolean(fromState || fromStorage);
+  });
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
@@ -130,6 +141,19 @@ export const LoginPage: React.FC = () => {
                 Authorized personnel only.
               </p>
             </div>
+
+            {/* Session Expired Notice Banner */}
+            {sessionExpiredNotice && !errorMessage && (
+              <div className="mt-4 flex items-start gap-2.5 rounded border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 shadow-2xs">
+                <Clock className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                <div>
+                  <p className="font-semibold text-amber-900">Operational Session Expired</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                    Your security access token has expired. Please sign in with your credentials to resume your session.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Error Message */}
             {errorMessage && (

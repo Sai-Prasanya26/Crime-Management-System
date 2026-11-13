@@ -10,6 +10,9 @@ export interface PredictionItem {
   predicted_crime_count: number;
   prediction_interval_lower?: number | null;
   prediction_interval_upper?: number | null;
+  display_predicted_count?: number | null;
+  display_interval_lower?: number | null;
+  display_interval_upper?: number | null;
   confidence_lower?: number | null;
   confidence_upper?: number | null;
   forecast_status: string;
@@ -94,6 +97,9 @@ export interface ActualVsPredictedPoint {
   predicted_count?: number | null;
   prediction_interval_lower?: number | null;
   prediction_interval_upper?: number | null;
+  display_predicted_count?: number | null;
+  display_interval_lower?: number | null;
+  display_interval_upper?: number | null;
   confidence_lower?: number | null;
   confidence_upper?: number | null;
   forecast_status?: string | null;
@@ -131,6 +137,9 @@ export interface DistrictMonthPrediction {
   parent_baseline_count?: number | null;
   prediction_interval_lower?: number | null;
   prediction_interval_upper?: number | null;
+  display_predicted_count?: number | null;
+  display_interval_lower?: number | null;
+  display_interval_upper?: number | null;
   has_baseline: boolean;
   baseline_year?: number | null;
   baseline_month?: number | null;
@@ -151,6 +160,9 @@ export interface CategoryForecastItem {
   category_name: string;
   severity_weight: number;
   predicted_count: number;
+  display_predicted_count?: number | null;
+  integer_count?: number;
+  display_count?: string;
   historical_baseline_count?: number | null;
   baseline_period?: string | null;
   numerical_change?: number | null;
@@ -168,6 +180,9 @@ export interface CrimeTypeForecastItem {
   category_name: string;
   severity_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   predicted_count: number;
+  display_predicted_count?: number | null;
+  integer_count?: number;
+  display_count?: string;
   historical_baseline_count?: number | null;
   baseline_period?: string | null;
   numerical_change?: number | null;
@@ -193,6 +208,7 @@ export interface PredictionBreakdownResponse {
   is_forecast: boolean;
   is_historical: boolean;
   total_predicted_count: number;
+  total_display_predicted_count?: number | null;
   total_actual_count?: number | null;
   parent_baseline_count?: number | null;
   reconciliation_difference: number;

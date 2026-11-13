@@ -15,6 +15,10 @@ class GeographyRepository:
         return query.order_by(State.state_name.asc()).all()
 
     @staticmethod
+    def get_state_by_id(db: Session, state_id: int) -> Optional[State]:
+        return db.query(State).filter(State.id == state_id).first()
+
+    @staticmethod
     def get_districts(
         db: Session,
         state_id: Optional[int] = None,

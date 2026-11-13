@@ -63,11 +63,14 @@ class DistrictListResponse(BaseModel):
 
 class DistrictDemographicsData(BaseModel):
     census_year: int
-    total_population: int
-    male_population: int
-    female_population: int
-    literate_population: int
-    total_workers: int
+    total_population: Optional[int] = None
+    male_population: Optional[int] = None
+    female_population: Optional[int] = None
+    literate_population: Optional[int] = None
+    total_workers: Optional[int] = None
+    is_derived: Optional[bool] = False
+    data_provenance: Optional[str] = None
+    derived_source: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

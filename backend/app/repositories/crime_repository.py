@@ -16,29 +16,36 @@ class CrimeRepository:
         geography_mode: str = "current",
     ) -> Optional[List[int]]:
         """
-        Resolves historical Census 2011 district IDs corresponding to filter parameters.
+        Resolves district IDs corresponding to filter parameters.
         Ensures dual-layer compatibility:
-        - Modern child districts (e.g. current Hyderabad ID 644) resolve to historical parent (ID 9).
-        - In current admin mode: modern state filters (e.g. Telangana State ID 36) resolve to historical parent districts (IDs: 4, 9, 10, ...).
-        - In current admin mode: modern AP (State ID 2) resolves to the 13 true AP historical districts (excluding Telangana).
-        - In historical mode: historical state filters (e.g. undivided AP State ID 2) resolve to all 23 Census 2011 districts.
+        - Modern 1:1 transferred districts (Hyderabad 644, Daman 689, Diu 690) resolve directly to their modern IDs.
+        - Other modern carved districts resolve to their historical parent where unresolved incidents reside.
+        - In current admin mode: modern state filters (e.g. Telangana 36) resolve to active IDs + historical parents.
+        - In historical mode: historical state filters (e.g. undivided AP 2) resolve to Census 2011 districts (including transferred 644).
         """
+        transfers_hist_to_curr = {9: 644, 128: 689, 129: 690}
+        transfers_curr_to_hist = {644: 9, 689: 128, 690: 129}
+
         if district_id is not None:
-            dist = db.query(District).filter(District.id == district_id).first()
-            if dist:
-                if geography_mode == "current":
+            if geography_mode == "current":
+                if district_id in transfers_curr_to_hist:
+                    return [district_id]
+                dist = db.query(District).filter(District.id == district_id).first()
+                if dist:
                     if dist.parent_district_id and not dist.is_census_2011:
-                        return [dist.parent_district_id]
-                    if not dist.is_census_2011:
-                        mapped = (
-                            db.query(DistrictGeographyMapping.historical_district_id)
-                            .filter(DistrictGeographyMapping.current_district_id == district_id)
-                            .all()
-                        )
-                        if mapped:
-                            return [r[0] for r in mapped]
-                return [dist.id]
-            return [district_id]
+                        p_id = transfers_hist_to_curr.get(dist.parent_district_id, dist.parent_district_id)
+                        return [p_id]
+                    return [dist.id]
+                return [district_id]
+            else:
+                hist_id = transfers_curr_to_hist.get(district_id, district_id)
+                dist = db.query(District).filter(District.id == hist_id).first()
+                if dist and dist.parent_district_id and not dist.is_census_2011:
+                    p_id = dist.parent_district_id
+                    curr_p = transfers_hist_to_curr.get(p_id, p_id)
+                    return list(set([p_id, curr_p]))
+                curr_id = transfers_hist_to_curr.get(hist_id, hist_id)
+                return list(set([hist_id, curr_id]))
         elif state_id is not None:
             if geography_mode == "current":
                 mapped_ids = (
@@ -49,21 +56,38 @@ class CrimeRepository:
                     .all()
                 )
                 if mapped_ids:
-                    return [r[0] for r in mapped_ids]
+                    res = [transfers_hist_to_curr.get(r[0], r[0]) for r in mapped_ids]
+                    return list(set(res))
                 else:
                     dist_ids = (
                         db.query(District.id)
-                        .filter(District.state_id == state_id, District.is_census_2011 == True)
+                        .filter(District.state_id == state_id, District.is_current_admin == True)
                         .all()
                     )
-                    return [r[0] for r in dist_ids]
+                    active_ids = [r[0] for r in dist_ids]
+                    resolved = []
+                    for aid in active_ids:
+                        if aid in transfers_curr_to_hist:
+                            resolved.append(aid)
+                        else:
+                            d = db.query(District).filter(District.id == aid).first()
+                            if d and d.parent_district_id and not d.is_census_2011:
+                                resolved.append(transfers_hist_to_curr.get(d.parent_district_id, d.parent_district_id))
+                            else:
+                                resolved.append(aid)
+                    return list(set(resolved))
             else:
                 dist_ids = (
                     db.query(District.id)
                     .filter(District.state_id == state_id, District.is_census_2011 == True)
                     .all()
                 )
-                return [r[0] for r in dist_ids]
+                raw_ids = [r[0] for r in dist_ids]
+                expanded = set(raw_ids)
+                for hid in raw_ids:
+                    if hid in transfers_hist_to_curr:
+                        expanded.add(transfers_hist_to_curr[hid])
+                return list(expanded)
         return None
 
     @staticmethod

@@ -33,6 +33,10 @@ class CrimeRiskScore(Base):
     explanation_summary = Column(Text, nullable=True)
     population_density_factor = Column(DECIMAL(5, 2), nullable=False)
     calculation_version = Column(String(20), nullable=False, default="risk-v1.0")
+    assessment_provenance = Column(String(60), default="INDEPENDENT")
+    is_derived_lineage = Column(Boolean, default=False)
+    parent_district_id = Column(Integer, ForeignKey("districts.id", ondelete="SET NULL"), nullable=True)
+    cohort_size = Column(Integer, default=790)
     generated_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     __table_args__ = (
@@ -42,7 +46,7 @@ class CrimeRiskScore(Base):
     )
 
     # Relationships
-    district = relationship("District", back_populates="risk_scores")
+    district = relationship("District", back_populates="risk_scores", foreign_keys=[district_id])
     model = relationship("MLModel")
 
 

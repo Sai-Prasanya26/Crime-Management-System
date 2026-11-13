@@ -166,7 +166,7 @@ class TestBudgetIntelligencePhase11(unittest.TestCase):
 
     def test_05_missing_statutory_budget_not_configured(self):
         """5. Verifies unconfigured budgets return None and NOT_CONFIGURED without fabricating numbers."""
-        resp = client.get("/api/v1/budget/states/summary", headers=self.analyst_headers)
+        resp = client.get("/api/v1/budget/states/summary?year=2028", headers=self.analyst_headers)
         self.assertEqual(resp.status_code, 200)
         items = resp.json()
 

@@ -199,9 +199,9 @@ class CrimeResourceOptimizationService:
                 )
             )
 
-        # Integer shared capacity demand: ceil(raw_demand)
+        # Integer shared capacity demand: ceil(raw_demand) with 0.05 planning activation threshold
         integer_demands: Dict[str, int] = {
-            pool: max(int(np.ceil(val)), 1 if val > 0.05 else 0)
+            pool: int(np.ceil(val)) if val >= 0.05 else 0
             for pool, val in raw_demands_by_pool.items()
         }
 

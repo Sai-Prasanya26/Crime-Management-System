@@ -43,6 +43,8 @@ class RiskItemResponse(BaseModel):
     parent_district_id: Optional[int] = None
     parent_district_name: Optional[str] = None
     is_derived_from_parent: bool = False
+    assessment_provenance: Optional[str] = None
+    cohort_size: Optional[int] = None
 
 
 class DistrictRiskDetailResponse(BaseModel):
@@ -52,7 +54,7 @@ class DistrictRiskDetailResponse(BaseModel):
     district_name: str
     state_id: int
     state_name: str
-    census_2011_population: int
+    census_2011_population: Optional[int] = None
     period_year: int
     period_month: int
     assessment_period: str
@@ -77,6 +79,8 @@ class DistrictRiskDetailResponse(BaseModel):
     parent_district_id: Optional[int] = None
     parent_district_name: Optional[str] = None
     is_derived_from_parent: bool = False
+    assessment_provenance: Optional[str] = None
+    cohort_size: Optional[int] = None
     notes: Optional[str] = None
 
 

@@ -88,7 +88,7 @@ class TestRiskAssessmentPhase9(unittest.TestCase):
 
         # Verify aggregate attributes for each state
         total_assessed_districts = sum(item["assessed_districts_count"] for item in items)
-        self.assertEqual(total_assessed_districts, 640)
+        self.assertEqual(total_assessed_districts, 790)
 
         for item in items:
             self.assertIn("mean_risk_score", item)
@@ -98,7 +98,7 @@ class TestRiskAssessmentPhase9(unittest.TestCase):
             self.assertLessEqual(item["mean_risk_score"], 100.0)
 
     def test_02_risk_distribution_four_categories(self):
-        """2. Category Distribution Endpoint: 4 categories summing to 640 districts and ~100%."""
+        """2. Category Distribution Endpoint: 4 categories summing to 790 districts and ~100%."""
         resp = client.get(
             "/api/v1/risk/distribution?assessment_period=2026-11-01",
             headers=self.admin_headers,
@@ -106,7 +106,7 @@ class TestRiskAssessmentPhase9(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
-        self.assertEqual(data["total_assessed_districts"], 640)
+        self.assertEqual(data["total_assessed_districts"], 790)
         dist = data["distribution"]
         pcts = data["percentages"]
         thresholds = data["thresholds"]
@@ -117,9 +117,9 @@ class TestRiskAssessmentPhase9(unittest.TestCase):
             self.assertIn(cat, pcts)
             self.assertIn(cat, thresholds)
 
-        # Sum of counts must equal 640
+        # Sum of counts must equal 790
         total_count = sum(dist[cat] for cat in ["LOW", "MODERATE", "HIGH", "CRITICAL"])
-        self.assertEqual(total_count, 640)
+        self.assertEqual(total_count, 790)
 
         # Sum of percentages must equal 100.0 (allow small float rounding tolerance)
         total_pct = sum(pcts[cat] for cat in ["LOW", "MODERATE", "HIGH", "CRITICAL"])
@@ -247,13 +247,13 @@ class TestRiskAssessmentPhase9(unittest.TestCase):
                 "Historical crime incidents count was unexpectedly modified!",
             )
 
-            # Crime predictions count
+            # Crime predictions count (21,760 baseline + 1,968 derived for 164 carved districts = 23,728)
             predictions_count = conn.execute(
                 text("SELECT COUNT(*) FROM crime_predictions")
             ).scalar()
             self.assertEqual(
                 predictions_count,
-                21760,
+                23728,
                 "Crime predictions count was unexpectedly modified!",
             )
 

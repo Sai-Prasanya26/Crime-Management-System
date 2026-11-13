@@ -20,6 +20,7 @@ import HourlyDistributionChart from '../components/charts/HourlyDistributionChar
 import VictimDemographicsChart from '../components/charts/VictimDemographicsChart';
 import WeaponDistributionChart from '../components/charts/WeaponDistributionChart';
 import TopDistrictsTable from '../components/charts/TopDistrictsTable';
+import OperationsOverviewSection from '../components/dashboard/OperationsOverviewSection';
 import { analyticsApi } from '../api';
 import type {
   FilterParams,
@@ -314,6 +315,14 @@ export const DashboardPage: React.FC = () => {
                 isLoading={isRefreshing}
               />
             )}
+          </div>
+
+          {/* 7. Crime & Resource Operations Overview */}
+          <div id="operations-overview-section" className="w-full min-w-0">
+            <OperationsOverviewSection
+              filters={filters}
+              isRefreshing={isRefreshing}
+            />
           </div>
         </div>
       )}

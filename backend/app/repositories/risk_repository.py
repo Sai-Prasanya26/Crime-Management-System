@@ -30,17 +30,23 @@ class RiskRepository:
 
     @staticmethod
     def get_census_demographics(db: Session, census_year: int = 2011) -> List[Dict[str, Any]]:
-        """Retrieves official Census 2011 demographic baselines for all historical districts."""
+        """Retrieves Census 2011 demographic baselines for all 790 active canonical districts."""
         sql = text("""
             SELECT d.id AS district_id,
                    d.district_name,
                    d.state_id,
                    s.state_name,
-                   dd.total_population
+                   d.parent_district_id,
+                   p.district_name AS parent_name,
+                   dd.total_population,
+                   dd.data_provenance,
+                   pdd.total_population AS parent_population
             FROM districts d
             JOIN states s ON d.state_id = s.id
             JOIN district_demographics dd ON d.id = dd.district_id
-            WHERE dd.census_year = :cy
+            LEFT JOIN districts p ON d.parent_district_id = p.id
+            LEFT JOIN district_demographics pdd ON d.parent_district_id = pdd.district_id AND pdd.census_year = :cy
+            WHERE dd.census_year = :cy AND d.is_current_admin = 1
             ORDER BY d.id
         """)
         rows = db.execute(sql, {"cy": census_year}).fetchall()
@@ -50,7 +56,11 @@ class RiskRepository:
                 "district_name": r[1],
                 "state_id": r[2],
                 "state_name": r[3],
-                "total_population": int(r[4]),
+                "parent_district_id": r[4],
+                "parent_name": r[5],
+                "total_population": int(r[6]) if r[6] is not None else None,
+                "data_provenance": r[7],
+                "parent_population": int(r[8]) if r[8] is not None else None,
             }
             for r in rows
         ]
@@ -181,6 +191,10 @@ class RiskRepository:
                 explanation_summary,
                 population_density_factor,
                 calculation_version,
+                assessment_provenance,
+                is_derived_lineage,
+                parent_district_id,
+                cohort_size,
                 generated_at
             ) VALUES (
                 :district_id,
@@ -202,6 +216,10 @@ class RiskRepository:
                 :explanation_summary,
                 :population_density_factor,
                 :calculation_version,
+                :assessment_provenance,
+                :is_derived_lineage,
+                :parent_district_id,
+                :cohort_size,
                 NOW()
             ) ON DUPLICATE KEY UPDATE
                 overall_risk_score = VALUES(overall_risk_score),
@@ -219,6 +237,10 @@ class RiskRepository:
                 strongest_driver = VALUES(strongest_driver),
                 explanation_summary = VALUES(explanation_summary),
                 population_density_factor = VALUES(population_density_factor),
+                assessment_provenance = VALUES(assessment_provenance),
+                is_derived_lineage = VALUES(is_derived_lineage),
+                parent_district_id = VALUES(parent_district_id),
+                cohort_size = VALUES(cohort_size),
                 generated_at = NOW()
         """)
 
@@ -230,6 +252,14 @@ class RiskRepository:
                 params["forecast_origin_date"] = None
             if "explanation_summary" not in params:
                 params["explanation_summary"] = None
+            if "assessment_provenance" not in params:
+                params["assessment_provenance"] = "INDEPENDENT"
+            if "is_derived_lineage" not in params:
+                params["is_derived_lineage"] = False
+            if "parent_district_id" not in params:
+                params["parent_district_id"] = None
+            if "cohort_size" not in params:
+                params["cohort_size"] = 790
             if isinstance(params.get("factor_contributions"), dict):
                 params["factor_contributions"] = json.dumps(params["factor_contributions"])
             db.execute(upsert_sql, params)
@@ -261,7 +291,8 @@ class RiskRepository:
         scores_sql = text(f"""
             SELECT r.overall_risk_score, r.risk_level, r.score_type, r.calculation_version, r.forecast_origin_date
             FROM crime_risk_scores r
-            WHERE {where_str}
+            JOIN districts d ON r.district_id = d.id
+            WHERE d.is_current_admin = 1 AND {where_str}
         """)
         rows = db.execute(scores_sql, params).fetchall()
 
@@ -419,6 +450,7 @@ class RiskRepository:
         where_clauses = [
             "r.period_year = :py",
             "r.period_month = :pm",
+            "d.is_current_admin = 1",
         ]
         params: Dict[str, Any] = {
             "py": period_year,
@@ -433,23 +465,12 @@ class RiskRepository:
             where_clauses.append("r.score_type = :st")
             params["st"] = score_type
 
-        dist_filter_obj = None
-        parent_filter_obj = None
         if district_id is not None:
-            dist_filter_obj = db.query(District).filter(District.id == district_id).first()
-            if dist_filter_obj and not dist_filter_obj.is_census_2011 and dist_filter_obj.parent_district_id:
-                parent_filter_obj = db.query(District).filter(District.id == dist_filter_obj.parent_district_id).first()
-
-        if district_id is not None or state_id is not None:
-            from backend.app.repositories.crime_repository import CrimeRepository
-            filter_district_ids = CrimeRepository.resolve_filter_district_ids(
-                db, state_id=state_id, district_id=district_id, geography_mode="current"
-            )
-            if filter_district_ids is not None:
-                if len(filter_district_ids) == 0:
-                    return [], 0
-                where_clauses.append("r.district_id IN :dids")
-                params["dids"] = tuple(filter_district_ids)
+            where_clauses.append("r.district_id = :did")
+            params["did"] = district_id
+        elif state_id is not None:
+            where_clauses.append("d.state_id = :sid")
+            params["sid"] = state_id
 
         if risk_level is not None:
             rl = risk_level.strip().upper()
@@ -480,8 +501,8 @@ class RiskRepository:
             SELECT r.id,
                    r.district_id,
                    d.district_name,
-                   COALESCE(cs.id, s.id) AS state_id,
-                   COALESCE(cs.state_name, s.state_name) AS state_name,
+                   s.id AS state_id,
+                   s.state_name,
                    r.period_year,
                    r.period_month,
                    r.overall_risk_score,
@@ -499,17 +520,16 @@ class RiskRepository:
                    r.strongest_driver,
                    r.factor_contributions,
                    r.explanation_summary,
-                   r.generated_at
+                   r.generated_at,
+                   r.parent_district_id,
+                   pd.district_name AS parent_district_name,
+                   r.is_derived_lineage,
+                   r.assessment_provenance,
+                   r.cohort_size
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
             JOIN states s ON d.state_id = s.id
-            LEFT JOIN (
-                SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
-                FROM district_geography_mapping dgm
-                JOIN districts cd ON dgm.current_district_id = cd.id
-                JOIN states st ON cd.state_id = st.id
-                WHERE st.id IN (36, 37)
-            ) cs ON r.district_id = cs.historical_district_id
+            LEFT JOIN districts pd ON r.parent_district_id = pd.id
             WHERE {where_str}
             ORDER BY r.overall_risk_score DESC, d.district_name ASC
             LIMIT :limit OFFSET :skip
@@ -525,24 +545,11 @@ class RiskRepository:
                 except Exception:
                     pass
 
-            is_child_match = (
-                dist_filter_obj is not None
-                and not dist_filter_obj.is_census_2011
-                and dist_filter_obj.parent_district_id == r[1]
-            )
-
-            d_id = dist_filter_obj.id if is_child_match else r[1]
-            d_name = dist_filter_obj.district_name if is_child_match else r[2]
-            s_id = dist_filter_obj.state_id if is_child_match else r[3]
-            parent_did = dist_filter_obj.parent_district_id if is_child_match else None
-            parent_dname = parent_filter_obj.district_name if (is_child_match and parent_filter_obj) else None
-            is_derived = True if is_child_match else False
-
             items.append({
                 "id": r[0],
-                "district_id": d_id,
-                "district_name": d_name,
-                "state_id": s_id,
+                "district_id": r[1],
+                "district_name": r[2],
+                "state_id": r[3],
                 "state_name": r[4],
                 "period_year": r[5],
                 "period_month": r[6],
@@ -563,9 +570,11 @@ class RiskRepository:
                 "factor_contributions": f_contrib,
                 "explanation_summary": r[21],
                 "generated_at": r[22].isoformat() if r[22] else None,
-                "parent_district_id": parent_did,
-                "parent_district_name": parent_dname,
-                "is_derived_from_parent": is_derived,
+                "parent_district_id": r[23],
+                "parent_district_name": r[24],
+                "is_derived_from_parent": bool(r[25]),
+                "assessment_provenance": r[26],
+                "cohort_size": r[27],
             })
 
         return items, total
@@ -584,19 +593,13 @@ class RiskRepository:
         if not dist_obj:
             return None
 
-        from backend.app.repositories.crime_repository import CrimeRepository
-        filter_district_ids = CrimeRepository.resolve_filter_district_ids(
-            db, district_id=district_id, geography_mode="current"
-        )
-        resolved_id = filter_district_ids[0] if filter_district_ids else district_id
-
         where_clauses = [
             "r.district_id = :did",
             "r.period_year = :py",
             "r.period_month = :pm",
         ]
         params: Dict[str, Any] = {
-            "did": resolved_id,
+            "did": district_id,
             "py": period_year,
             "pm": period_month,
         }
@@ -614,8 +617,8 @@ class RiskRepository:
             SELECT r.id,
                    r.district_id,
                    d.district_name,
-                   COALESCE(cs.id, s.id) AS state_id,
-                   COALESCE(cs.state_name, s.state_name) AS state_name,
+                   s.id AS state_id,
+                   s.state_name,
                    dd.total_population,
                    r.period_year,
                    r.period_month,
@@ -635,17 +638,16 @@ class RiskRepository:
                    r.strongest_driver,
                    r.factor_contributions,
                    r.explanation_summary,
-                   r.generated_at
+                   r.generated_at,
+                   r.parent_district_id,
+                   pd.district_name AS parent_district_name,
+                   r.is_derived_lineage,
+                   r.assessment_provenance,
+                   r.cohort_size
             FROM crime_risk_scores r
             JOIN districts d ON r.district_id = d.id
             JOIN states s ON d.state_id = s.id
-            LEFT JOIN (
-                SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
-                FROM district_geography_mapping dgm
-                JOIN districts cd ON dgm.current_district_id = cd.id
-                JOIN states st ON cd.state_id = st.id
-                WHERE st.id IN (36, 37)
-            ) cs ON r.district_id = cs.historical_district_id
+            LEFT JOIN districts pd ON r.parent_district_id = pd.id
             LEFT JOIN district_demographics dd ON d.id = dd.district_id AND dd.census_year = 2011
             LEFT JOIN ml_models m ON r.model_id = m.id
             WHERE {where_str}
@@ -678,28 +680,18 @@ class RiskRepository:
             "trend_ratio": float(row[12]),
         }
 
-        is_child = not dist_obj.is_census_2011 and dist_obj.parent_district_id is not None
-        parent_obj = None
-        if is_child:
-            parent_obj = db.query(District).filter(District.id == dist_obj.parent_district_id).first()
-
-        parent_id = dist_obj.parent_district_id if is_child else None
-        parent_name = parent_obj.district_name if parent_obj else None
-        derived_note = (
-            f"Risk assessment profile dynamically derived from Census 2011 parent jurisdiction '{parent_name}' (#{parent_id})."
-            if is_child
-            else None
-        )
+        parent_id = row[25]
+        parent_name = row[26]
+        is_derived = bool(row[27])
+        provenance = row[28]
         summary = row[23]
-        if is_child and derived_note:
-            summary = f"{derived_note} {summary or ''}".strip()
 
         return {
-            "district_id": dist_obj.id,
-            "district_name": dist_obj.district_name,
-            "state_id": dist_obj.state_id if is_child else row[3],
+            "district_id": row[1],
+            "district_name": row[2],
+            "state_id": row[3],
             "state_name": row[4],
-            "census_2011_population": int(row[5]) if row[5] else 0,
+            "census_2011_population": int(row[5]) if row[5] is not None else None,
             "period_year": row[6],
             "period_month": row[7],
             "assessment_period": f"{row[6]:04d}-{row[7]:02d}-01",
@@ -723,8 +715,10 @@ class RiskRepository:
             "generated_at": row[24].isoformat() if row[24] else None,
             "parent_district_id": parent_id,
             "parent_district_name": parent_name,
-            "is_derived_from_parent": is_child,
-            "notes": derived_note,
+            "is_derived_from_parent": is_derived,
+            "assessment_provenance": provenance,
+            "cohort_size": row[29],
+            "notes": summary,
         }
 
     @staticmethod
@@ -735,21 +729,17 @@ class RiskRepository:
         limit_periods: int = 12,
     ) -> List[Dict[str, Any]]:
         """Retrieves longitudinal risk score trajectory across assessed periods."""
-        where_clauses = []
+        where_clauses = ["d.is_current_admin = 1"]
         params: Dict[str, Any] = {"lim": limit_periods}
 
-        if district_id is not None or state_id is not None:
-            from backend.app.repositories.crime_repository import CrimeRepository
-            filter_district_ids = CrimeRepository.resolve_filter_district_ids(
-                db, state_id=state_id, district_id=district_id, geography_mode="current"
-            )
-            if filter_district_ids is not None:
-                if len(filter_district_ids) == 0:
-                    return []
-                where_clauses.append("r.district_id IN :dids")
-                params["dids"] = tuple(filter_district_ids)
+        if district_id is not None:
+            where_clauses.append("r.district_id = :did")
+            params["did"] = district_id
+        elif state_id is not None:
+            where_clauses.append("d.state_id = :sid")
+            params["sid"] = state_id
 
-        where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        where_str = f"WHERE {' AND '.join(where_clauses)}"
 
         sql = text(f"""
             SELECT r.period_year,
@@ -791,10 +781,9 @@ class RiskRepository:
         score_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Computes aggregated risk summaries for all 36 active States/UTs.
-        Correctly maps newly reorganized jurisdictions (Telangana, Ladakh) via district_geography_mapping.
+        Computes aggregated risk summaries for all 36 active States/UTs across the 790 active districts.
         """
-        where_clauses = ["r.period_year = :py", "r.period_month = :pm"]
+        where_clauses = ["r.period_year = :py", "r.period_month = :pm", "d.is_current_admin = 1"]
         params: Dict[str, Any] = {"py": period_year, "pm": period_month}
 
         if calculation_version:
@@ -807,42 +796,34 @@ class RiskRepository:
         where_str = " AND ".join(where_clauses)
 
         sql = text(f"""
-            WITH state_mapped_risk AS (
+            WITH active_district_risk AS (
                 SELECT 
-                    COALESCE(cs.id, s.id) AS effective_state_id,
+                    d.state_id,
                     r.district_id,
                     d.district_name,
                     r.overall_risk_score,
                     r.risk_level,
                     ROW_NUMBER() OVER (
-                        PARTITION BY COALESCE(cs.id, s.id) 
+                        PARTITION BY d.state_id 
                         ORDER BY r.overall_risk_score DESC, d.district_name ASC
                     ) as rn
                 FROM crime_risk_scores r
                 JOIN districts d ON r.district_id = d.id
-                JOIN states s ON d.state_id = s.id
-                LEFT JOIN (
-                    SELECT DISTINCT dgm.historical_district_id, st.id, st.state_name
-                    FROM district_geography_mapping dgm
-                    JOIN districts cd ON dgm.current_district_id = cd.id
-                    JOIN states st ON cd.state_id = st.id
-                    WHERE st.is_active = 1
-                ) cs ON r.district_id = cs.historical_district_id AND (s.is_active = 0 OR s.id IN (14, 2))
                 WHERE {where_str}
             )
             SELECT 
                 s.id AS state_id,
                 s.state_name,
-                COUNT(smr.district_id) AS assessed_districts_count,
-                COALESCE(ROUND(AVG(smr.overall_risk_score), 2), 0.0) AS mean_risk_score,
-                COALESCE(ROUND(MAX(smr.overall_risk_score), 2), 0.0) AS highest_risk_score,
-                MAX(CASE WHEN smr.rn = 1 THEN smr.district_name END) AS highest_risk_district_name,
-                SUM(CASE WHEN smr.risk_level = 'LOW' THEN 1 ELSE 0 END) AS low_count,
-                SUM(CASE WHEN smr.risk_level = 'MODERATE' THEN 1 ELSE 0 END) AS mod_count,
-                SUM(CASE WHEN smr.risk_level = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
-                SUM(CASE WHEN smr.risk_level = 'CRITICAL' THEN 1 ELSE 0 END) AS crit_count
+                COUNT(adr.district_id) AS assessed_districts_count,
+                COALESCE(ROUND(AVG(adr.overall_risk_score), 2), 0.0) AS mean_risk_score,
+                COALESCE(ROUND(MAX(adr.overall_risk_score), 2), 0.0) AS highest_risk_score,
+                MAX(CASE WHEN adr.rn = 1 THEN adr.district_name END) AS highest_risk_district_name,
+                SUM(CASE WHEN adr.risk_level = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+                SUM(CASE WHEN adr.risk_level = 'MODERATE' THEN 1 ELSE 0 END) AS mod_count,
+                SUM(CASE WHEN adr.risk_level = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+                SUM(CASE WHEN adr.risk_level = 'CRITICAL' THEN 1 ELSE 0 END) AS crit_count
             FROM states s
-            LEFT JOIN state_mapped_risk smr ON s.id = smr.effective_state_id
+            LEFT JOIN active_district_risk adr ON s.id = adr.state_id
             WHERE s.is_active = 1
             GROUP BY s.id, s.state_name
             ORDER BY mean_risk_score DESC, s.state_name ASC

@@ -1,0 +1,241 @@
+{
+  "period": "2026-11-01",
+  "results": [
+    {
+      "district_id": 5,
+      "district_name": "Anantapur",
+      "state_id": 2,
+      "state_name": "Andhra Pradesh",
+      "period": "2026-11-01",
+      "steps": {
+        "predictions": {
+          "predicted_count": 8.67,
+          "baseline_count": 7.0,
+          "percentage_change": 23.9,
+          "crime_level": "Higher",
+          "categories_count": 4,
+          "types_count": 21
+        },
+        "risk": {
+          "overall_risk_score": 50.47,
+          "risk_level": "HIGH",
+          "severity_index": 52.79,
+          "strongest_driver": "forecast_volume"
+        },
+        "optimization": {
+          "solver_status": "OPTIMAL",
+          "demanded_units": 21,
+          "allocated_units": 19,
+          "shortage_units": 2,
+          "pools_demanded_count": 10,
+          "pools_allocated_count": 10
+        },
+        "budget": {
+          "configured_budget": 25000000.0,
+          "police_cost": 13928800.0,
+          "partner_cost": 6420000.0,
+          "combined_cost": 20348800.0,
+          "budget_balance": 11071200.0,
+          "capex": 6875000.0,
+          "opex": 6526800.0,
+          "maintenance": 527000.0,
+          "verification_status": "ADMIN_ESTIMATE"
+        },
+        "reporting": {
+          "historical_incidents_in_system": 453,
+          "csv_sample_row": "\"Anantapur\",\"Andhra Pradesh\",\"2026-11-01\",\"8.7\",\"50.5\",\"21\",\"13928800.00\",\"25000000.00\",\"11071200.00\"",
+          "is_consistent": true
+        }
+      }
+    },
+    {
+      "district_id": 74,
+      "district_name": "Banka",
+      "state_id": 5,
+      "state_name": "Bihar",
+      "period": "2026-11-01",
+      "steps": {
+        "predictions": {
+          "predicted_count": 6.09,
+          "baseline_count": 5.0,
+          "percentage_change": 21.8,
+          "crime_level": "Higher",
+          "categories_count": 4,
+          "types_count": 21
+        },
+        "risk": {
+          "overall_risk_score": 54.08,
+          "risk_level": "HIGH",
+          "severity_index": 66.92,
+          "strongest_driver": "forecast_volume"
+        },
+        "optimization": {
+          "solver_status": "OPTIMAL",
+          "demanded_units": 18,
+          "allocated_units": 18,
+          "shortage_units": 0,
+          "pools_demanded_count": 10,
+          "pools_allocated_count": 10
+        },
+        "budget": {
+          "configured_budget": 34300000.0,
+          "police_cost": 12373800.0,
+          "partner_cost": 3210000.0,
+          "combined_cost": 15583800.0,
+          "budget_balance": 21926200.0,
+          "capex": 6550000.0,
+          "opex": 5326800.0,
+          "maintenance": 497000.0,
+          "verification_status": "ADMIN_ESTIMATE"
+        },
+        "reporting": {
+          "historical_incidents_in_system": 355,
+          "csv_sample_row": "\"Banka\",\"Bihar\",\"2026-11-01\",\"6.1\",\"54.1\",\"18\",\"12373800.00\",\"34300000.00\",\"21926200.00\"",
+          "is_consistent": true
+        }
+      }
+    },
+    {
+      "district_id": 349,
+      "district_name": "Mumbai",
+      "state_id": 20,
+      "state_name": "Maharashtra",
+      "period": "2026-11-01",
+      "steps": {
+        "predictions": {
+          "predicted_count": 16.56,
+          "baseline_count": 15.0,
+          "percentage_change": 10.4,
+          "crime_level": "Higher",
+          "categories_count": 4,
+          "types_count": 21
+        },
+        "risk": {
+          "overall_risk_score": 54.68,
+          "risk_level": "HIGH",
+          "severity_index": 68.06,
+          "strongest_driver": "forecast_volume"
+        },
+        "optimization": {
+          "solver_status": "OPTIMAL",
+          "demanded_units": 42,
+          "allocated_units": 42,
+          "shortage_units": 0,
+          "pools_demanded_count": 10,
+          "pools_allocated_count": 10
+        },
+        "budget": {
+          "configured_budget": 68450000.0,
+          "police_cost": 27836500.0,
+          "partner_cost": 9630000.0,
+          "combined_cost": 37466500.0,
+          "budget_balance": 40613500.0,
+          "capex": 13620000.0,
+          "opex": 13188000.0,
+          "maintenance": 1028500.0,
+          "verification_status": "ADMIN_ESTIMATE"
+        },
+        "reporting": {
+          "historical_incidents_in_system": 1197,
+          "csv_sample_row": "\"Mumbai\",\"Maharashtra\",\"2026-11-01\",\"16.6\",\"54.7\",\"42\",\"27836500.00\",\"68450000.00\",\"40613500.00\"",
+          "is_consistent": true
+        }
+      }
+    },
+    {
+      "district_id": 641,
+      "district_name": "Adilabad",
+      "state_id": 36,
+      "state_name": "Telangana",
+      "period": "2026-11-01",
+      "steps": {
+        "predictions": {
+          "predicted_count": 6.7,
+          "baseline_count": 5.0,
+          "percentage_change": 34.0,
+          "crime_level": "Higher",
+          "categories_count": 4,
+          "types_count": 21
+        },
+        "risk": {
+          "overall_risk_score": 46.21,
+          "risk_level": "MODERATE",
+          "severity_index": 23.51,
+          "strongest_driver": "forecast_volume"
+        },
+        "optimization": {
+          "solver_status": "OPTIMAL",
+          "demanded_units": 20,
+          "allocated_units": 17,
+          "shortage_units": 3,
+          "pools_demanded_count": 10,
+          "pools_allocated_count": 10
+        },
+        "budget": {
+          "configured_budget": 30850000.0,
+          "police_cost": 13108800.0,
+          "partner_cost": 6420000.0,
+          "combined_cost": 19528800.0,
+          "budget_balance": 17741200.0,
+          "capex": 6625000.0,
+          "opex": 5986800.0,
+          "maintenance": 497000.0,
+          "verification_status": "ADMIN_ESTIMATE"
+        },
+        "reporting": {
+          "historical_incidents_in_system": 387,
+          "csv_sample_row": "\"Adilabad\",\"Telangana\",\"2026-11-01\",\"6.7\",\"46.2\",\"20\",\"13108800.00\",\"30850000.00\",\"17741200.00\"",
+          "is_consistent": true
+        }
+      }
+    },
+    {
+      "district_id": 408,
+      "district_name": "Central Delhi",
+      "state_id": 25,
+      "state_name": "NCT of Delhi",
+      "period": "2026-11-01",
+      "steps": {
+        "predictions": {
+          "predicted_count": 5.51,
+          "baseline_count": 2.0,
+          "percentage_change": 175.5,
+          "crime_level": "Higher",
+          "categories_count": 4,
+          "types_count": 21
+        },
+        "risk": {
+          "overall_risk_score": 35.12,
+          "risk_level": "MODERATE",
+          "severity_index": 15.91,
+          "strongest_driver": "forecast_volume"
+        },
+        "optimization": {
+          "solver_status": "OPTIMAL",
+          "demanded_units": 16,
+          "allocated_units": 16,
+          "shortage_units": 0,
+          "pools_demanded_count": 10,
+          "pools_allocated_count": 10
+        },
+        "budget": {
+          "configured_budget": 46850000.0,
+          "police_cost": 9413800.0,
+          "partner_cost": 3210000.0,
+          "combined_cost": 12623800.0,
+          "budget_balance": 37436200.0,
+          "capex": 4850000.0,
+          "opex": 4186800.0,
+          "maintenance": 377000.0,
+          "verification_status": "ADMIN_ESTIMATE"
+        },
+        "reporting": {
+          "historical_incidents_in_system": 369,
+          "csv_sample_row": "\"Central Delhi\",\"NCT of Delhi\",\"2026-11-01\",\"5.5\",\"35.1\",\"16\",\"9413800.00\",\"46850000.00\",\"37436200.00\"",
+          "is_consistent": true
+        }
+      }
+    }
+  ],
+  "failures": []
+}

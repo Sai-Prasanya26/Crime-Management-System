@@ -8,4 +8,5 @@ export { resourceApi } from './resourceApi';
 export { predictionApi } from './predictionApi';
 export { default as optimizationApi } from './optimizationApi';
 export { budgetApi } from './budgetApi';
+export { default as reportsApi } from './reportsApi';
 

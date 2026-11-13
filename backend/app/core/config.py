@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # SMTP / Email Configuration
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@crimeops.gov.in"
+    SMTP_FROM_NAME: str = "Crime Intelligence & Management Portal"
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    SMTP_TIMEOUT_SECONDS: int = 15
+    SMTP_TEST_MODE: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

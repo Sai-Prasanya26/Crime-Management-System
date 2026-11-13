@@ -73,6 +73,8 @@ reports/generated/
 # Database Backups
 database/backups/*
 !database/backups/.gitkeep
+*.sql
 
 # Temporary scratch scripts
 scratch/
+/*.png

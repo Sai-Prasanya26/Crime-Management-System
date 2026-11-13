@@ -4,6 +4,7 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types';
 import LoadingState from '../common/LoadingState';
+import { isTokenExpired } from '../../utils/jwt';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
 }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, token, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -25,8 +26,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  const isExpired = Boolean(token && isTokenExpired(token));
+
+  if (!isAuthenticated || !token || isExpired) {
+    if (isExpired) {
+      localStorage.removeItem('cms_access_token');
+      sessionStorage.setItem('cms_session_expired', 'true');
+    }
+    const sessionExpiredFlag = isExpired || sessionStorage.getItem('cms_session_expired') === 'true';
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location,
+          sessionExpired: sessionExpiredFlag,
+        }}
+        replace
+      />
+    );
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {

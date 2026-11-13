@@ -144,9 +144,6 @@ class GeographyService:
         is_child = bool(not district.is_census_2011 and district.parent_district_id)
         parent_name = district.parent_district.district_name if (is_child and district.parent_district) else None
 
-        if not d and district.parent_district and district.parent_district.demographics:
-            d = district.parent_district.demographics
-
         if d:
             demo_data = DistrictDemographicsData(
                 census_year=d.census_year,
@@ -155,14 +152,28 @@ class GeographyService:
                 female_population=d.female_population,
                 literate_population=d.literate_population,
                 total_workers=d.total_workers,
+                is_derived=d.is_derived,
+                data_provenance=d.data_provenance,
+                derived_source=d.derived_source,
             )
 
-        notes = (
-            f"Census 2011 demographic baseline dynamically derived from parent jurisdiction '{parent_name}' (#{district.parent_district_id}). "
-            f"Standalone enumeration for modern carved district '{district.district_name}' awaits upcoming decennial Census."
-            if is_child
-            else None
-        )
+        notes = None
+        if d and d.data_provenance == "UNAVAILABLE":
+            notes = (
+                f"Official Census 2011 population enumeration unavailable for post-2011 carved district. "
+                f"Parent baseline jurisdiction: '{parent_name}' (#{district.parent_district_id}). "
+                f"Standalone decennial census enumeration will be captured in the upcoming Census."
+            )
+        elif d and d.data_provenance == "TRANSFERRED_CENSUS_2011":
+            notes = (
+                f"Census 2011 demographic baseline transferred and dynamically derived from parent jurisdiction '{parent_name}' (#{district.parent_district_id})."
+                if is_child
+                else "Census 2011 demographic baseline transferred directly from continuous 1:1 predecessor jurisdiction."
+            )
+        elif is_child:
+            notes = (
+                f"Demographic baseline linked to parent jurisdiction '{parent_name}' (#{district.parent_district_id})."
+            )
 
         return DistrictDetailResponse(
             id=district.id,
@@ -276,29 +287,21 @@ class GeographyService:
                 inc_query = inc_query.filter(CrimeIncident.incident_date <= end_date)
             reported_incidents = inc_query.scalar() if filter_ids else 0
 
-            # Population
+            # Population & Demographics provenance
             population = None
             notes = None
             if district.demographics and district.demographics.total_population:
                 population = district.demographics.total_population
-            elif (
-                district.parent_district
-                and district.parent_district.demographics
-                and district.parent_district.demographics.total_population
-            ):
-                population = district.parent_district.demographics.total_population
-                notes = f"Census 2011 baseline derived from parent jurisdiction #{district.parent_district_id}."
-            elif filter_ids:
-                p_sum = (
-                    db.query(func.sum(DistrictDemographics.total_population))
-                    .filter(DistrictDemographics.district_id.in_(filter_ids))
-                    .scalar()
+                if district.demographics.data_provenance == "TRANSFERRED_CENSUS_2011":
+                    notes = "Census 2011 demographic baseline transferred directly from continuous 1:1 predecessor jurisdiction."
+            elif district.demographics and district.demographics.data_provenance == "UNAVAILABLE":
+                population = None
+                notes = (
+                    f"Official Census 2011 population enumeration unavailable for post-2011 carved district. "
+                    f"Parent baseline jurisdiction: '{parent_name}' (#{district.parent_district_id}). "
+                    f"Standalone decennial census enumeration will be captured in the upcoming Census."
                 )
-                if p_sum:
-                    population = int(p_sum)
-                    notes = "Census 2011 baseline derived from mapped lineage."
-
-            if population is None:
+            else:
                 notes = "Census 2011 population baseline unavailable for this administrative jurisdiction."
 
             # Crime rate per 100k
@@ -306,37 +309,38 @@ class GeographyService:
             if population and population > 0 and reported_incidents is not None:
                 crime_rate = round((reported_incidents / population) * 100000.0, 2)
 
-            # Risk classification
-            target_census_id = (
-                district.id
-                if district.is_census_2011
-                else (district.parent_district_id or (filter_ids[0] if filter_ids else None))
-            )
-
+            # Risk classification (790 canonical coverage)
             risk_level = None
             risk_score = None
             risk_label = "Not available"
 
-            if target_census_id:
+            latest_risk = (
+                db.query(CrimeRiskScore)
+                .filter(CrimeRiskScore.district_id == district.id)
+                .order_by(desc(CrimeRiskScore.period_year), desc(CrimeRiskScore.period_month))
+                .first()
+            )
+            if not latest_risk and target_census_id:
                 latest_risk = (
                     db.query(CrimeRiskScore)
                     .filter(CrimeRiskScore.district_id == target_census_id)
                     .order_by(desc(CrimeRiskScore.period_year), desc(CrimeRiskScore.period_month))
                     .first()
                 )
-                if latest_risk:
-                    risk_level = latest_risk.risk_level
-                    risk_score = float(latest_risk.overall_risk_score)
-                    if risk_level == "CRITICAL":
-                        risk_label = "Critical Risk Hotspot"
-                    elif risk_level == "HIGH":
-                        risk_label = "High Risk Hotspot"
-                    elif risk_level == "MODERATE":
-                        risk_label = "Moderate Crime Zone"
-                    elif risk_level == "LOW":
-                        risk_label = "Low Incidence Area"
-                    else:
-                        risk_label = f"{risk_level} Risk"
+
+            if latest_risk:
+                risk_level = latest_risk.risk_level
+                risk_score = float(latest_risk.overall_risk_score)
+                if risk_level == "CRITICAL":
+                    risk_label = "Critical Risk Hotspot"
+                elif risk_level == "HIGH":
+                    risk_label = "High Risk Hotspot"
+                elif risk_level == "MODERATE":
+                    risk_label = "Moderate Crime Zone"
+                elif risk_level == "LOW":
+                    risk_label = "Low Incidence Area"
+                else:
+                    risk_label = f"{risk_level} Risk"
 
             is_child = bool(not district.is_census_2011 and district.parent_district_id)
             parent_name = district.parent_district.district_name if (is_child and district.parent_district) else None

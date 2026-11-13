@@ -9,9 +9,11 @@ from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func, desc, asc
 from datetime import date
+import math
 
 from backend.app.models.ml import MLModel, CrimePrediction
 from backend.app.models.geography import District, State, DistrictGeographyMapping
+from backend.app.utils.prediction_reconciliation import reconcile_category_predictions
 
 
 class PredictionRepository:
@@ -45,13 +47,21 @@ class PredictionRepository:
                 "top_predicted_districts": [],
             }
 
-        stats = db.query(
-            func.count(CrimePrediction.id).label("total_preds"),
-            func.count(func.distinct(CrimePrediction.district_id)).label("districts_count"),
-            func.min(CrimePrediction.prediction_date).label("min_date"),
-            func.max(CrimePrediction.prediction_date).label("max_date"),
-            func.count(func.distinct(CrimePrediction.prediction_date)).label("periods_count"),
-        ).filter(CrimePrediction.model_id == active_model.id).first()
+        stats = (
+            db.query(
+                func.count(CrimePrediction.id).label("total_preds"),
+                func.count(func.distinct(CrimePrediction.district_id)).label("districts_count"),
+                func.min(CrimePrediction.prediction_date).label("min_date"),
+                func.max(CrimePrediction.prediction_date).label("max_date"),
+                func.count(func.distinct(CrimePrediction.prediction_date)).label("periods_count"),
+            )
+            .join(District, CrimePrediction.district_id == District.id)
+            .filter(
+                CrimePrediction.model_id == active_model.id,
+                District.is_current_admin == True,
+            )
+            .first()
+        )
 
         # Status breakdown
         status_query = (
@@ -63,7 +73,11 @@ class PredictionRepository:
                 func.max(CrimePrediction.prediction_date).label("max_p"),
                 func.min(CrimePrediction.forecast_origin_date).label("origin_p"),
             )
-            .filter(CrimePrediction.model_id == active_model.id)
+            .join(District, CrimePrediction.district_id == District.id)
+            .filter(
+                CrimePrediction.model_id == active_model.id,
+                District.is_current_admin == True,
+            )
             .group_by(CrimePrediction.forecast_status)
             .all()
         )
@@ -108,8 +122,11 @@ class PredictionRepository:
             .join(District, CrimePrediction.district_id == District.id)
             .join(State, District.state_id == State.id)
             .join(MLModel, CrimePrediction.model_id == MLModel.id)
-            .filter(CrimePrediction.model_id == active_model.id)
-            .filter(CrimePrediction.prediction_date == target_forecast_date)
+            .filter(
+                CrimePrediction.model_id == active_model.id,
+                District.is_current_admin == True,
+                CrimePrediction.prediction_date == target_forecast_date,
+            )
             .order_by(desc(CrimePrediction.predicted_crime_count))
             .limit(10)
             .all()
@@ -170,7 +187,7 @@ class PredictionRepository:
         skip: int = 0,
         limit: int = 100,
     ) -> Tuple[List[Dict[str, Any]], int]:
-        """Queries prediction records with optional filters, status filtering, and pagination."""
+        """Queries prediction records across 790 active canonical districts with optional filters and pagination."""
         query = (
             db.query(
                 CrimePrediction.id,
@@ -190,48 +207,19 @@ class PredictionRepository:
                 CrimePrediction.is_latest,
                 MLModel.version.label("model_version"),
                 MLModel.model_name,
+                CrimePrediction.is_derived_from_parent,
+                CrimePrediction.parent_district_id,
             )
             .join(District, CrimePrediction.district_id == District.id)
             .join(State, District.state_id == State.id)
             .join(MLModel, CrimePrediction.model_id == MLModel.id)
+            .filter(District.is_current_admin == True)
         )
 
-        target_state = None
         if state_id is not None:
-            target_state = db.query(State).filter(State.id == state_id).first()
-            # Boundary mappings to resolve historical district IDs for current states
-            mapped_hist_ids = (
-                db.query(DistrictGeographyMapping.historical_district_id)
-                .join(District, DistrictGeographyMapping.current_district_id == District.id)
-                .filter(District.state_id == state_id)
-                .distinct()
-                .all()
-            )
-            if mapped_hist_ids:
-                hist_ids = [r[0] for r in mapped_hist_ids]
-            else:
-                # Fallback to Census 2011 districts for states without post-2011 reorganization mappings
-                census_dists = (
-                    db.query(District.id)
-                    .filter(District.is_census_2011 == True, District.state_id == state_id)
-                    .all()
-                )
-                hist_ids = [r[0] for r in census_dists]
-
-            if hist_ids:
-                query = query.filter(CrimePrediction.district_id.in_(hist_ids))
-            else:
-                query = query.filter(text("1=0"))
-
-        dist_obj = None
+            query = query.filter(District.state_id == state_id)
         if district_id is not None:
-            dist_obj = db.query(District).filter(District.id == district_id).first()
-            eff_did = (
-                dist_obj.parent_district_id
-                if (dist_obj and not dist_obj.is_census_2011 and dist_obj.parent_district_id)
-                else district_id
-            )
-            query = query.filter(CrimePrediction.district_id == eff_did)
+            query = query.filter(CrimePrediction.district_id == district_id)
         if forecast_period is not None:
             query = query.filter(CrimePrediction.prediction_date == forecast_period)
         if forecast_status is not None:
@@ -253,60 +241,20 @@ class PredictionRepository:
             .all()
         )
 
-        is_child = bool(dist_obj and not dist_obj.is_census_2011 and dist_obj.parent_district_id)
-        parent_dist = (
-            db.query(District).filter(District.id == dist_obj.parent_district_id).first()
-            if is_child
-            else None
-        )
-
-        # Resolve modern state mappings for returned historical districts
-        modern_state_map: Dict[int, Tuple[int, str]] = {}
-        if rows and not is_child and target_state is None:
-            hist_dids = list({r.district_id for r in rows})
-            m_rows = (
-                db.query(
-                    DistrictGeographyMapping.historical_district_id,
-                    District.state_id,
-                    State.state_name,
-                )
-                .join(District, DistrictGeographyMapping.current_district_id == District.id)
-                .join(State, District.state_id == State.id)
-                .filter(
-                    DistrictGeographyMapping.historical_district_id.in_(hist_dids),
-                    State.is_active == True,
-                )
-                .distinct()
-                .all()
-            )
-            for hid, sid, sname in m_rows:
-                modern_state_map[hid] = (sid, sname)
+        parent_names_map = {}
+        parent_ids = {r.parent_district_id for r in rows if r.parent_district_id}
+        if parent_ids:
+            p_dists = db.query(District.id, District.district_name).filter(District.id.in_(parent_ids)).all()
+            parent_names_map = {p[0]: p[1] for p in p_dists}
 
         items = []
         for r in rows:
-            if is_child and dist_obj:
-                item_did = dist_obj.id
-                item_dname = dist_obj.district_name
-                item_sid = dist_obj.state_id
-                item_sname = dist_obj.state.state_name if dist_obj.state else r.state_name
-            else:
-                item_did = r.district_id
-                item_dname = r.district_name
-                if target_state:
-                    item_sid = target_state.id
-                    item_sname = target_state.state_name
-                elif r.district_id in modern_state_map:
-                    item_sid, item_sname = modern_state_map[r.district_id]
-                else:
-                    item_sid = r.state_id
-                    item_sname = r.state_name
-
             items.append({
                 "id": r.id,
-                "district_id": item_did,
-                "district_name": item_dname,
-                "state_id": item_sid,
-                "state_name": item_sname,
+                "district_id": r.district_id,
+                "district_name": r.district_name,
+                "state_id": r.state_id,
+                "state_name": r.state_name,
                 "forecast_period": str(r.prediction_date),
                 "predicted_crime_count": float(r.predicted_crime_count),
                 "prediction_interval_lower": float(r.prediction_interval_lower) if r.prediction_interval_lower is not None else None,
@@ -319,9 +267,9 @@ class PredictionRepository:
                 "is_latest": bool(r.is_latest),
                 "model_version": r.model_version,
                 "model_name": r.model_name,
-                "parent_district_id": dist_obj.parent_district_id if is_child else None,
-                "parent_district_name": parent_dist.district_name if (is_child and parent_dist) else None,
-                "is_derived_from_parent": is_child,
+                "parent_district_id": r.parent_district_id,
+                "parent_district_name": parent_names_map.get(r.parent_district_id),
+                "is_derived_from_parent": bool(r.is_derived_from_parent),
             })
 
         return items, total
@@ -345,7 +293,10 @@ class PredictionRepository:
         if not district:
             return None
 
-        is_child = bool(not district.is_census_2011 and district.parent_district_id)
+        # Check if the district has predictions or incidents of its own
+        own_preds_cnt = db.query(func.count(CrimePrediction.id)).filter(CrimePrediction.district_id == district.id).scalar() or 0
+        own_inc_cnt = db.execute(text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"), {"did": district.id}).scalar() or 0
+        is_child = bool(own_preds_cnt == 0 and own_inc_cnt == 0 and not district.is_census_2011 and district.parent_district_id)
         eff_did = district.parent_district_id if is_child else district_id
         parent_dist = (
             db.query(District).filter(District.id == district.parent_district_id).first()
@@ -625,17 +576,48 @@ class PredictionRepository:
         period_str = f"{year}-{month:02d}-01"
         period_display = f"{year}-{month:02d}"
 
-        # Resolve Census 2011 effective district if this is a reorganized child district
+        # Check if the district has incidents of its own
+        own_incidents = db.execute(
+            text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
+            {"did": district.id},
+        ).scalar() or 0
+
+        # Resolve Census 2011 effective district only if child district has NO incidents of its own
         eff_did = district.id
         parent_district_name = None
         is_derived_from_parent = False
 
-        if not district.is_census_2011 and district.parent_district_id:
+        if own_incidents == 0 and not district.is_census_2011 and district.parent_district_id:
             parent_dist = db.query(District).filter(District.id == district.parent_district_id).first()
             if parent_dist:
-                eff_did = parent_dist.id
-                parent_district_name = parent_dist.district_name
-                is_derived_from_parent = True
+                parent_incidents = db.execute(
+                    text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
+                    {"did": parent_dist.id},
+                ).scalar() or 0
+                if parent_incidents > 0:
+                    eff_did = parent_dist.id
+                    parent_district_name = parent_dist.district_name
+                    is_derived_from_parent = True
+
+        # Check if stored prediction exists: prefer child district's own predictions, then fallback to eff_did
+        pred_row = db.execute(
+            text("""
+                SELECT predicted_crime_count, forecast_status, prediction_interval_lower, prediction_interval_upper
+                FROM crime_predictions
+                WHERE district_id = :did AND prediction_date = :pdate
+            """),
+            {"did": district.id, "pdate": period_str},
+        ).fetchone()
+
+        if not pred_row and eff_did != district.id:
+            pred_row = db.execute(
+                text("""
+                    SELECT predicted_crime_count, forecast_status, prediction_interval_lower, prediction_interval_upper
+                    FROM crime_predictions
+                    WHERE district_id = :did AND prediction_date = :pdate
+                """),
+                {"did": eff_did, "pdate": period_str},
+            ).fetchone()
 
         # 1. Check baseline incident history for this district
         total_dist_incidents = db.execute(
@@ -643,7 +625,7 @@ class PredictionRepository:
             {"did": eff_did},
         ).scalar() or 0
 
-        has_baseline = total_dist_incidents > 0
+        has_baseline = (total_dist_incidents > 0) or (pred_row is not None)
         comparison_rule = (
             "Projected crime volume is evaluated against the historical incident baseline for the same calendar month. "
             "Changes exceeding +5.0% are classified as 'Higher', below -5.0% as 'Lower', and within ±5.0% as 'Moderate'. "
@@ -687,17 +669,7 @@ class PredictionRepository:
                 "message": "Insufficient historical baseline data for this district.",
             }
 
-        # 2. Check if stored prediction exists
-        pred_row = db.execute(
-            text("""
-                SELECT predicted_crime_count, forecast_status, prediction_interval_lower, prediction_interval_upper
-                FROM crime_predictions
-                WHERE district_id = :did AND prediction_date = :pdate
-            """),
-            {"did": eff_did, "pdate": period_str},
-        ).fetchone()
-
-        # 3. Check if historical actuals exist for this month
+        # 2. Check if historical actuals exist for this month
         actual_cnt = db.execute(
             text("""
                 SELECT COUNT(*) FROM crime_incidents
@@ -882,6 +854,9 @@ class PredictionRepository:
             "parent_baseline_count": parent_baseline_val,
             "prediction_interval_lower": float(pred_row[2]) if (pred_row and pred_row[2] is not None) else None,
             "prediction_interval_upper": float(pred_row[3]) if (pred_row and pred_row[3] is not None) else None,
+            "display_predicted_count": int(round(pred_val)) if pred_val is not None else None,
+            "display_interval_lower": int(math.floor(float(pred_row[2]))) if (pred_row and pred_row[2] is not None) else None,
+            "display_interval_upper": int(math.ceil(float(pred_row[3]))) if (pred_row and pred_row[3] is not None) else None,
             "has_baseline": True,
             "baseline_year": base_year,
             "baseline_month": month,
@@ -929,17 +904,28 @@ class PredictionRepository:
         period_str = f"{year}-{month:02d}-01"
         period_display = f"{year}-{month:02d}"
 
-        # Resolve Census 2011 parent jurisdiction for carved districts
+        # Check if the district has incidents of its own
+        own_incidents = db.execute(
+            text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
+            {"did": district.id},
+        ).scalar() or 0
+
+        # Resolve Census 2011 parent jurisdiction only if child district has NO incidents of its own
         eff_did = district.id
         parent_district_name = None
         is_derived_from_parent = False
 
-        if not district.is_census_2011 and district.parent_district_id:
+        if own_incidents == 0 and not district.is_census_2011 and district.parent_district_id:
             parent_dist = db.query(District).filter(District.id == district.parent_district_id).first()
             if parent_dist:
-                eff_did = parent_dist.id
-                parent_district_name = parent_dist.district_name
-                is_derived_from_parent = True
+                parent_incidents = db.execute(
+                    text("SELECT COUNT(*) FROM crime_incidents WHERE district_id = :did"),
+                    {"did": parent_dist.id},
+                ).scalar() or 0
+                if parent_incidents > 0:
+                    eff_did = parent_dist.id
+                    parent_district_name = parent_dist.district_name
+                    is_derived_from_parent = True
 
         # Retrieve total prediction using existing district-month logic
         overall_pred = PredictionRepository.get_district_month_prediction(
@@ -1300,6 +1286,11 @@ class PredictionRepository:
             else f"Crime category and crime-type distributions are derived from jurisdiction '{dname}' historical baseline using Empirical Bayes shrinkage."
         )
 
+        # 7. Apply Largest-Remainder Allocation so integer category and crime-type counts reconcile exactly with rounded total
+        target_int = int(round(total_predicted))
+        reconcile_category_predictions(category_items, target_int, count_key="predicted_count", output_key="display_predicted_count")
+        reconcile_category_predictions(crime_type_items, target_int, count_key="predicted_count", output_key="display_predicted_count")
+
         return {
             "district_id": did,
             "district_name": dname,
@@ -1315,6 +1306,7 @@ class PredictionRepository:
             "is_forecast": is_forecast,
             "is_historical": is_historical,
             "total_predicted_count": round(total_predicted, 2),
+            "total_display_predicted_count": target_int,
             "total_actual_count": total_actual,
             "parent_baseline_count": parent_baseline_count,
             "reconciliation_difference": 0.0,
@@ -1323,5 +1315,5 @@ class PredictionRepository:
             "crime_types": crime_type_items,
             "provenance_notes": lineage_provenance,
             "limitations": "Individual crime-type forecasts represent expected monthly statistical rates. Individual occurrences are subject to Poisson variability in low-volume districts.",
-            "disclaimer": "Forecasts are expected statistical counts, not confirmed future incidents. Values are displayed rounded to 2 decimal places; component sums may differ by ±0.01 from total due to display rounding.",
+            "disclaimer": "Forecasts are expected statistical counts, not confirmed future incidents. Values are displayed as reconciled integers; underlying continuous models remain unrounded for analytical precision.",
         }

@@ -39,6 +39,7 @@ class CrimeIncident(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     report_number = Column(String(50), nullable=False, unique=True)
     district_id = Column(Integer, ForeignKey("districts.id", ondelete="RESTRICT"), nullable=False, index=True)
+    original_district_id = Column(Integer, ForeignKey("districts.id", ondelete="SET NULL"), nullable=True)
     crime_type_id = Column(Integer, ForeignKey("crime_types.id", ondelete="RESTRICT"), nullable=False, index=True)
     incident_date = Column(Date, nullable=False, index=True)
     incident_time = Column(Time, nullable=False)
@@ -56,6 +57,7 @@ class CrimeIncident(Base):
         nullable=False,
         default="OPEN",
     )
+    reconciliation_status = Column(String(50), default="ORIGINAL")
     closed_date = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
@@ -65,5 +67,5 @@ class CrimeIncident(Base):
     )
 
     # Relationships
-    district = relationship("District", back_populates="incidents")
+    district = relationship("District", back_populates="incidents", foreign_keys=[district_id])
     crime_type = relationship("CrimeType", back_populates="incidents")

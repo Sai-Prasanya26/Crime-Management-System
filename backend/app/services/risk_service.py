@@ -177,12 +177,12 @@ class RiskService:
                 detail=f"Invalid score_type: {score_type}. Expected 'HISTORICAL' or 'FORECAST'.",
             )
 
-        # 1. Load Census 2011 demographic baselines (640 districts)
+        # 1. Load Census 2011 demographic baselines (790 active canonical districts)
         demographics = RiskRepository.get_census_demographics(db, census_year=2011)
-        if len(demographics) != 640:
+        if len(demographics) != 790:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Expected 640 Census 2011 districts, found {len(demographics)}.",
+                detail=f"Expected 790 active canonical districts, found {len(demographics)}.",
             )
 
         n_districts = len(demographics)
@@ -283,41 +283,78 @@ class RiskService:
         r_raw = np.zeros(n_districts, dtype=float)
         t_raw = np.zeros(n_districts, dtype=float)
         s_raw = np.zeros(n_districts, dtype=float)
+        district_meta: List[Dict[str, Any]] = []
 
         for i, dem in enumerate(demographics):
             did = dem["district_id"]
             pop = dem["total_population"]
-            if pop <= 0:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"District {dem['district_name']} (ID {did}) has non-positive Census population {pop}.",
-                )
+            parent_did = dem.get("parent_district_id")
+            parent_name = dem.get("parent_name")
+            parent_pop = dem.get("parent_population")
+            prov_type = dem.get("data_provenance", "OFFICIAL_CENSUS_2011")
 
-            v_count = historical_vols.get(did, 0)
+            # Determine provenance and effective baseline denominator
+            if pop is None or prov_type == "UNAVAILABLE":
+                # Carved unit without independent census enumeration: inherit parent baseline
+                eff_pop = parent_pop if (parent_pop and parent_pop > 0) else 1000000
+                prov = "LINEAGE_INHERITED_BASELINE"
+                is_derived = True
+                v_count = historical_vols.get(did, historical_vols.get(parent_did, 0) if parent_did else 0)
+                rec_3m = recent_counts.get(did, recent_counts.get(parent_did, 0) if parent_did else 0)
+                pri_3m = prior_counts.get(did, prior_counts.get(parent_did, 0) if parent_did else 0)
+                sev_val = severities.get(did, severities.get(parent_did, 1.0) if parent_did else 1.0)
+            elif prov_type == "TRANSFERRED_CENSUS_2011":
+                eff_pop = pop
+                prov = "1_TO_1_TRANSFERRED"
+                is_derived = True
+                v_count = historical_vols.get(did, 0)
+                rec_3m = recent_counts.get(did, 0)
+                pri_3m = prior_counts.get(did, 0)
+                sev_val = severities.get(did, 1.0)
+            else:
+                eff_pop = pop
+                prov = "INDEPENDENT"
+                is_derived = False
+                parent_did = None
+                parent_name = None
+                v_count = historical_vols.get(did, 0)
+                rec_3m = recent_counts.get(did, 0)
+                pri_3m = prior_counts.get(did, 0)
+                sev_val = severities.get(did, 1.0)
+
+            if eff_pop <= 0:
+                eff_pop = 1000000
+
             fc_count = forecasts[did]["predicted_crime_count"] if did in forecasts else 0.0
 
             # Crime rate per 100k Census 2011 population
             # For legacy risk-v1.0: always based on trailing 12-month volume
             # For risk-v2.0: in FORECAST mode based on projected volume, in HISTORICAL mode based on observed volume
             if calculation_version == "risk-v1.0":
-                rate = (float(v_count) / float(pop)) * 100000.0
+                rate = (float(v_count) / float(eff_pop)) * 100000.0
             elif score_type == "FORECAST":
-                rate = (float(fc_count) / float(pop)) * 100000.0
+                rate = (float(fc_count) / float(eff_pop)) * 100000.0
             else:
-                rate = (float(v_count) / float(pop)) * 100000.0
+                rate = (float(v_count) / float(eff_pop)) * 100000.0
 
-            rec_3m = recent_counts.get(did, 0)
-            pri_3m = prior_counts.get(did, 0)
             trend_val = min(float(rec_3m) / float(pri_3m + 1.0), 3.0)
 
             # Baseline severity ratio defaults to 1.00 if 0 incidents
-            sev_val = severities.get(did, 1.0)
+            sev_val = max(sev_val, 1.0)
 
             f_raw[i] = fc_count
             v_raw[i] = v_count
             r_raw[i] = rate
             t_raw[i] = trend_val
             s_raw[i] = sev_val
+
+            district_meta.append({
+                "assessment_provenance": prov,
+                "is_derived_lineage": is_derived,
+                "parent_district_id": parent_did,
+                "parent_name": parent_name,
+                "effective_pop": eff_pop,
+            })
 
         # 6. Percentile ranks across the 640 assessment population
         f_pct = RiskService.calculate_percentile_ranks(f_raw)
@@ -478,6 +515,7 @@ class RiskService:
 
             strongest_driver = max(contributions_map, key=contributions_map.get)
 
+            meta = district_meta[i]
             explanation = RiskService.build_explanation_narrative(
                 district_name=dem["district_name"],
                 state_name=dem["state_name"],
@@ -487,12 +525,14 @@ class RiskService:
                 assessment_period=assessment_date,
                 strongest_driver=strongest_driver,
                 factor_contribs=factor_contribs,
-                pop_2011=dem["total_population"],
+                pop_2011=meta["effective_pop"],
                 calculation_version=calculation_version,
                 model_name=active_model.model_name if active_model else None,
                 model_version=active_model.version if active_model else None,
                 forecast_origin_date=forecast_origin_date_val,
             )
+            if meta["is_derived_lineage"] and meta["parent_name"]:
+                explanation += f" Provenance Notice: Assessment utilizes statutory parent jurisdiction baseline (#{meta['parent_district_id']} {meta['parent_name']}). Decennial census enumeration is unavailable for post-2011 carved district."
 
             records_to_save.append({
                 "district_id": dem["district_id"],
@@ -514,6 +554,10 @@ class RiskService:
                 "explanation_summary": explanation,
                 "population_density_factor": round(float(r_pct[i]), 2),
                 "calculation_version": calculation_version,
+                "assessment_provenance": meta["assessment_provenance"],
+                "is_derived_lineage": meta["is_derived_lineage"],
+                "parent_district_id": meta["parent_district_id"],
+                "cohort_size": 790,
             })
 
         # 9. Idempotent persistence inside transaction

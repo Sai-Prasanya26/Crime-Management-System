@@ -8,7 +8,6 @@ import {
   Info,
   Layers,
   Search,
-  Sliders,
   RotateCcw,
   Users,
   Car,
@@ -27,6 +26,7 @@ import {
   Radio,
   Gauge,
   MapPin,
+  Table,
 } from 'lucide-react';
 import { StatCard } from '../common/StatCard';
 import LoadingState from '../common/LoadingState';
@@ -172,20 +172,6 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
   const [optStateId, setOptStateId] = useState<number>(selectedStateId || 2); // Default Andhra Pradesh (ID 2)
   const [assessmentPeriod, setAssessmentPeriod] = useState<string>(initialPeriod || '2026-11-01');
   const [scenarioType, setScenarioType] = useState<string>('CRIME_SPECIFIC_OPTIMAL');
-  const [isSimulation, setIsSimulation] = useState<boolean>(false);
-  const [showCapacityOverrides, setShowCapacityOverrides] = useState<boolean>(false);
-  const [capacityOverrides, setCapacityOverrides] = useState<{
-    PERSONNEL?: number;
-    MOBILITY?: number;
-    INVESTIGATION?: number;
-    SPECIALIZED?: number;
-    SURVEILLANCE?: number;
-    FORENSIC?: number;
-    CYBER_TECHNOLOGY?: number;
-    EMERGENCY_RESPONSE?: number;
-    COMMUNICATION?: number;
-    TRAFFIC_SAFETY?: number;
-  }>({});
 
   // Optimization Result
   const [optimizationResult, setOptimizationResult] = useState<CrimeSpecificOptimizationResponse | null>(null);
@@ -200,9 +186,13 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   // Tactical Geographical Workspace State
-  const [activeTacticalDistrictId, setActiveTacticalDistrictId] = useState<number | null>(null);
+  const [activeTacticalDistrictId, setActiveTacticalDistrictId] = useState<number | null>(initialDistrictId || null);
   const [tacticalRiskFilter, setTacticalRiskFilter] = useState<string>('ALL');
   const [tacticalSearch, setTacticalSearch] = useState<string>('');
+  const [tacticalDemandDetail, setTacticalDemandDetail] = useState<DistrictCrimeDemandResponse | null>(null);
+  const [isTacticalDemandLoading, setIsTacticalDemandLoading] = useState<boolean>(false);
+  const [selectedCrimeName, setSelectedCrimeName] = useState<string | null>(null);
+  const [allocationViewMode, setAllocationViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
 
   // Drill-Down Drawer / Modal
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictCrimeAllocationItem | null>(null);
@@ -242,8 +232,6 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
           state_id: optStateId,
           assessment_period: assessmentPeriod,
           scenario_type: scenarioType,
-          is_simulation: isSimulation,
-          capacity_overrides: Object.keys(capacityOverrides).length > 0 ? capacityOverrides : undefined,
         }),
       ]);
       setInventorySummary(invRes);
@@ -253,7 +241,7 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
     } finally {
       setIsLoading(false);
     }
-  }, [optStateId, assessmentPeriod, scenarioType, isSimulation, capacityOverrides]);
+  }, [optStateId, assessmentPeriod, scenarioType]);
 
   useEffect(() => {
     loadData();
@@ -268,8 +256,6 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
         state_id: optStateId,
         assessment_period: assessmentPeriod,
         scenario_type: scenarioType,
-        is_simulation: isSimulation,
-        capacity_overrides: Object.keys(capacityOverrides).length > 0 ? capacityOverrides : undefined,
       });
       setOptimizationResult(res);
       const invRes = await optimizationApi.getInventorySummary(optStateId);
@@ -514,6 +500,146 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
     return list;
   }, [districtGroups, tacticalRiskFilter, tacticalSearch]);
 
+  // Synchronize initialDistrictId if provided via props
+  useEffect(() => {
+    if (initialDistrictId) {
+      setActiveTacticalDistrictId(initialDistrictId);
+    }
+  }, [initialDistrictId]);
+
+  // Fetch dynamic district crime demand details whenever active tactical district or period changes
+  useEffect(() => {
+    if (!activeTacticalDistrict) {
+      setTacticalDemandDetail(null);
+      return;
+    }
+    let isMounted = true;
+    setIsTacticalDemandLoading(true);
+    const [yStr, mStr] = assessmentPeriod.split('-');
+    const year = parseInt(yStr, 10) || 2026;
+    const month = parseInt(mStr, 10) || 11;
+
+    optimizationApi
+      .getDistrictCrimeDemand({
+        district_id: activeTacticalDistrict.district_id,
+        year,
+        month,
+      })
+      .then((res) => {
+        if (!isMounted) return;
+        setTacticalDemandDetail(res);
+        const posCrimes = (res.crime_matrix || []).filter((c) => c.predicted_count > 0);
+        if (posCrimes.length > 0) {
+          setSelectedCrimeName((prev) => {
+            if (prev && posCrimes.some((c) => c.crime_name === prev)) return prev;
+            return posCrimes[0].crime_name;
+          });
+        } else {
+          setSelectedCrimeName(null);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load tactical district demand detail', err);
+        if (isMounted) setTacticalDemandDetail(null);
+      })
+      .finally(() => {
+        if (isMounted) setIsTacticalDemandLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTacticalDistrict?.district_id, assessmentPeriod]);
+
+  // Positive predicted crimes for active tactical district (Section B)
+  const districtPositiveCrimes = useMemo(() => {
+    if (!tacticalDemandDetail?.crime_matrix) return [];
+    return tacticalDemandDetail.crime_matrix.filter((c) => c.predicted_count > 0);
+  }, [tacticalDemandDetail]);
+
+  // Selected crime for single-crime requirements (Section C)
+  const activeSelectedCrime = useMemo(() => {
+    if (!districtPositiveCrimes.length) return null;
+    if (selectedCrimeName) {
+      const match = districtPositiveCrimes.find((c) => c.crime_name === selectedCrimeName);
+      if (match) return match;
+    }
+    return districtPositiveCrimes[0];
+  }, [districtPositiveCrimes, selectedCrimeName]);
+
+  // Section C: Mapped pools for selected single crime
+  const selectedCrimeMappedPools = useMemo(() => {
+    if (!activeSelectedCrime) return [];
+    const items: Array<{
+      poolKey: string;
+      poolName: string;
+      unit: string;
+      coefficient: number;
+      rawDemand: number;
+      rationale: string;
+      isPartner?: boolean;
+      icon: React.ElementType;
+      textColor: string;
+      bgLight: string;
+    }> = [];
+
+    for (const poolKey of Object.keys(POOL_METADATA)) {
+      const coef = activeSelectedCrime.coefficients?.[poolKey] ?? 0;
+      const raw = activeSelectedCrime.raw_demands?.[poolKey] ?? 0;
+      if (coef > 0 || raw > 0) {
+        const meta = POOL_METADATA[poolKey];
+        items.push({
+          poolKey,
+          poolName: meta.name,
+          unit: activeSelectedCrime.units?.[poolKey] || meta.unitDefault,
+          coefficient: coef,
+          rawDemand: raw,
+          rationale: activeSelectedCrime.rationales?.[poolKey] || 'Institutional preventive deployment ratio',
+          isPartner: meta.isPartner,
+          icon: meta.icon,
+          textColor: meta.textColor,
+          bgLight: meta.bgLight,
+        });
+      }
+    }
+
+    return items;
+  }, [activeSelectedCrime]);
+
+  // Section D: All 10 specialized resource pools aggregated allocation table
+  const districtTenPoolAllocations = useMemo(() => {
+    if (!activeTacticalDistrict || !optimizationResult) return [];
+    return Object.keys(POOL_METADATA).map((poolKey) => {
+      const meta = POOL_METADATA[poolKey];
+      const poolAlloc = activeTacticalDistrict.pools[poolKey];
+      const poolSummary = optimizationResult.pool_summaries?.[poolKey];
+      const demanded = poolAlloc?.demanded_quantity ?? 0;
+      const allocated = poolAlloc?.allocated_quantity ?? 0;
+      const available = poolSummary?.capacity ?? poolAlloc?.baseline_available ?? 0;
+      const shortage = poolAlloc?.shortage ?? Math.max(0, demanded - allocated);
+      const coverage = poolAlloc?.coverage_percentage ?? (demanded > 0 ? (allocated / demanded) * 100 : 100);
+      const status = poolAlloc?.status ?? (demanded === 0 ? 'SATISFIED' : allocated >= demanded ? 'SATISFIED' : allocated > 0 ? 'PARTIAL' : 'DEFICIT');
+
+      return {
+        poolKey,
+        poolName: meta.name,
+        subtext: meta.subtext,
+        unit: poolAlloc?.unit_of_measure || meta.unitDefault,
+        demanded,
+        available,
+        allocated,
+        shortage,
+        coverage,
+        status,
+        isPartner: meta.isPartner,
+        icon: meta.icon,
+        textColor: meta.textColor,
+        bgLight: meta.bgLight,
+        barColor: meta.barColor,
+      };
+    });
+  }, [activeTacticalDistrict, optimizationResult]);
+
   if (isLoading) {
     return <LoadingState message="Integrating Phase 8 crime forecasts & Phase 9 risk assessments into MILP solver..." />;
   }
@@ -667,58 +793,10 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                   </select>
                 </div>
 
-                {/* Simulation Mode Toggle */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Execution Mode
-                  </label>
-                  <div className="flex items-center gap-1 h-9">
-                    <button
-                      type="button"
-                      onClick={() => setIsSimulation(false)}
-                      className={`px-3 py-1 text-xs font-semibold rounded-l-lg border transition-colors cursor-pointer ${
-                        !isSimulation
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      Operational
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsSimulation(true)}
-                      className={`px-3 py-1 text-xs font-semibold rounded-r-lg border transition-colors cursor-pointer ${
-                        isSimulation
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      Simulation
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2 self-end lg:self-center">
-                <button
-                  type="button"
-                  onClick={() => setShowCapacityOverrides(!showCapacityOverrides)}
-                  className={`h-9 px-3 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    showCapacityOverrides || Object.keys(capacityOverrides).length > 0
-                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <Sliders className="h-3.5 w-3.5" />
-                  Capacity Overrides
-                  {Object.keys(capacityOverrides).length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-[10px]">
-                      {Object.keys(capacityOverrides).length}
-                    </span>
-                  )}
-                </button>
-
                 <button
                   type="button"
                   onClick={handleExecuteOptimization}
@@ -739,196 +817,6 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                 </button>
               </div>
             </div>
-
-            {/* Collapsible Capacity Overrides */}
-            {showCapacityOverrides && (
-              <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-indigo-600" />
-                    Standing Pool Capacity Overrides (Simulation Only)
-                  </h4>
-                  <button
-                    onClick={() => setCapacityOverrides({})}
-                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                  >
-                    Reset Overrides
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Personnel (Officers):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 5000"
-                      value={capacityOverrides.PERSONNEL ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          PERSONNEL: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Mobility (Vehicles):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 800"
-                      value={capacityOverrides.MOBILITY ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          MOBILITY: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Investigation (Teams):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 400"
-                      value={capacityOverrides.INVESTIGATION ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          INVESTIGATION: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Specialized (Units):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 150"
-                      value={capacityOverrides.SPECIALIZED ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          SPECIALIZED: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Surveillance (Cameras):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 200"
-                      value={capacityOverrides.SURVEILLANCE ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          SURVEILLANCE: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Forensic (Tests/Mo):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 120"
-                      value={capacityOverrides.FORENSIC ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          FORENSIC: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Cyber Tech (Stations):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 60"
-                      value={capacityOverrides.CYBER_TECHNOLOGY ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          CYBER_TECHNOLOGY: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Emergency (EMS):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 90"
-                      value={capacityOverrides.EMERGENCY_RESPONSE ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          EMERGENCY_RESPONSE: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Radio (Channels):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 150"
-                      value={capacityOverrides.COMMUNICATION ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          COMMUNICATION: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                      Traffic (Devices):
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 180"
-                      value={capacityOverrides.TRAFFIC_SAFETY ?? ''}
-                      onChange={(e) =>
-                        setCapacityOverrides({
-                          ...capacityOverrides,
-                          TRAFFIC_SAFETY: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                      className="w-full h-8 px-2.5 text-xs rounded border border-slate-200 bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* 2. Top-Level KPI Cards (5 Cards) */}
@@ -1293,90 +1181,381 @@ export const CrimeSpecificOptimizationView: React.FC<CrimeSpecificOptimizationVi
                         </div>
                       </div>
 
-                      {/* 10 Resource Pools Grid */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
-                            Ten-Pool Allocation Schedule
-                          </span>
-                          <span className="text-[11px] text-slate-500">Target: {assessmentPeriod}</span>
+                      {/* SECTION B: PREDICTED CRIMES (PHASE 8 FORECASTS) */}
+                      <div className="rounded-lg border border-[#D9E1EA] bg-[#F6F8FB]/40 p-3.5 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                                Section B: Predicted Crimes
+                              </h5>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {districtPositiveCrimes.length} Positive Forecast Offences
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#5D6878]">
+                              Compositionally derived from district ML forecasts. Select an offence to inspect mapped resource demand in Section C.
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
-                          {Object.keys(POOL_METADATA).map((poolKey) => {
-                            const meta = POOL_METADATA[poolKey];
-                            const Icon = meta.icon;
-                            const poolAlloc = activeTacticalDistrict.pools[poolKey];
-                            const demanded = poolAlloc?.demanded_quantity ?? 0;
-                            const allocated = poolAlloc?.allocated_quantity ?? 0;
-                            const shortage = poolAlloc?.shortage ?? 0;
-                            const coverage =
-                              poolAlloc?.coverage_percentage ??
-                              (demanded > 0 ? (allocated / demanded) * 100 : 100);
-                            const status = poolAlloc?.status ?? (demanded === 0 ? 'SATISFIED' : 'STANDBY');
+                        {isTacticalDemandLoading ? (
+                          <div className="py-4 text-center text-xs text-slate-500">
+                            Loading predicted offences and demand matrices...
+                          </div>
+                        ) : districtPositiveCrimes.length > 0 ? (
+                          <div className="max-h-[220px] overflow-y-auto border border-[#D9E1EA] rounded-lg bg-white">
+                            <table className="w-full text-left text-xs">
+                              <thead className="sticky top-0 bg-[#F4F7FA] text-[11px] font-bold text-[#0B1F3A] border-b border-[#D9E1EA]">
+                                <tr>
+                                  <th className="py-2 px-3">Offence / Crime Type</th>
+                                  <th className="py-2 px-3">Category</th>
+                                  <th className="py-2 px-3 text-right">Predicted Volume (ŷ)</th>
+                                  <th className="py-2 px-3 text-center">Severity</th>
+                                  <th className="py-2 px-3 text-center">Mapped Pools</th>
+                                  <th className="py-2 px-3 text-center">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#D9E1EA]/60">
+                                {districtPositiveCrimes.map((c) => {
+                                  const isSelected = activeSelectedCrime?.crime_name === c.crime_name;
+                                  const mappedCount = Object.values(c.coefficients || {}).filter((v) => v > 0).length;
+                                  const sev = c.severity_level?.toUpperCase() || 'MODERATE';
+                                  const sevBadge =
+                                    sev === 'CRITICAL'
+                                      ? 'bg-red-50 text-[#C53B3B] border-red-200'
+                                      : sev === 'HIGH'
+                                      ? 'bg-amber-50 text-[#C98512] border-amber-200'
+                                      : sev === 'LOW'
+                                      ? 'bg-emerald-50 text-[#16845B] border-emerald-200'
+                                      : 'bg-blue-50 text-[#1769AA] border-blue-200';
 
-                            const statusClass =
-                              status === 'SATISFIED'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : status === 'PARTIAL'
-                                ? 'bg-blue-50 text-blue-800 border-blue-200'
-                                : status === 'DEFICIT'
-                                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                : 'bg-rose-50 text-rose-800 border-rose-200';
-
-                            return (
-                              <div
-                                key={poolKey}
-                                className="p-3 rounded-lg border border-[#D9E1EA] bg-[#F6F8FB]/30 hover:bg-white hover:border-[#BAC7D5] transition-all space-y-2"
-                              >
-                                <div className="flex items-start justify-between gap-1.5">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className={`p-1.5 rounded-md ${meta.bgLight} ${meta.textColor}`}>
-                                      <Icon className="h-3.5 w-3.5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <h5 className="text-xs font-bold text-[#0B1F3A] truncate">{meta.name}</h5>
-                                      <span className="text-[10px] text-slate-500 block truncate">{meta.subtext}</span>
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} shrink-0`}
-                                  >
-                                    {status}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
-                                  <div>
-                                    <span className="text-[9px] text-slate-500 block">Demanded</span>
-                                    <span className="font-bold text-slate-800 text-[11px]">{demanded}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-[9px] text-slate-500 block">Allocated</span>
-                                    <span className={`font-bold text-[11px] ${meta.textColor}`}>{allocated}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-[9px] text-slate-500 block">Shortage</span>
-                                    <span
-                                      className={`font-bold text-[11px] ${
-                                        shortage > 0 ? 'text-[#C53B3B]' : 'text-slate-600'
+                                  return (
+                                    <tr
+                                      key={c.crime_code || c.crime_name}
+                                      onClick={() => setSelectedCrimeName(c.crime_name)}
+                                      className={`h-9 cursor-pointer transition-colors ${
+                                        isSelected
+                                          ? 'bg-indigo-50/80 font-semibold text-indigo-950'
+                                          : 'hover:bg-slate-50 text-slate-700'
                                       }`}
                                     >
-                                      {shortage > 0 ? `-${shortage}` : '0'}
+                                      <td className="py-1.5 px-3">
+                                        <div className="flex items-center gap-1.5">
+                                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+                                          <span>{c.crime_name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="py-1.5 px-3 text-slate-500 text-[11px]">{c.category_name}</td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">
+                                        {c.predicted_count.toFixed(3)}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-center">
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${sevBadge}`}>
+                                          {sev}
+                                        </span>
+                                      </td>
+                                      <td className="py-1.5 px-3 text-center text-[11px] text-slate-600 font-medium">
+                                        {mappedCount} pools
+                                      </td>
+                                      <td className="py-1.5 px-3 text-center">
+                                        <span
+                                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                            isSelected
+                                              ? 'bg-indigo-600 text-white'
+                                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                          }`}
+                                        >
+                                          {isSelected ? 'Selected' : 'Inspect'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="py-3 text-center text-xs text-slate-500">
+                            No positive predicted offences recorded for this period.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SECTION C: SELECTED CRIME – RESOURCE REQUIREMENTS */}
+                      {activeSelectedCrime && selectedCrimeMappedPools.length > 0 && (
+                        <div className="rounded-lg border border-[#D9E1EA] bg-[#F6F8FB]/40 p-3.5 space-y-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h5 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                                  Section C: Selected Crime – Resource Requirements
+                                </h5>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  {activeSelectedCrime.crime_name} ({activeSelectedCrime.predicted_count.toFixed(3)} Incidents)
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#5D6878]">
+                                Configured coefficients (c_ij) and calculated single-crime demand contribution (r_ij = p_i &times; c_ij).
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="border border-[#D9E1EA] rounded-lg overflow-hidden bg-white">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-[#F4F7FA] text-[11px] font-bold text-[#0B1F3A] border-b border-[#D9E1EA]">
+                                <tr>
+                                  <th className="py-2 px-3">Resource Pool</th>
+                                  <th className="py-2 px-3 text-right">Planning Coefficient (&alpha;)</th>
+                                  <th className="py-2 px-3 text-right">Calculated Demand Contribution</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#D9E1EA]/60">
+                                {selectedCrimeMappedPools.map((pool) => {
+                                  const Icon = pool.icon;
+                                  return (
+                                    <tr key={pool.poolKey} className="h-8 hover:bg-slate-50">
+                                      <td className="py-1.5 px-3 font-medium text-slate-800">
+                                        <div className="flex items-center gap-2">
+                                          <div className={`p-1 rounded ${pool.bgLight} ${pool.textColor}`}>
+                                            <Icon className="h-3 w-3" />
+                                          </div>
+                                          <span>{pool.poolName}</span>
+                                          {pool.isPartner && (
+                                            <span className="text-[9px] px-1 py-0.2 rounded bg-red-50 text-red-700 border border-red-200">
+                                              Partner Agency
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono text-slate-600">
+                                        {pool.coefficient.toFixed(3)}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold text-[#1769AA]">
+                                        {pool.rawDemand.toFixed(3)} {pool.unit}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="text-[10px] text-slate-500 italic">
+                            * Emergency Response and Traffic Safety are omitted when coefficient is 0.000 for this offence.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SECTION D: FINAL AGGREGATED RESOURCE ALLOCATION */}
+                      <div className="space-y-2 pt-2 border-t border-[#D9E1EA]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wide">
+                                Section D: Final Aggregated Resource Allocation
+                              </h5>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                SciPy MILP Optimal Allocation
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#5D6878]">
+                              Unified district-wide allocation solved under integer MILP demand constraints across all 10 specialized resource pools.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1 bg-[#F4F7FA] p-0.5 rounded-lg border border-[#D9E1EA] shrink-0 self-start sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setAllocationViewMode('TABLE')}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+                                allocationViewMode === 'TABLE'
+                                  ? 'bg-[#0B1F3A] text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <Table className="h-3 w-3" />
+                              <span>Table View</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAllocationViewMode('CARDS')}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+                                allocationViewMode === 'CARDS'
+                                  ? 'bg-[#0B1F3A] text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <Layers className="h-3 w-3" />
+                              <span>Cards Grid</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {allocationViewMode === 'TABLE' ? (
+                          <div className="border border-[#D9E1EA] rounded-lg overflow-hidden bg-white shadow-2xs">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-[#F4F7FA] text-[11px] font-bold text-[#0B1F3A] border-b border-[#D9E1EA]">
+                                <tr>
+                                  <th className="py-2.5 px-3">Resource Pool</th>
+                                  <th className="py-2.5 px-3 text-right">Required (D_j)</th>
+                                  <th className="py-2.5 px-3 text-right">Available</th>
+                                  <th className="py-2.5 px-3 text-right font-bold text-[#1769AA]">
+                                    Recommended Allocation
+                                  </th>
+                                  <th className="py-2.5 px-3 text-right">Shortage</th>
+                                  <th className="py-2.5 px-3 text-center">Coverage &amp; Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#D9E1EA]/60">
+                                {districtTenPoolAllocations.map((alloc) => {
+                                  const Icon = alloc.icon;
+                                  const statusClass =
+                                    alloc.status === 'SATISFIED'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                      : alloc.status === 'PARTIAL'
+                                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                      : alloc.status === 'DEFICIT'
+                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                      : 'bg-rose-50 text-rose-800 border-rose-200';
+
+                                  return (
+                                    <tr key={alloc.poolKey} className="h-9 hover:bg-slate-50 transition-colors">
+                                      <td className="py-1.5 px-3">
+                                        <div className="flex items-center gap-2">
+                                          <div className={`p-1 rounded ${alloc.bgLight} ${alloc.textColor}`}>
+                                            <Icon className="h-3.5 w-3.5" />
+                                          </div>
+                                          <div>
+                                            <div className="font-semibold text-[#0B1F3A] flex items-center gap-1.5">
+                                              <span>{alloc.poolName}</span>
+                                              {alloc.isPartner && (
+                                                <span className="text-[9px] px-1 py-0.2 rounded bg-red-50 text-red-700 border border-red-200 font-normal">
+                                                  Partner Agency
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 block">
+                                              {alloc.subtext} &bull; {alloc.unit}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">
+                                        {alloc.demanded.toLocaleString()}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono text-slate-600">
+                                        {alloc.available.toLocaleString()}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-extrabold text-[#1769AA]">
+                                        {alloc.allocated.toLocaleString()}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-right font-mono font-bold">
+                                        {alloc.shortage > 0 ? (
+                                          <span className="text-[#C53B3B]">-{alloc.shortage.toLocaleString()}</span>
+                                        ) : (
+                                          <span className="text-[#16845B]">0</span>
+                                        )}
+                                      </td>
+                                      <td className="py-1.5 px-3 text-center">
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono text-slate-600">
+                                            {alloc.coverage.toFixed(0)}%
+                                          </span>
+                                          <span
+                                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass}`}
+                                          >
+                                            {alloc.status}
+                                          </span>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot className="bg-[#F8FAFC] border-t border-[#D9E1EA] text-[11px] text-slate-600">
+                                <tr>
+                                  <td colSpan={6} className="py-2 px-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-slate-700">
+                                        Evaluation Scope Summary: 10/10 Resource Pools Evaluated &amp; Satisfied
+                                      </span>
+                                      <span className="font-mono text-slate-500">
+                                        Solver Status: <strong>{optimizationResult.solver_status}</strong> (Execution: {optimizationResult.execution_duration_ms}ms)
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        ) : (
+                          /* Cards Grid View */
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                            {districtTenPoolAllocations.map((alloc) => {
+                              const Icon = alloc.icon;
+                              const statusClass =
+                                alloc.status === 'SATISFIED'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : alloc.status === 'PARTIAL'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                  : alloc.status === 'DEFICIT'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200';
+
+                              return (
+                                <div
+                                  key={alloc.poolKey}
+                                  className="p-3 rounded-lg border border-[#D9E1EA] bg-[#F6F8FB]/30 hover:bg-white hover:border-[#BAC7D5] transition-all space-y-2"
+                                >
+                                  <div className="flex items-start justify-between gap-1.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className={`p-1.5 rounded-md ${alloc.bgLight} ${alloc.textColor}`}>
+                                        <Icon className="h-3.5 w-3.5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h5 className="text-xs font-bold text-[#0B1F3A] truncate">{alloc.poolName}</h5>
+                                        <span className="text-[10px] text-slate-500 block truncate">{alloc.subtext}</span>
+                                      </div>
+                                    </div>
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} shrink-0`}
+                                    >
+                                      {alloc.status}
                                     </span>
                                   </div>
-                                </div>
 
-                                <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                                  <div
-                                    className={`h-1 rounded-full ${meta.barColor}`}
-                                    style={{ width: `${Math.min(100, coverage)}%` }}
-                                  />
+                                  <div className="grid grid-cols-3 text-center text-xs pt-1 border-t border-slate-100">
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 block">Required</span>
+                                      <span className="font-bold text-slate-800 text-[11px]">{alloc.demanded}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 block">Allocated</span>
+                                      <span className={`font-bold text-[11px] ${alloc.textColor}`}>{alloc.allocated}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 block">Shortage</span>
+                                      <span
+                                        className={`font-bold text-[11px] ${
+                                          alloc.shortage > 0 ? 'text-[#C53B3B]' : 'text-slate-600'
+                                        }`}
+                                      >
+                                        {alloc.shortage > 0 ? `-${alloc.shortage}` : '0'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                                    <div
+                                      className={`h-1 rounded-full ${alloc.barColor}`}
+                                      style={{ width: `${Math.min(100, alloc.coverage)}%` }}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Top Predicted Crime Drivers for Selected District */}

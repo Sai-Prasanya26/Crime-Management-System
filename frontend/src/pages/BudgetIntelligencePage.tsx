@@ -36,13 +36,14 @@ export const BudgetIntelligencePage: React.FC = () => {
   return (
     <DashboardLayout
       hideSidebar
+      hideFooter={true}
       icon={BadgeDollarSign}
       title="Budget & Cost Analysis"
       onRefresh={() => fetchStates(true)}
       isRefreshing={isRefreshing}
     >
       {isLoading && (
-        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 shadow-2xs">
+        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-2xs">
           <LoadingState message="Initializing fiscal intelligence and cost engine..." />
         </div>
       )}

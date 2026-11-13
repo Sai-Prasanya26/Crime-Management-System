@@ -468,7 +468,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(run_data["scenario_name"], "PERSISTENCE_AUDIT_RUN")
 
     def test_11_zero_demand_and_edge_cases(self):
-        """11. Verifies system stability when pool capacity is zero or minimal."""
+        """11. Verifies system stability when all pool capacities are zero."""
         resp = client.post(
             "/api/v1/optimization/crime-optimize",
             json={
@@ -480,6 +480,12 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
                     "MOBILITY": 0,
                     "INVESTIGATION": 0,
                     "SPECIALIZED": 0,
+                    "SURVEILLANCE": 0,
+                    "FORENSIC": 0,
+                    "CYBER_TECHNOLOGY": 0,
+                    "EMERGENCY_RESPONSE": 0,
+                    "COMMUNICATION": 0,
+                    "TRAFFIC_SAFETY": 0,
                 },
             },
             headers=self.analyst_headers,
@@ -581,7 +587,7 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
                 self.assertGreaterEqual(exp["proportional_allocation"], 0.0)
 
     def test_14_unconfigured_pools_handling_and_alerts(self):
-        """14. Verifies that unconfigured pools report UNCONFIGURED_CAPACITY, withhold allocations, and raise alerts."""
+        """14. Verifies unified inventory coverage for all 10 resource pools across the state."""
         resp = client.post(
             "/api/v1/optimization/crime-optimize",
             json={
@@ -595,7 +601,11 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
-        unconfigured_pools = [
+        all_10_pools = [
+            "PERSONNEL",
+            "MOBILITY",
+            "INVESTIGATION",
+            "SPECIALIZED",
             "SURVEILLANCE",
             "FORENSIC",
             "CYBER_TECHNOLOGY",
@@ -604,22 +614,15 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
             "TRAFFIC_SAFETY",
         ]
 
-        # Verify pool status and allocations
-        for pool in unconfigured_pools:
+        # Verify all 10 pools are configured with active capacity in unified inventory
+        for pool in all_10_pools:
             pool_info = data["pool_summaries"][pool]
-            self.assertEqual(pool_info["solver_status"], "UNCONFIGURED_CAPACITY")
-            self.assertEqual(pool_info["allocated"], 0)
-            self.assertEqual(pool_info["capacity"], 0)
-            self.assertFalse(pool_info["is_configured"])
-
-        # Verify shortage alerts contain unconfigured capacity warnings
-        unconfigured_alerts = [
-            a for a in data["shortage_alerts"] if a.get("alert_type") == "UNCONFIGURED_CAPACITY"
-        ]
-        self.assertGreaterEqual(len(unconfigured_alerts), len(unconfigured_pools))
+            self.assertTrue(pool_info["is_configured"], f"Pool {pool} expected to be configured in unified inventory")
+            self.assertGreater(pool_info["capacity"], 0, f"Pool {pool} expected non-zero capacity")
+            self.assertIn(pool_info["solver_status"], ["OPTIMAL_SATISFIED", "OPTIMAL_CONSTRAINED"])
 
     def test_15_district_pipeline_forecast_integration(self):
-        """15. Verifies end-to-end District Pipeline Forecast endpoint integrating Phase 8, 9, and 10."""
+        """15. Verifies end-to-end District Pipeline Forecast endpoint integrating Phase 8, 9, and 10 across all 10 pools."""
         # 1. Unauthenticated -> 401
         unauth_resp = client.get("/api/v1/optimization/district-pipeline-forecast?district_id=1&year=2026&month=11")
         self.assertEqual(unauth_resp.status_code, 401)
@@ -657,23 +660,21 @@ class TestCrimeResourceOptimizationPhase10(unittest.TestCase):
         expected_cats = {"Violent Crime", "Other Crime", "Traffic Fatality", "Fire Accident"}
         self.assertEqual(cat_names, expected_cats)
 
-        # Check 10 resource pool summaries
+        # Check all 10 resource pool summaries are configured in unified inventory
         self.assertEqual(len(data["pool_summaries"]), 10)
-        unconfigured_pools = [
+        all_10_pools = [
+            "PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED",
             "SURVEILLANCE", "FORENSIC", "CYBER_TECHNOLOGY",
             "EMERGENCY_RESPONSE", "COMMUNICATION", "TRAFFIC_SAFETY"
         ]
-        for pool in unconfigured_pools:
+        for pool in all_10_pools:
             p_info = data["pool_summaries"][pool]
-            self.assertFalse(p_info["is_configured"])
-            self.assertEqual(p_info["allocated"], 0)
-
-        configured_pools = ["PERSONNEL", "MOBILITY", "INVESTIGATION", "SPECIALIZED"]
-        for pool in configured_pools:
-            p_info = data["pool_summaries"][pool]
-            self.assertTrue(p_info["is_configured"])
-            self.assertGreater(p_info["capacity"], 0)
+            self.assertTrue(p_info["is_configured"], f"Pool {pool} expected to be configured in unified inventory")
+            self.assertGreater(p_info["capacity"], 0, f"Pool {pool} expected non-zero capacity")
             self.assertLessEqual(p_info["allocated"], p_info["capacity"])
+
+        # Check granular recommendations
+        self.assertGreater(len(data["resource_recommendations"]), 0)
 
         # Check granular recommendations
         self.assertGreater(len(data["resource_recommendations"]), 0)

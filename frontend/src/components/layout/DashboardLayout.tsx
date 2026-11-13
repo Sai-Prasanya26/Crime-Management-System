@@ -11,6 +11,7 @@ interface DashboardLayoutProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   hideSidebar?: boolean;
+  hideFooter?: boolean;
   action?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -35,6 +36,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing,
   hideSidebar,
+  hideFooter = false,
   action,
   children,
 }) => {
@@ -91,25 +93,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </main>
 
         {/* Subtle Operational Footer */}
-        <footer className="border-t border-[#D9E1EA] bg-white px-4 sm:px-6 py-3 mt-auto">
-          <div
-            className={`mx-auto ${
-              isOperationWorkspace ? 'max-w-[1680px]' : 'max-w-[1600px]'
-            } flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-[#64748B]`}
-          >
-            <div className="min-w-0">
-              <span className="font-semibold text-[#172033]">Crime Intelligence &amp; Management Portal</span>
-              <span className="mx-1.5 text-slate-300">|</span>
-              <span className="text-[#5D6878]">
-                {isOperationWorkspace ? 'Dedicated Operation Workspace' : 'Operations & Analysis Center'}
-              </span>
-              <span className="hidden md:inline mx-1.5 text-slate-300">&bull;</span>
-              <span className="block md:inline mt-0.5 md:mt-0 font-normal text-[#64748B]">
-                Data-Driven Crime Management System with AI-Based Resource Optimization
-              </span>
+        {!hideFooter && (
+          <footer className="border-t border-[#D9E1EA] bg-white px-4 sm:px-6 py-3 mt-auto">
+            <div
+              className={`mx-auto ${
+                isOperationWorkspace ? 'max-w-[1680px]' : 'max-w-[1600px]'
+              } flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-[#64748B]`}
+            >
+              <div className="min-w-0">
+                <span className="font-semibold text-[#172033]">Crime Intelligence &amp; Management Portal</span>
+                <span className="mx-1.5 text-slate-300">|</span>
+                <span className="text-[#5D6878]">
+                  {isOperationWorkspace ? 'Dedicated Operation Workspace' : 'Operations & Analysis Center'}
+                </span>
+                <span className="hidden md:inline mx-1.5 text-slate-300">&bull;</span>
+                <span className="block md:inline mt-0.5 md:mt-0 font-normal text-[#64748B]">
+                  Data-Driven Crime Management System with AI-Based Resource Optimization
+                </span>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        )}
       </div>
     </div>
   );
