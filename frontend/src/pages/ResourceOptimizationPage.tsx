@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Layers,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -109,6 +110,9 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | undefined>();
   const [assessmentPeriod, setAssessmentPeriod] = useState<string>('2026-11'); // Format YYYY-MM
 
+  // View Mode: 'CRIME_ANALYSIS' (initial 2-column view) vs 'ALLOCATION_RESULTS' (post-optimization full-width results)
+  const [viewMode, setViewMode] = useState<'CRIME_ANALYSIS' | 'ALLOCATION_RESULTS'>('CRIME_ANALYSIS');
+
   // Section 1 State: Selected Crime Type ID
   const [selectedCrimeId, setSelectedCrimeId] = useState<number | null>(null);
 
@@ -124,7 +128,6 @@ export const ResourceOptimizationPage: React.FC = () => {
   const [demandDetail, setDistrictDemandDetail] = useState<DistrictCrimeDemandResponse | null>(null);
   const [optimizationResult, setOptimizationResult] = useState<CrimeSpecificOptimizationResponse | null>(null);
   const [inventorySummary, setInventorySummary] = useState<ResourceInventorySummaryResponse | null>(null);
-  const [hasOptimized, setHasOptimized] = useState<boolean>(false);
 
   // Initialize from URL search params
   useEffect(() => {
@@ -197,14 +200,13 @@ export const ResourceOptimizationPage: React.FC = () => {
   }, [selectedStateId]);
 
   // Load District Predicted Crime Demand & Inventory Baseline
-  // Note: Does NOT automatically execute optimization; Section 3 remains hidden until "Optimize Resources" is clicked
   const loadDistrictDemand = useCallback(async () => {
     if (!selectedDistrictId) return;
 
     setIsLoadingDemand(true);
     setDemandError(null);
-    // Clear previous optimization results when district/period changes
-    setHasOptimized(false);
+    // Reset to Crime Analysis view and clear stale optimization results when district/period changes
+    setViewMode('CRIME_ANALYSIS');
     setOptimizationResult(null);
     setOptimizationError(null);
 
@@ -225,10 +227,13 @@ export const ResourceOptimizationPage: React.FC = () => {
       setDistrictDemandDetail(demandRes);
       setInventorySummary(invRes);
 
-      // Auto-select first positive crime type
+      // Auto-select first positive crime type if current selection is invalid
       const positive = (demandRes.crime_matrix || []).filter((c) => c.predicted_count > 0);
       if (positive.length > 0) {
-        setSelectedCrimeId(positive[0].crime_type_id);
+        setSelectedCrimeId((prev) => {
+          const exists = positive.some((c) => c.crime_type_id === prev);
+          return exists ? prev : positive[0].crime_type_id;
+        });
       } else {
         setSelectedCrimeId(null);
       }
@@ -275,7 +280,8 @@ export const ResourceOptimizationPage: React.FC = () => {
 
       setOptimizationResult(optRes);
       setInventorySummary(invRes);
-      setHasOptimized(true);
+      // Switch view mode directly to full-width allocation results
+      setViewMode('ALLOCATION_RESULTS');
     } catch (err: any) {
       console.error('Optimization solver execution failed', err);
       setOptimizationError(
@@ -284,7 +290,8 @@ export const ResourceOptimizationPage: React.FC = () => {
           'Optimization solver execution failed. Please retry.'
       );
       setOptimizationResult(null);
-      setHasOptimized(false);
+      // On failure, stay on crime analysis view so user sees the error without stale results
+      setViewMode('CRIME_ANALYSIS');
     } finally {
       setIsOptimizing(false);
     }
@@ -333,7 +340,7 @@ export const ResourceOptimizationPage: React.FC = () => {
 
   // --------------------------------------------------------------------------
   // SECTION 3: Optimized Resource Allocation (EXACTLY FIVE COLUMNS)
-  // Displayed ONLY after clicking "Optimize Resources" and request succeeds
+  // Displayed as main full-width content in 'ALLOCATION_RESULTS' viewMode
   // Columns: Resource Pool, Required, Available, Recommended Allocation, Shortage / Remaining
   // Sourced from aggregated demand D_j across ALL active crimes & SciPy MILP
   // --------------------------------------------------------------------------
@@ -512,231 +519,234 @@ export const ResourceOptimizationPage: React.FC = () => {
           </div>
         )}
 
-        {/* Loading Demand State */}
+        {/* Optimization Solver Error (if optimization failed) */}
+        {optimizationError && (
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-center justify-between text-xs text-rose-800">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>{optimizationError}</span>
+            </div>
+            <button
+              onClick={handleOptimizeClick}
+              className="px-3 py-1 font-semibold text-white bg-rose-700 hover:bg-rose-800 rounded-md transition-colors cursor-pointer"
+            >
+              Retry Optimization
+            </button>
+          </div>
+        )}
+
+        {/* Main Content Area */}
         {isLoadingDemand && !demandDetail ? (
           <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
             <LoadingState message="Loading predicted crime demands..." />
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* ================================================================ */}
-            {/* SIDE-BY-SIDE PANELS (LEFT: Predicted Crimes, RIGHT: Mapping)     */}
-            {/* ================================================================ */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              {/* LEFT PANEL — Predicted Crimes */}
-              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
-                  <h2 className="text-base font-bold text-[#0B1F3A]">Predicted Crimes</h2>
-                </div>
-
-                {positiveCrimes.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <EmptyState
-                      title="No Positive Crime Predictions"
-                      message="No crime types have positive projected incidents for this district and period."
-                    />
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10 bg-slate-50">
-                        <tr>
-                          <th className="px-5 py-3">Crime Type</th>
-                          <th className="px-5 py-3 text-right">Predicted Incidents</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {positiveCrimes.map((c) => {
-                          const isSelected = selectedCrime?.crime_type_id === c.crime_type_id;
-                          return (
-                            <tr
-                              key={c.crime_type_id}
-                              onClick={() => setSelectedCrimeId(c.crime_type_id)}
-                              className={`cursor-pointer transition-colors ${
-                                isSelected
-                                  ? 'bg-blue-50/80 border-l-4 border-l-[#1769AA] font-bold text-[#0B1F3A]'
-                                  : 'hover:bg-slate-50/80 text-slate-800'
-                              }`}
-                            >
-                              <td className="px-5 py-3">
-                                <span className="font-semibold text-slate-900">{c.crime_name}</span>
-                              </td>
-                              <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
-                                {c.predicted_count.toFixed(3)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* RIGHT PANEL — Crime-wise Resource Mapping */}
-              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
-                  <h2 className="text-base font-bold text-[#0B1F3A]">Crime-wise Resource Mapping</h2>
-                </div>
-
-                {!selectedCrime || crimeSpecificMappings.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-500">
-                    Select a predicted crime to view resource requirements.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10 bg-slate-50">
-                        <tr>
-                          <th className="px-5 py-3">Resource Pool</th>
-                          <th className="px-5 py-3 text-right">Calculated Demand</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {crimeSpecificMappings.map((m) => {
-                          const Icon = m.icon;
-                          return (
-                            <tr key={m.poolKey} className="hover:bg-slate-50/80 transition-colors">
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
-                                    <Icon className="h-4 w-4" />
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-slate-900">{m.name}</div>
-                                    <div className="text-[10px] text-slate-500 font-medium">
-                                      Unit: {m.unit}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
-                                {m.demand.toFixed(3)}{' '}
-                                <span className="text-slate-500 font-normal text-[11px]">
-                                  {m.unit}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+        ) : viewMode === 'ALLOCATION_RESULTS' && optimizationResult ? (
+          /* ================================================================ */
+          /* RESULTS VIEW: Full-Width Section 3 (Optimized Resource Allocation)*/
+          /* Displayed only after successful optimization                      */
+          /* ================================================================ */
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h2 className="text-base font-bold text-[#0B1F3A]">Optimized Resource Allocation</h2>
+              <button
+                type="button"
+                onClick={() => setViewMode('CRIME_ANALYSIS')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-2xs transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 text-slate-600" />
+                <span>Back to Crime Analysis</span>
+              </button>
             </div>
 
-            {/* Optimization Solver Error (if run failed) */}
-            {optimizationError && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-center justify-between text-xs text-rose-800">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  <span>{optimizationError}</span>
-                </div>
-                <button
-                  onClick={handleOptimizeClick}
-                  className="px-3 py-1 font-semibold text-white bg-rose-700 hover:bg-rose-800 rounded-md transition-colors cursor-pointer"
-                >
-                  Retry Optimization
-                </button>
+            {optimizedAllocations.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500">
+                No resource pools currently have active demand for this district and period.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="px-5 py-3">Resource Pool</th>
+                      <th className="px-5 py-3 text-right">Required</th>
+                      <th className="px-5 py-3 text-right">Available</th>
+                      <th className="px-5 py-3 text-right">Recommended Allocation</th>
+                      <th className="px-5 py-3 text-right">Shortage / Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {optimizedAllocations.map((item) => {
+                      const Icon = item.icon;
+                      const isShortage = item.shortage > 0;
+
+                      return (
+                        <tr key={item.category} className="hover:bg-slate-50/80 transition-colors">
+                          {/* Col 1: Resource Pool */}
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900">{item.name}</div>
+                                <div className="text-[10px] text-slate-500 font-medium">
+                                  Unit: {item.unit}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Col 2: Required */}
+                          <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                            {item.required.toLocaleString()}{' '}
+                            <span className="text-slate-500 font-normal text-[11px]">
+                              {item.unit}
+                            </span>
+                          </td>
+
+                          {/* Col 3: Available */}
+                          <td className="px-5 py-3 text-right font-mono text-slate-700">
+                            {item.available.toLocaleString()}{' '}
+                            <span className="text-slate-500 font-normal text-[11px]">
+                              {item.unit}
+                            </span>
+                          </td>
+
+                          {/* Col 4: Recommended Allocation */}
+                          <td className="px-5 py-3 text-right font-mono font-black text-[#1769AA]">
+                            {item.recommended.toLocaleString()}{' '}
+                            <span className="text-slate-500 font-normal text-[11px]">
+                              {item.unit}
+                            </span>
+                          </td>
+
+                          {/* Col 5: Shortage / Remaining */}
+                          <td className="px-5 py-3 text-right">
+                            {isShortage ? (
+                              <span className="inline-flex items-center gap-1 font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                {item.shortage.toLocaleString()} Shortfall
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                0 (Fully Covered)
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
+          </div>
+        ) : (
+          /* ================================================================ */
+          /* INITIAL VIEW: Side-by-side (LEFT: Predicted Crimes, RIGHT: Mapping)*/
+          /* Normal browser scrolling (no nested internal scrollbars)         */
+          /* ================================================================ */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            {/* LEFT PANEL — Predicted Crimes */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
+                <h2 className="text-base font-bold text-[#0B1F3A]">Predicted Crimes</h2>
+              </div>
 
-            {/* ================================================================ */}
-            {/* SECTION 3: OPTIMIZED RESOURCE ALLOCATION                         */}
-            {/* Displayed ONLY after successful optimization execution           */}
-            {/* EXACTLY FIVE COLUMNS: Resource Pool, Required, Available,        */}
-            {/* Recommended Allocation, Shortage / Remaining                     */}
-            {/* ================================================================ */}
-            {hasOptimized && optimizationResult && (
-              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
-                  <h2 className="text-base font-bold text-[#0B1F3A]">Optimized Resource Allocation</h2>
+              {positiveCrimes.length === 0 ? (
+                <div className="p-8 text-center">
+                  <EmptyState
+                    title="No Positive Crime Predictions"
+                    message="No crime types have positive projected incidents for this district and period."
+                  />
                 </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                      <tr>
+                        <th className="px-5 py-3">Crime Type</th>
+                        <th className="px-5 py-3 text-right">Predicted Incidents</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {positiveCrimes.map((c) => {
+                        const isSelected = selectedCrime?.crime_type_id === c.crime_type_id;
+                        return (
+                          <tr
+                            key={c.crime_type_id}
+                            onClick={() => setSelectedCrimeId(c.crime_type_id)}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-blue-50/80 border-l-4 border-l-[#1769AA] font-bold text-[#0B1F3A]'
+                                : 'hover:bg-slate-50/80 text-slate-800'
+                            }`}
+                          >
+                            <td className="px-5 py-3">
+                              <span className="font-semibold text-slate-900">{c.crime_name}</span>
+                            </td>
+                            <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                              {c.predicted_count.toFixed(3)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
-                {optimizedAllocations.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-500">
-                    No resource pools currently have active demand for this district and period.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                        <tr>
-                          <th className="px-5 py-3">Resource Pool</th>
-                          <th className="px-5 py-3 text-right">Required</th>
-                          <th className="px-5 py-3 text-right">Available</th>
-                          <th className="px-5 py-3 text-right">Recommended Allocation</th>
-                          <th className="px-5 py-3 text-right">Shortage / Remaining</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {optimizedAllocations.map((item) => {
-                          const Icon = item.icon;
-                          const isShortage = item.shortage > 0;
+            {/* RIGHT PANEL — Crime-wise Resource Mapping */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
+                <h2 className="text-base font-bold text-[#0B1F3A]">Crime-wise Resource Mapping</h2>
+              </div>
 
-                          return (
-                            <tr key={item.category} className="hover:bg-slate-50/80 transition-colors">
-                              {/* Col 1: Resource Pool */}
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
-                                    <Icon className="h-4 w-4" />
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-slate-900">{item.name}</div>
-                                    <div className="text-[10px] text-slate-500 font-medium">
-                                      Unit: {item.unit}
-                                    </div>
+              {!selectedCrime || crimeSpecificMappings.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  Select a predicted crime to view resource requirements.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                      <tr>
+                        <th className="px-5 py-3">Resource Pool</th>
+                        <th className="px-5 py-3 text-right">Calculated Demand</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {crimeSpecificMappings.map((m) => {
+                        const Icon = m.icon;
+                        return (
+                          <tr key={m.poolKey} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
+                                  <Icon className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-900">{m.name}</div>
+                                  <div className="text-[10px] text-slate-500 font-medium">
+                                    Unit: {m.unit}
                                   </div>
                                 </div>
-                              </td>
-
-                              {/* Col 2: Required */}
-                              <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
-                                {item.required.toLocaleString()}{' '}
-                                <span className="text-slate-500 font-normal text-[11px]">
-                                  {item.unit}
-                                </span>
-                              </td>
-
-                              {/* Col 3: Available */}
-                              <td className="px-5 py-3 text-right font-mono text-slate-700">
-                                {item.available.toLocaleString()}{' '}
-                                <span className="text-slate-500 font-normal text-[11px]">
-                                  {item.unit}
-                                </span>
-                              </td>
-
-                              {/* Col 4: Recommended Allocation */}
-                              <td className="px-5 py-3 text-right font-mono font-black text-[#1769AA]">
-                                {item.recommended.toLocaleString()}{' '}
-                                <span className="text-slate-500 font-normal text-[11px]">
-                                  {item.unit}
-                                </span>
-                              </td>
-
-                              {/* Col 5: Shortage / Remaining */}
-                              <td className="px-5 py-3 text-right">
-                                {isShortage ? (
-                                  <span className="inline-flex items-center gap-1 font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                                    {item.shortage.toLocaleString()} Shortfall
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                    0 (Fully Covered)
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
+                              </div>
+                            </td>
+                            <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                              {m.demand.toFixed(3)}{' '}
+                              <span className="text-slate-500 font-normal text-[11px]">
+                                {m.unit}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
