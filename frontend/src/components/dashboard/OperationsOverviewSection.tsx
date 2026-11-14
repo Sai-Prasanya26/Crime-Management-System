@@ -18,7 +18,9 @@ import {
   PieChart,
   Pie,
   Cell,
+  CartesianGrid,
 } from 'recharts';
+import StatCard from '../common/StatCard';
 import {
   riskApi,
   optimizationApi,
@@ -477,365 +479,281 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
       ) : (
         <div className="space-y-4">
           {/* ================================================================ */}
-          {/* 2. FOUR COMPACT RESOURCE KPI CARDS (Dashboard StatCard styling)  */}
+          {/* 1. FOUR RESOURCE KPI CARDS (Exact Dashboard StatCard parity)     */}
           {/* ================================================================ */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Card 1: Active Resource Pools */}
-            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                  Active Resource Pools
-                </p>
-                <div className="rounded p-1.5 shrink-0 bg-[#EAF3FA] text-[#1769AA]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Active Resource Pools"
+              value={`${activePoolsCount} / 10`}
+              subtext={10 - activePoolsCount === 0 ? 'All 10 standard pools active' : `${activePoolsCount} operational pools active`}
+              icon={Layers}
+              color="blue"
+            />
+            <StatCard
+              title="Resources Required"
+              value={personnelPool ? `${personnelPool.required.toLocaleString()} Officers` : '0 Required'}
+              subtext={mobilityPool ? `${mobilityPool.required.toLocaleString()} Vehicles · 10 pools demand` : '10 pools demand'}
+              icon={Users}
+              color="navy"
+            />
+            <StatCard
+              title="Resources Allocated"
+              value={personnelPool ? `${personnelPool.allocated.toLocaleString()} Officers` : '0 Allocated'}
+              subtext={mobilityPool ? `${mobilityPool.allocated.toLocaleString()} Vehicles · Recommended allocation` : 'Recommended allocation'}
+              icon={CheckCircle2}
+              color="emerald"
+            />
+            <StatCard
+              title="Resource Shortages"
+              value={poolsWithShortages.length === 0 ? '0 Shortages' : `${poolsWithShortages.length} ${poolsWithShortages.length === 1 ? 'Pool' : 'Pools'}`}
+              subtext={
+                poolsWithShortages.length === 0
+                  ? 'All standing demand fully covered'
+                  : poolsWithShortages.map((p) => p.displayName).slice(0, 2).join(', ') + (poolsWithShortages.length > 2 ? ` +${poolsWithShortages.length - 2} more` : '')
+              }
+              icon={AlertTriangle}
+              color={poolsWithShortages.length === 0 ? 'emerald' : 'rose'}
+            />
+          </div>
+
+          {/* ================================================================ */}
+          {/* 2. RESOURCE ALLOCATION ANALYSIS (Spacious Full-Width Card)       */}
+          {/* ================================================================ */}
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-4 min-h-[46px]">
+              <div className="flex items-center gap-2">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                  <Activity className="h-4 w-4" />
+                </div>
+                <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                  Resource Allocation Analysis
+                </h3>
+              </div>
+
+              {/* Clean Legend */}
+              <div className="flex items-center gap-4 text-[12px] font-medium text-[#5D6878]">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-xs bg-[#F59E0B]" />
+                  <span>Required Demand</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-xs bg-[#0B1F3A]" />
+                  <span>Available Inventory</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-xs bg-[#10B981]" />
+                  <span>Allocated Resources</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Horizontal Grouped Bar Chart with ample height & margin */}
+            <div className="h-[380px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={chartData}
+                  margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    domain={useLogScale ? [0, 'dataMax'] : [0, 'auto']}
+                    ticks={useLogScale ? [0, 1, 2, 3, 4, 5, 6] : undefined}
+                    tickFormatter={
+                      useLogScale
+                        ? (v) => (v === 0 ? '0' : v === 1 ? '10' : v === 2 ? '100' : v === 3 ? '1K' : v === 4 ? '10K' : v === 5 ? '100K' : '1M+')
+                        : (v) => Number(v).toLocaleString()
+                    }
+                    tick={{ fontSize: 11, fill: '#64748B' }}
+                    axisLine={{ stroke: '#D9E1EA' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={170}
+                    tick={{ fontSize: 12, fill: '#0B1F3A', fontWeight: 500 }}
+                    axisLine={{ stroke: '#D9E1EA' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#D9E1EA',
+                      borderRadius: '0.375rem',
+                      color: '#0B1F3A',
+                      fontSize: '0.75rem',
+                      boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+                    }}
+                    formatter={(_val: any, name: any, item: any) => {
+                      const rawVal =
+                        name === 'Required'
+                          ? item.payload.required
+                          : name === 'Available'
+                          ? item.payload.available
+                          : item.payload.allocated;
+                      return [`${Number(rawVal).toLocaleString()} ${item.payload.unit}`, name];
+                    }}
+                    labelFormatter={(label: any) => {
+                      const pool = resourcePools.find((p) => p.name === label || p.displayName === label);
+                      return pool ? `${pool.name} (${pool.unit})` : label;
+                    }}
+                  />
+                  <Bar
+                    dataKey="chartRequired"
+                    name="Required"
+                    fill="#F59E0B"
+                    barSize={9}
+                    radius={[0, 2, 2, 0]}
+                  />
+                  <Bar
+                    dataKey="chartAvailable"
+                    name="Available"
+                    fill="#0B1F3A"
+                    barSize={9}
+                    radius={[0, 2, 2, 0]}
+                  />
+                  <Bar
+                    dataKey="chartAllocated"
+                    name="Allocated"
+                    fill="#10B981"
+                    barSize={9}
+                    radius={[0, 2, 2, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 3. RESOURCE ALLOCATION SUMMARY TABLE (Spacious Full-Width Card)  */}
+          {/* ================================================================ */}
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3 min-h-[46px]">
+              <div className="flex items-center gap-2">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
                   <Layers className="h-4 w-4" />
                 </div>
-              </div>
-              <div className="mt-1">
-                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
-                  {activePoolsCount} / 10
+                <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                  Resource Summary
                 </h3>
-                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                  {10 - activePoolsCount === 0 ? 'All 10 standard pools active' : `${activePoolsCount} operational pools active`}
-                </p>
               </div>
+              <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
+                10 Canonical Resource Pools
+              </span>
             </div>
 
-            {/* Card 2: Resources Required */}
-            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                  Resources Required
-                </p>
-                <div className="rounded p-1.5 shrink-0 bg-slate-100 text-[#0B1F3A]">
-                  <Users className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-1">
-                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
-                  {personnelPool ? `${personnelPool.required.toLocaleString()} Officers` : '0 Required'}
-                </h3>
-                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                  {mobilityPool ? `${mobilityPool.required.toLocaleString()} Vehicles` : '—'} · {resourcePools.filter((p) => p.required > 0).length} pools with demand
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3: Resources Allocated */}
-            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                  Resources Allocated
-                </p>
-                <div className="rounded p-1.5 shrink-0 bg-emerald-50 text-[#16845B]">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-1">
-                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
-                  {personnelPool ? `${personnelPool.allocated.toLocaleString()} Officers` : '0 Allocated'}
-                </h3>
-                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                  {mobilityPool ? `${mobilityPool.allocated.toLocaleString()} Vehicles` : '—'} · Recommended Allocation
-                </p>
-              </div>
-            </div>
-
-            {/* Card 4: Resource Shortages */}
-            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                  Resource Shortages
-                </p>
-                <div className={`rounded p-1.5 shrink-0 ${poolsWithShortages.length > 0 ? 'bg-red-50 text-[#C53B3B]' : 'bg-emerald-50 text-[#16845B]'}`}>
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-1">
-                <h3 className={`text-[22px] sm:text-[24px] font-bold tracking-tight leading-none ${poolsWithShortages.length > 0 ? 'text-[#C53B3B]' : 'text-[#16845B]'}`}>
-                  {poolsWithShortages.length === 0 ? '0 Shortages' : `${poolsWithShortages.length} ${poolsWithShortages.length === 1 ? 'Pool' : 'Pools'}`}
-                </h3>
-                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                  {poolsWithShortages.length === 0
-                    ? 'All standing demand fully covered'
-                    : poolsWithShortages.map((p) => p.displayName).slice(0, 2).join(', ') + (poolsWithShortages.length > 2 ? ` +${poolsWithShortages.length - 2} more` : '')}
-                </p>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-[#D9E1EA] bg-[#F4F7FA] text-[11px] font-semibold uppercase tracking-wider text-[#5D6878]">
+                    <th className="py-2.5 px-4">Resource Pool</th>
+                    <th className="py-2.5 px-4">Unit of Measure</th>
+                    <th className="py-2.5 px-4 text-right">Required Demand</th>
+                    <th className="py-2.5 px-4 text-right">Available Inventory</th>
+                    <th className="py-2.5 px-4 text-right">Recommended Allocation</th>
+                    <th className="py-2.5 px-4 text-right">Shortage / Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {resourcePools.map((p) => (
+                    <tr key={p.poolKey} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-4 font-semibold text-[#0B1F3A]">
+                        <div className="flex items-center gap-2">
+                          <span>{p.name}</span>
+                          {p.isPartner && (
+                            <span className="text-[10px] font-bold text-[#1769AA] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                              Health Dept
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-[#5D6878]">{p.unit}</td>
+                      <td className="py-2.5 px-4 text-right font-medium text-[#0B1F3A]">
+                        {p.required.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-[#5D6878]">
+                        {p.available.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-bold text-emerald-700">
+                        {p.allocated.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-medium">
+                        {p.shortage > 0 ? (
+                          <span className="text-[#C53B3B] font-bold">
+                            -{p.shortage.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-[#16845B] font-semibold">0</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* ================================================================ */}
-          {/* 3. RESOURCE ALLOCATION ANALYSIS CHART & RESOURCE SUMMARY TABLE   */}
+          {/* 4. BUDGET OVERVIEW (Prominent StatCards, Donut, Breakdown)       */}
           {/* ================================================================ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-            {/* Left: Grouped Bar Chart (Resource Allocation Analysis) */}
-            <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
-                    Resource Allocation Analysis
-                  </h3>
-                  {/* Clean, Simple Legend */}
-                  <div className="flex items-center gap-3 text-[11px] font-medium text-[#5D6878]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-[#F59E0B]" />
-                      <span>Required</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-[#0B1F3A]" />
-                      <span>Available</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-[#10B981]" />
-                      <span>Allocated</span>
-                    </div>
-                  </div>
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 min-h-[46px]">
+              <div className="flex items-center gap-2">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                  <FileText className="h-4 w-4" />
                 </div>
-
-                {/* Horizontal Grouped Bar Chart */}
-                <div className="h-[320px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      layout="vertical"
-                      data={chartData}
-                      margin={{ top: 5, right: 15, left: 5, bottom: 5 }}
-                    >
-                      <XAxis
-                        type="number"
-                        domain={useLogScale ? [0, 'dataMax'] : [0, 'auto']}
-                        ticks={useLogScale ? [0, 1, 2, 3, 4, 5, 6] : undefined}
-                        tickFormatter={
-                          useLogScale
-                            ? (v) => (v === 0 ? '0' : v === 1 ? '10' : v === 2 ? '100' : v === 3 ? '1K' : v === 4 ? '10K' : v === 5 ? '100K' : '1M+')
-                            : (v) => Number(v).toLocaleString()
-                        }
-                        tick={{ fontSize: 10, fill: '#5D6878' }}
-                        axisLine={{ stroke: '#D9E1EA' }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="displayName"
-                        width={95}
-                        tick={{ fontSize: 11, fill: '#0B1F3A', fontWeight: 500 }}
-                        axisLine={{ stroke: '#D9E1EA' }}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#FFFFFF',
-                          borderColor: '#D9E1EA',
-                          borderRadius: '0.375rem',
-                          color: '#0B1F3A',
-                          fontSize: '0.75rem',
-                          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
-                        }}
-                        formatter={(_val: any, name: any, item: any) => {
-                          const rawVal =
-                            name === 'Required'
-                              ? item.payload.required
-                              : name === 'Available'
-                              ? item.payload.available
-                              : item.payload.allocated;
-                          return [`${Number(rawVal).toLocaleString()} ${item.payload.unit}`, name];
-                        }}
-                        labelFormatter={(label: any) => {
-                          const pool = resourcePools.find((p) => p.displayName === label);
-                          return pool ? `${pool.name} (${pool.unit})` : label;
-                        }}
-                      />
-                      <Bar
-                        dataKey="chartRequired"
-                        name="Required"
-                        fill="#F59E0B"
-                        barSize={7}
-                        radius={[0, 2, 2, 0]}
-                      />
-                      <Bar
-                        dataKey="chartAvailable"
-                        name="Available"
-                        fill="#0B1F3A"
-                        barSize={7}
-                        radius={[0, 2, 2, 0]}
-                      />
-                      <Bar
-                        dataKey="chartAllocated"
-                        name="Allocated"
-                        fill="#10B981"
-                        barSize={7}
-                        radius={[0, 2, 2, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                  Budget Overview
+                </h3>
               </div>
             </div>
 
-            {/* Right: Resource Summary Table */}
-            <div className="lg:col-span-5 rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
-                    Resource Summary
-                  </h3>
-                  <span className="text-[10px] font-semibold text-[#5D6878]">
-                    10 Resource Pools
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-[#D9E1EA] text-[10px] font-bold text-[#5D6878] uppercase">
-                        <th className="py-1 px-1.5">Resource Pool</th>
-                        <th className="py-1 px-1 text-right">Required</th>
-                        <th className="py-1 px-1 text-right">Available</th>
-                        <th className="py-1 px-1 text-right">Allocated</th>
-                        <th className="py-1 px-1.5 text-right">Shortage</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {resourcePools.map((p) => (
-                        <tr key={p.poolKey} className="hover:bg-slate-50/70">
-                          <td className="py-1 px-1.5 font-medium text-[#0B1F3A]">
-                            <div className="flex items-center gap-1">
-                              <span className="truncate max-w-[105px]" title={p.name}>
-                                {p.displayName}
-                              </span>
-                              {p.isPartner && (
-                                <span className="text-[9px] font-bold text-[#1769AA] bg-blue-50 px-1 rounded border border-blue-200">
-                                  Health
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-1 px-1 text-right font-medium text-[#0B1F3A]">
-                            {p.required.toLocaleString()}
-                          </td>
-                          <td className="py-1 px-1 text-right text-[#5D6878]">
-                            {p.available.toLocaleString()}
-                          </td>
-                          <td className="py-1 px-1 text-right font-semibold text-emerald-700">
-                            {p.allocated.toLocaleString()}
-                          </td>
-                          <td className="py-1 px-1.5 text-right font-medium">
-                            {p.shortage > 0 ? (
-                              <span className="text-[#C53B3B] font-bold">
-                                -{p.shortage.toLocaleString()}
-                              </span>
-                            ) : (
-                              <span className="text-[#7C8796]">0</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ================================================================ */}
-          {/* 4. BUDGET OVERVIEW (3 KPI cards, Donut chart, Separate Partner)  */}
-          {/* ================================================================ */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs space-y-3.5">
-            <div className="border-b border-slate-100 pb-2">
-              <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
-                Budget Overview
-              </h3>
+            {/* 3 Prominent StatCards */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <StatCard
+                title="Estimated Police Expenditure"
+                value={formatINR(budgetData.policeExpenditure)}
+                subtext="Total police operational & capital requirement"
+                icon={FileText}
+                color="navy"
+              />
+              <StatCard
+                title="Available Budget"
+                value={budgetData.hasBudgetConfigured ? formatINR(budgetData.availableBudget) : 'Not Available'}
+                subtext={budgetData.hasBudgetConfigured ? 'Sanctioned statutory allocation' : 'Budget allocation not configured'}
+                icon={Layers}
+                color="blue"
+              />
+              <StatCard
+                title="Budget Surplus / Deficit"
+                value={
+                  !budgetData.hasBudgetConfigured
+                    ? 'Not Available'
+                    : budgetData.budgetBalance !== null
+                    ? budgetData.budgetBalance >= 0
+                      ? `+${formatINR(budgetData.budgetBalance)}`
+                      : `-${formatINR(Math.abs(budgetData.budgetBalance))}`
+                    : 'Not Available'
+                }
+                subtext={
+                  !budgetData.hasBudgetConfigured
+                    ? 'Awaiting financial sanction entry'
+                    : budgetData.balanceStatus === 'SURPLUS'
+                    ? 'Operating within sanctioned limits'
+                    : 'Projected operating shortfall'
+                }
+                icon={budgetData.balanceStatus === 'SURPLUS' ? CheckCircle2 : AlertTriangle}
+                color={!budgetData.hasBudgetConfigured ? 'navy' : budgetData.balanceStatus === 'SURPLUS' ? 'emerald' : 'rose'}
+              />
             </div>
 
-            {/* 3 Compact Budget Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                    Estimated Police Expenditure
-                  </p>
-                  <div className="rounded p-1.5 shrink-0 bg-slate-200/70 text-[#0B1F3A]">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                </div>
-                <div className="mt-1">
-                  <h4 className="text-[20px] font-bold tracking-tight text-[#0B1F3A] leading-none">
-                    {formatINR(budgetData.policeExpenditure)}
-                  </h4>
-                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                    Total departmental requirement
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                    Available Budget
-                  </p>
-                  <div className="rounded p-1.5 shrink-0 bg-[#EAF3FA] text-[#1769AA]">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                </div>
-                <div className="mt-1">
-                  <h4 className="text-[20px] font-bold tracking-tight text-[#0B1F3A] leading-none">
-                    {budgetData.hasBudgetConfigured ? formatINR(budgetData.availableBudget) : 'Not Available'}
-                  </h4>
-                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                    {budgetData.hasBudgetConfigured ? 'Sanctioned statutory allocation' : 'Budget allocation not configured'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
-                    Budget Surplus / Deficit
-                  </p>
-                  <div className={`rounded p-1.5 shrink-0 ${
-                    !budgetData.hasBudgetConfigured
-                      ? 'bg-slate-200/70 text-[#0B1F3A]'
-                      : budgetData.balanceStatus === 'SURPLUS'
-                      ? 'bg-emerald-50 text-[#16845B]'
-                      : 'bg-red-50 text-[#C53B3B]'
-                  }`}>
-                    {budgetData.balanceStatus === 'SURPLUS' ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4" />
-                    )}
-                  </div>
-                </div>
-                <div className="mt-1">
-                  <h4 className={`text-[20px] font-bold tracking-tight leading-none ${
-                    !budgetData.hasBudgetConfigured
-                      ? 'text-[#0B1F3A]'
-                      : budgetData.balanceStatus === 'SURPLUS'
-                      ? 'text-[#16845B]'
-                      : 'text-[#C53B3B]'
-                  }`}>
-                    {!budgetData.hasBudgetConfigured
-                      ? 'Not Available'
-                      : budgetData.budgetBalance !== null
-                      ? budgetData.budgetBalance >= 0
-                        ? `+${formatINR(budgetData.budgetBalance)}`
-                        : `-${formatINR(Math.abs(budgetData.budgetBalance))}`
-                      : 'Not Available'}
-                  </h4>
-                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
-                    {!budgetData.hasBudgetConfigured
-                      ? 'Awaiting financial sanction entry'
-                      : budgetData.balanceStatus === 'SURPLUS'
-                      ? 'Operating within sanctioned limits'
-                      : 'Projected operating shortfall'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Donut Chart (CAPEX / OPEX / Maintenance) + Cost Breakdown + Partner Agency Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-1">
+            {/* Expenditure Breakdown: Donut Chart + Aligned Category Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-2">
               {/* Donut Chart */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
-                <div className="h-[150px] w-full relative">
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC]">
+                <div className="h-[180px] w-full relative">
                   {donutData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -845,8 +763,8 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          innerRadius={40}
-                          outerRadius={62}
+                          innerRadius={48}
+                          outerRadius={75}
                           paddingAngle={3}
                         >
                           {donutData.map((entry, index) => (
@@ -878,68 +796,73 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                   )}
                 </div>
                 {/* Donut Legend */}
-                <div className="flex items-center gap-3 text-[10px] font-medium text-[#5D6878] mt-1">
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#4F46E5]" />
+                <div className="flex items-center gap-4 text-[11px] font-medium text-[#5D6878] mt-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />
                     <span>CAPEX</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" />
                     <span>OPEX</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0D9488]" />
                     <span>Maintenance</span>
                   </div>
                 </div>
               </div>
 
-              {/* Cost Breakdown Cards & Partner Agency Row */}
-              <div className="lg:col-span-7 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
-                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
-                      <span className="w-2 h-2 rounded-full bg-[#4F46E5]" />
-                      <span>CAPEX</span>
+              {/* 3 Cost Breakdown Cards & Partner Agency Row */}
+              <div className="lg:col-span-7 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC]">
+                    <div className="flex items-center gap-2 font-semibold text-[#0B1F3A] text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />
+                      <span>CAPEX (Capital)</span>
                     </div>
-                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
+                    <div className="font-bold text-[#0B1F3A] mt-2 text-base">
                       {formatINR(budgetData.capex)}
                     </div>
-                    <div className="text-[10px] text-[#7C8796]">Procurement</div>
+                    <div className="text-[11px] text-[#7C8796] mt-0.5">Asset Procurement</div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
-                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
-                      <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
-                      <span>OPEX</span>
+                  <div className="p-3.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC]">
+                    <div className="flex items-center gap-2 font-semibold text-[#0B1F3A] text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" />
+                      <span>OPEX (Operational)</span>
                     </div>
-                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
+                    <div className="font-bold text-[#0B1F3A] mt-2 text-base">
                       {formatINR(budgetData.opex)}
                     </div>
-                    <div className="text-[10px] text-[#7C8796]">Operations</div>
+                    <div className="text-[11px] text-[#7C8796] mt-0.5">Personnel & Deployment</div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
-                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
-                      <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
+                  <div className="p-3.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC]">
+                    <div className="flex items-center gap-2 font-semibold text-[#0B1F3A] text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0D9488]" />
                       <span>Maintenance</span>
                     </div>
-                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
+                    <div className="font-bold text-[#0B1F3A] mt-2 text-base">
                       {formatINR(budgetData.maintenance)}
                     </div>
-                    <div className="text-[10px] text-[#7C8796]">Routine AMC</div>
+                    <div className="text-[11px] text-[#7C8796] mt-0.5">Routine AMC & Upkeep</div>
                   </div>
                 </div>
 
-                {/* Partner Agency Cost (Separate, Unobtrusive Row) */}
-                <div className="p-2.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] text-xs flex items-center justify-between">
+                {/* Partner Agency Cost (Separate, Clearly Displayed Row) */}
+                <div className="p-3.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <HeartPulse className="h-3.5 w-3.5 text-[#1769AA]" />
-                    <span className="font-semibold text-[#0B1F3A]">
-                      Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)
-                    </span>
+                    <HeartPulse className="h-4 w-4 text-[#1769AA] shrink-0" />
+                    <div>
+                      <span className="font-semibold text-[#0B1F3A]">
+                        Partner Agency Cost (Health Dept. Ambulances &amp; EMTs):
+                      </span>
+                      <span className="text-[#5D6878] ml-1">
+                        Separately administered by Department of Health (isolated from police expenditure).
+                      </span>
+                    </div>
                   </div>
-                  <div className="font-bold text-[#0B1F3A] text-sm">
+                  <div className="font-bold text-[#0B1F3A] text-base shrink-0">
                     {formatINR(budgetData.partnerExpenditure)}
                   </div>
                 </div>
@@ -948,14 +871,19 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
           </div>
 
           {/* ================================================================ */}
-          {/* 5. OPERATIONAL ALERTS (Compact, real alerts only)                */}
+          {/* 5. OPERATIONAL ALERTS (Spacious Full-Width Card)                 */}
           {/* ================================================================ */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
-                Operational Alerts
-              </h3>
-              <span className="text-[10px] font-semibold text-[#5D6878]">
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 sm:p-5 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 min-h-[46px]">
+              <div className="flex items-center gap-2">
+                <div className="rounded p-1.5 bg-[#EAF3FA] text-[#1769AA]">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <h3 className="text-[16px] font-bold text-[#0B1F3A]">
+                  Operational Alerts
+                </h3>
+              </div>
+              <span className="text-[11px] font-semibold text-[#5D6878] bg-[#F4F7FA] px-2.5 py-1 rounded border border-[#D9E1EA]">
                 {alerts.length} Active System Alerts
               </span>
             </div>
@@ -965,11 +893,11 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                 {alerts.map((al) => (
                   <div
                     key={al.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-1.5 text-xs first:pt-0.5 last:pb-0.5"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2.5 text-xs first:pt-1 last:pb-1"
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <span
-                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                           al.category === 'CRITICAL RISK'
                             ? 'bg-red-50 text-[#C53B3B] border border-red-200'
                             : al.category === 'RESOURCE SHORTAGE'
@@ -981,7 +909,7 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                       >
                         {al.category}
                       </span>
-                      <span className="font-semibold text-[#0B1F3A]">
+                      <span className="font-bold text-[#0B1F3A]">
                         {al.district} ({al.state}):
                       </span>
                       <span className="text-[#5D6878]">{al.explanation}</span>
@@ -990,7 +918,7 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                 ))}
               </div>
             ) : (
-              <div className="py-2.5 px-3 text-center text-xs text-emerald-800 bg-emerald-50/50 rounded-lg border border-emerald-100 flex items-center justify-center gap-1.5">
+              <div className="py-3 px-4 text-center text-xs text-emerald-800 bg-emerald-50/60 rounded-lg border border-emerald-100 flex items-center justify-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span>All operational allocations, risk parameters and budgets are within nominal thresholds.</span>
               </div>
