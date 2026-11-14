@@ -29,6 +29,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ComposedChart,
+  Area,
+  Line,
+  ReferenceLine,
+  Legend,
 } from 'recharts';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -188,6 +193,11 @@ interface CrimePredictionData {
   tableRows: Array<Record<string, any>>;
   modelName: string;
   interpretation: string;
+  chartPoints?: Array<{
+    period: string;
+    actual?: number;
+    predicted?: number;
+  }>;
 }
 
 interface CrimeRiskData {
@@ -653,9 +663,10 @@ export const ReportsPage: React.FC = () => {
       else if (type === 'CRIME_PREDICTIONS') {
         if (currentScope === 'DISTRICT') {
           const targetDistId = districtId || 5;
-          const [pred, breakdown] = await Promise.all([
+          const [pred, breakdown, actualVsPred] = await Promise.all([
             predictionApi.getDistrictMonthPrediction(targetDistId, yr, mo),
             predictionApi.getPredictionBreakdown(targetDistId, yr, mo),
+            predictionApi.getActualVsPredicted(targetDistId).catch(() => null),
           ]);
 
           if (requestId !== activeRequestId.current) return;
@@ -668,26 +679,23 @@ export const ReportsPage: React.FC = () => {
             ? [...positiveTypes].sort((a, b) => b.integer_count - a.integer_count)[0]
             : null;
 
+          const intervalLower = pred.prediction_interval_lower !== null && pred.prediction_interval_lower !== undefined ? Math.floor(pred.prediction_interval_lower) : null;
+          const intervalUpper = pred.prediction_interval_upper !== null && pred.prediction_interval_upper !== undefined ? Math.ceil(pred.prediction_interval_upper) : null;
+
           const cards: SummaryCardItem[] = [
             {
               title: 'Total Predicted Crimes',
               value: `${targetInt.toLocaleString()} Crimes`,
+              subtext: intervalLower !== null && intervalUpper !== null ? `80% CI: [${intervalLower} – ${intervalUpper}]` : undefined,
             },
             {
               title: 'Active Crime Types',
               value: `${positiveTypes.length} Types`,
             },
             {
-              title: 'Highest Predicted Type',
+              title: 'Highest Predicted Crime Type',
               value: topType ? topType.crime_name : 'None',
               subtext: topType ? `${topType.display_count} Crimes` : undefined,
-            },
-            {
-              title: 'Baseline Comparison',
-              value: pred.baseline_count !== null && pred.baseline_count !== undefined ? `${Math.round(pred.baseline_count).toLocaleString()} Crimes` : '—',
-              subtext: typeof pred.percentage_change === 'number'
-                ? `${pred.percentage_change >= 0 ? '+' : ''}${pred.percentage_change.toFixed(1)}% vs baseline`
-                : undefined,
             },
           ];
 
@@ -699,18 +707,30 @@ export const ReportsPage: React.FC = () => {
             baseline: (t as any).baseline_count !== undefined ? Math.round((t as any).baseline_count).toLocaleString() : '—',
           }));
 
+          const chartPoints = (actualVsPred?.comparison_points || []).map((pt) => {
+            const p = pt.period.substring(0, 7);
+            const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined;
+            const hasPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined;
+            return {
+              period: p,
+              actual: isHistoricalActual ? Math.round(pt.actual_count!) : undefined,
+              predicted: hasPrediction ? Math.round(pt.predicted_count!) : undefined,
+            };
+          });
+
           setPredictionData({
             targetInt,
             activeCount: positiveTypes.length,
             topType: topType ? { name: topType.crime_name, count: topType.integer_count } : null,
             baselineCount: pred.baseline_count !== null && pred.baseline_count !== undefined ? Math.round(pred.baseline_count) : null,
             percentageChange: pred.percentage_change ?? null,
-            intervalLower: pred.prediction_interval_lower !== null && pred.prediction_interval_lower !== undefined ? Math.floor(pred.prediction_interval_lower) : null,
-            intervalUpper: pred.prediction_interval_upper !== null && pred.prediction_interval_upper !== undefined ? Math.ceil(pred.prediction_interval_upper) : null,
+            intervalLower,
+            intervalUpper,
             crimeLevel: pred.crime_level || 'Moderate',
             tableRows,
             modelName: 'HistGradientBoostingRegressor (HGBR)',
             interpretation,
+            chartPoints,
           });
 
           setCurrentCards(cards);
@@ -721,11 +741,15 @@ export const ReportsPage: React.FC = () => {
           setCurrentTableRows(tableRows);
           setHasGeneratedReport(true);
         } else if (currentScope === 'STATE') {
-          const monthlyRes = await predictionApi.getMonthlyPredictions({
-            state_id: stateId,
-            forecast_period: pStr,
-            limit: 100,
-          });
+          const targetDistId = districtId || districts.find((d) => d.state_id === stateId)?.id;
+          const [monthlyRes, actualVsPred] = await Promise.all([
+            predictionApi.getMonthlyPredictions({
+              state_id: stateId,
+              forecast_period: pStr,
+              limit: 100,
+            }),
+            targetDistId ? predictionApi.getActualVsPredicted(targetDistId).catch(() => null) : Promise.resolve(null),
+          ]);
 
           if (requestId !== activeRequestId.current) return;
 
@@ -736,10 +760,14 @@ export const ReportsPage: React.FC = () => {
             ? [...items].sort((a, b) => (b.predicted_crime_count || 0) - (a.predicted_crime_count || 0))[0]
             : null;
 
+          const intervalLower = Math.round(totalStateForecast * 0.85);
+          const intervalUpper = Math.round(totalStateForecast * 1.15);
+
           const cards: SummaryCardItem[] = [
             {
               title: 'Total Predicted Crimes',
               value: `${Math.round(totalStateForecast).toLocaleString()} Crimes`,
+              subtext: `80% CI: [${intervalLower.toLocaleString()} – ${intervalUpper.toLocaleString()}]`,
             },
             {
               title: 'Districts Forecasted',
@@ -750,10 +778,6 @@ export const ReportsPage: React.FC = () => {
               value: topDistrict?.district_name || '—',
               subtext: topDistrict ? `${Math.round(topDistrict.predicted_crime_count).toLocaleString()} Crimes` : undefined,
             },
-            {
-              title: 'District Average',
-              value: `${Math.round(totalStateForecast / (items.length || 1)).toLocaleString()} Crimes`,
-            },
           ];
 
           const interpretation = `${targetStateName} has a projected crime volume of ${Math.round(totalStateForecast).toLocaleString()} incidents for ${formattedPeriod}, led by ${topDistrict?.district_name || 'the highest district'} with ${topDistrict ? Math.round(topDistrict.predicted_crime_count).toLocaleString() : 0} incidents.`;
@@ -763,18 +787,30 @@ export const ReportsPage: React.FC = () => {
             predicted_count: Math.round(p.predicted_crime_count).toLocaleString(),
           }));
 
+          const chartPoints = (actualVsPred?.comparison_points || []).map((pt) => {
+            const p = pt.period.substring(0, 7);
+            const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined;
+            const hasPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined;
+            return {
+              period: p,
+              actual: isHistoricalActual ? Math.round(pt.actual_count!) : undefined,
+              predicted: hasPrediction ? Math.round(pt.predicted_count!) : undefined,
+            };
+          });
+
           setPredictionData({
             targetInt: Math.round(totalStateForecast),
             activeCount: positiveDistricts.length,
             topType: topDistrict ? { name: topDistrict.district_name || 'District', count: Math.round(topDistrict.predicted_crime_count) } : null,
             baselineCount: Math.round(totalStateForecast * 0.95),
             percentageChange: 4.8,
-            intervalLower: Math.round(totalStateForecast * 0.85),
-            intervalUpper: Math.round(totalStateForecast * 1.15),
+            intervalLower,
+            intervalUpper,
             crimeLevel: 'Moderate',
             tableRows,
             modelName: 'HistGradientBoostingRegressor (HGBR)',
             interpretation,
+            chartPoints,
           });
 
           setCurrentCards(cards);
@@ -786,9 +822,10 @@ export const ReportsPage: React.FC = () => {
           setHasGeneratedReport(true);
         } else {
           // All India
-          const [monthlyRes, stateSummary] = await Promise.all([
+          const [monthlyRes, stateSummary, actualVsPred] = await Promise.all([
             predictionApi.getMonthlyPredictions({ forecast_period: pStr, limit: 1000 }),
             geographyApi.getStateCrimeSummary().catch(() => ({ items: [] })),
+            predictionApi.getActualVsPredicted().catch(() => null),
           ]);
 
           if (requestId !== activeRequestId.current) return;
@@ -808,10 +845,14 @@ export const ReportsPage: React.FC = () => {
           const stateEntries = Object.entries(stateForecastMap).sort((a, b) => b[1] - a[1]);
           const topState = stateEntries.length ? stateEntries[0] : null;
 
+          const intervalLower = Math.round(nationalTotal * 0.85);
+          const intervalUpper = Math.round(nationalTotal * 1.15);
+
           const cards: SummaryCardItem[] = [
             {
-              title: 'National Predicted Crimes',
+              title: 'Total Predicted Crimes',
               value: `${Math.round(nationalTotal).toLocaleString()} Crimes`,
+              subtext: `80% CI: [${intervalLower.toLocaleString()} – ${intervalUpper.toLocaleString()}]`,
             },
             {
               title: 'States & UTs Forecasted',
@@ -822,10 +863,6 @@ export const ReportsPage: React.FC = () => {
               value: topState ? topState[0] : '—',
               subtext: topState ? `${Math.round(topState[1]).toLocaleString()} Crimes` : undefined,
             },
-            {
-              title: 'Average per State',
-              value: `${Math.round(nationalTotal / (Object.keys(stateForecastMap).length || 1)).toLocaleString()} Crimes`,
-            },
           ];
 
           const interpretation = `National crime forecasting projects ${Math.round(nationalTotal).toLocaleString()} incidents across 36 States & UTs for ${formattedPeriod}, with an average state volume of ${Math.round(nationalTotal / (Object.keys(stateForecastMap).length || 1)).toLocaleString()} incidents.`;
@@ -835,18 +872,30 @@ export const ReportsPage: React.FC = () => {
             predicted_count: Math.round(count).toLocaleString(),
           }));
 
+          const chartPoints = (actualVsPred?.comparison_points || []).map((pt) => {
+            const p = pt.period.substring(0, 7);
+            const isHistoricalActual = pt.actual_count !== null && pt.actual_count !== undefined;
+            const hasPrediction = pt.predicted_count !== null && pt.predicted_count !== undefined;
+            return {
+              period: p,
+              actual: isHistoricalActual ? Math.round(pt.actual_count!) : undefined,
+              predicted: hasPrediction ? Math.round(pt.predicted_count!) : undefined,
+            };
+          });
+
           setPredictionData({
             targetInt: Math.round(nationalTotal),
             activeCount: Object.keys(stateForecastMap).length,
             topType: topState ? { name: topState[0], count: Math.round(topState[1]) } : null,
             baselineCount: Math.round(nationalTotal * 0.95),
             percentageChange: 5.2,
-            intervalLower: Math.round(nationalTotal * 0.85),
-            intervalUpper: Math.round(nationalTotal * 1.15),
+            intervalLower,
+            intervalUpper,
             crimeLevel: 'Moderate',
             tableRows,
             modelName: 'HistGradientBoostingRegressor (HGBR)',
             interpretation,
+            chartPoints,
           });
 
           setCurrentCards(cards);
@@ -3005,9 +3054,13 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 4 Summary Cards (Responsive Row) */}
+            {/* Summary Cards (Responsive Row) */}
             {currentCards.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 avoid-break">
+              <div
+                className={`grid gap-3 avoid-break ${
+                  currentCards.length === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'
+                }`}
+              >
                 {currentCards.map((sc, idx) => (
                   <div key={idx} className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-2xs">
                     <div className="text-[10px] font-bold text-[#5D6878] uppercase tracking-wider">{sc.title}</div>
@@ -3105,40 +3158,11 @@ export const ReportsPage: React.FC = () => {
             {/* ================================================================ */}
             {selectedReportType === 'CRIME_PREDICTIONS' && predictionData && (
               <div className="space-y-4">
-                {/* Section 1: Prediction Summary */}
+                {/* Section 1: Predicted Crime Breakdown */}
                 <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">1. Prediction Summary</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs">
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Projected Crimes</span>
-                      <span className="text-sm font-bold text-[#0B1F3A]">{predictionData.targetInt.toLocaleString()} Crimes</span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Confidence Interval (80%)</span>
-                      <span className="font-semibold text-[#0B1F3A]">
-                        {predictionData.intervalLower !== null && predictionData.intervalUpper !== null
-                          ? `[${predictionData.intervalLower.toLocaleString()} – ${predictionData.intervalUpper.toLocaleString()}]`
-                          : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Historical Baseline Comparison</span>
-                      <span className="font-semibold text-[#0B1F3A]">
-                        {predictionData.baselineCount !== null
-                          ? `${predictionData.baselineCount.toLocaleString()} Crimes (${(predictionData.percentageChange || 0) >= 0 ? '+' : ''}${predictionData.percentageChange ?? 0}%)`
-                          : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#5D6878] block text-[10px] uppercase font-bold">Forecast Trajectory</span>
-                      <span className="font-semibold text-[#1769AA]">{predictionData.crimeLevel}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Predicted Crime Breakdown */}
-                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">2. Predicted Crime Breakdown</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
+                    1. Predicted Crime Breakdown
+                  </h2>
                   <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
@@ -3170,51 +3194,141 @@ export const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Section 3 & 4: Actual vs Predicted Trend & Prediction Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">3. Actual vs Predicted Trend</h2>
-                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-[#5D6878]">Historical Baseline:</span>
-                        <span className="font-semibold text-[#0B1F3A]">{predictionData.baselineCount !== null ? `${predictionData.baselineCount.toLocaleString()} Crimes` : '—'}</span>
+                {/* Section 2: Actual vs Predicted Trend */}
+                <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-[#E2E8F0] pb-2">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">
+                      2. Actual vs Predicted Trend
+                    </h2>
+                    {predictionData.baselineCount !== null && (
+                      <div className="text-xs text-[#5D6878]">
+                        Historical Baseline:{' '}
+                        <strong className="text-[#0B1F3A]">
+                          {predictionData.baselineCount.toLocaleString()} Crimes
+                        </strong>
+                        {typeof predictionData.percentageChange === 'number' && (
+                          <span
+                            className={`ml-1.5 font-semibold ${
+                              predictionData.percentageChange > 0 ? 'text-[#C53B3B]' : 'text-emerald-700'
+                            }`}
+                          >
+                            ({predictionData.percentageChange >= 0 ? '+' : ''}
+                            {predictionData.percentageChange.toFixed(1)}% vs baseline)
+                          </span>
+                        )}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#5D6878]">Projected Incident Volume:</span>
-                        <span className="font-bold text-[#1769AA]">{predictionData.targetInt.toLocaleString()} Crimes</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200 pt-1.5">
-                        <span className="text-[#5D6878]">Projected Direction:</span>
-                        <span className="font-bold text-slate-800">
-                          {typeof predictionData.percentageChange === 'number'
-                            ? `${predictionData.percentageChange >= 0 ? '+' : ''}${predictionData.percentageChange.toFixed(1)}% vs baseline`
-                            : 'Consistent with trend'}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="rounded-lg border border-[#E2E8F0] bg-white p-3.5 space-y-2">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3A]">4. Prediction Metrics</h2>
-                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-lg text-xs space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-[#5D6878]">Algorithm Architecture:</span>
-                        <span className="font-medium text-[#0B1F3A]">{predictionData.modelName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#5D6878]">Forecast Horizon:</span>
-                        <span className="font-medium text-[#0B1F3A]">{formatPeriod(selectedPeriod)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#5D6878]">80% Prediction Bounds:</span>
-                        <span className="font-mono font-medium text-[#0B1F3A]">
-                          {predictionData.intervalLower !== null && predictionData.intervalUpper !== null
-                            ? `[${predictionData.intervalLower} – ${predictionData.intervalUpper}]`
-                            : '—'}
-                        </span>
-                      </div>
+                  {predictionData.chartPoints && predictionData.chartPoints.length > 0 ? (
+                    <div className="w-full h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                          data={predictionData.chartPoints}
+                          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                          <XAxis
+                            dataKey="period"
+                            stroke="#CBD5E1"
+                            tick={{ fill: '#64748B', fontSize: 10 }}
+                            interval="preserveStartEnd"
+                            minTickGap={35}
+                          />
+                          <YAxis
+                            stroke="#CBD5E1"
+                            tick={{ fill: '#64748B', fontSize: 10 }}
+                            tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#FFFFFF',
+                              borderColor: '#D9E1EA',
+                              borderRadius: '0.375rem',
+                              color: '#0B1F3A',
+                              fontSize: '0.75rem',
+                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                            }}
+                            formatter={(val: any, name: any) => {
+                              if (name === 'actual') {
+                                return [
+                                  val !== undefined ? `${Number(val).toLocaleString()} Incidents` : '—',
+                                  'Historical Actual',
+                                ];
+                              }
+                              if (name === 'predicted') {
+                                return [
+                                  val !== undefined ? `${Number(val).toLocaleString()} Incidents` : '—',
+                                  'Forecast Prediction',
+                                ];
+                              }
+                              return [val, String(name)];
+                            }}
+                            labelFormatter={(label) => `Period: ${label}`}
+                          />
+                          <Legend
+                            verticalAlign="top"
+                            height={28}
+                            formatter={(value) => {
+                              if (value === 'actual')
+                                return <span className="text-xs font-semibold text-[#1769AA]">Historical Actual</span>;
+                              if (value === 'predicted')
+                                return <span className="text-xs font-bold text-emerald-700">Forecast Prediction</span>;
+                              return <span className="text-xs text-slate-500">{value}</span>;
+                            }}
+                          />
+                          {predictionData.baselineCount !== null && (
+                            <ReferenceLine
+                              y={predictionData.baselineCount}
+                              stroke="#94A3B8"
+                              strokeDasharray="3 3"
+                              label={{
+                                value: 'Baseline',
+                                fill: '#64748B',
+                                fontSize: 10,
+                                position: 'right',
+                              }}
+                            />
+                          )}
+                          <Area
+                            type="monotone"
+                            dataKey="actual"
+                            name="actual"
+                            stroke="#1769AA"
+                            strokeWidth={2}
+                            fill="#1769AA"
+                            fillOpacity={0.12}
+                            connectNulls={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="predicted"
+                            name="predicted"
+                            stroke="#059669"
+                            strokeWidth={2}
+                            dot={{ r: 2.5, fill: '#059669' }}
+                            connectNulls={false}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="py-8 text-center text-xs text-[#5D6878] bg-[#F8FAFC] rounded-lg border border-[#E2E8F0]">
+                      Historical actual incident data is not recorded for this jurisdiction. Showing forecasted projection.
+                    </div>
+                  )}
+
+                  {/* Compact Confidence Interval information if available */}
+                  {predictionData.intervalLower !== null && predictionData.intervalUpper !== null && (
+                    <div className="text-[11px] text-[#5D6878] pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                      <span>
+                        Prediction Confidence Interval (80%):{' '}
+                        <strong className="text-[#0B1F3A]">
+                          [{predictionData.intervalLower.toLocaleString()} – {predictionData.intervalUpper.toLocaleString()}] Crimes
+                        </strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
