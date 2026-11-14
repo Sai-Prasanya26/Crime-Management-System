@@ -16,6 +16,7 @@ import {
   Layers,
   AlertCircle,
   ArrowLeft,
+  Sliders,
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import LoadingState from '../components/common/LoadingState';
@@ -380,21 +381,21 @@ export const ResourceOptimizationPage: React.FC = () => {
   }, [optimizationResult, selectedDistrictId, inventorySummary]);
 
   return (
-    <DashboardLayout title="Resource Optimization">
-      <div className="bg-slate-50 min-h-screen p-6 space-y-6">
+    <DashboardLayout hideSidebar icon={Sliders} title="Resource Optimization">
+      <div className="space-y-4 sm:space-y-5">
         {/* Page Title */}
-        <div className="border-b border-slate-200 pb-4">
-          <h1 className="text-2xl font-black text-[#0B1F3A] tracking-tight">
+        <div className="border-b border-[#D9E1EA] pb-3">
+          <h1 className="text-lg sm:text-xl font-bold text-[#0B1F3A] tracking-tight">
             Resource Optimization
           </h1>
         </div>
 
         {/* Top Selectors & Action Bar */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
+        <div className="bg-white rounded-xl shadow-2xs border border-[#D9E1EA] p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             {/* 1. State / UT Selector */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider mb-1.5">
                 State / UT
               </label>
               <select
@@ -408,7 +409,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                   });
                 }}
                 disabled={isLoadingGeography}
-                className="w-full h-10 px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#1769AA] focus:bg-white"
+                className="w-full h-9.5 px-3 py-2 text-xs font-medium bg-[#F8FAFC] border border-[#D9E1EA] rounded-lg text-[#0B1F3A] focus:outline-hidden focus:ring-2 focus:ring-[#1769AA]/40 focus:bg-white transition-colors"
               >
                 {states.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -420,7 +421,7 @@ export const ResourceOptimizationPage: React.FC = () => {
 
             {/* 2. District Selector */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider mb-1.5">
                 District
               </label>
               <select
@@ -435,7 +436,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                   });
                 }}
                 disabled={isLoadingDistricts || districts.length === 0}
-                className="w-full h-10 px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#1769AA] focus:bg-white"
+                className="w-full h-9.5 px-3 py-2 text-xs font-medium bg-[#F8FAFC] border border-[#D9E1EA] rounded-lg text-[#0B1F3A] focus:outline-hidden focus:ring-2 focus:ring-[#1769AA]/40 focus:bg-white transition-colors"
               >
                 {isLoadingDistricts ? (
                   <option value="">Loading districts...</option>
@@ -453,7 +454,7 @@ export const ResourceOptimizationPage: React.FC = () => {
 
             {/* 3. Assessment Period Selector */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-semibold text-[#5D6878] uppercase tracking-wider mb-1.5">
                 Assessment Period
               </label>
               <select
@@ -469,7 +470,7 @@ export const ResourceOptimizationPage: React.FC = () => {
                     });
                   }
                 }}
-                className="w-full h-10 px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#1769AA] focus:bg-white"
+                className="w-full h-9.5 px-3 py-2 text-xs font-medium bg-[#F8FAFC] border border-[#D9E1EA] rounded-lg text-[#0B1F3A] focus:outline-hidden focus:ring-2 focus:ring-[#1769AA]/40 focus:bg-white transition-colors"
               >
                 <option value="2026-11">2026-11 (November 2026)</option>
                 <option value="2026-12">2026-12 (December 2026)</option>
@@ -485,16 +486,16 @@ export const ResourceOptimizationPage: React.FC = () => {
                 type="button"
                 onClick={handleOptimizeClick}
                 disabled={isLoadingDemand || isOptimizing}
-                className="w-full h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-bold text-white bg-[#0B1F3A] hover:bg-[#1769AA] rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-9.5 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold text-white bg-[#1769AA] hover:bg-[#125386] rounded-lg shadow-2xs transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#1769AA]/40 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isOptimizing ? (
                   <>
-                    <RotateCcw className="h-4 w-4 animate-spin" />
+                    <RotateCcw className="h-3.5 w-3.5 animate-spin" />
                     <span>Optimizing...</span>
                   </>
                 ) : (
                   <>
-                    <Play className="h-4 w-4 fill-white text-white" />
+                    <Play className="h-3.5 w-3.5 fill-current text-white" />
                     <span>Optimize Resources</span>
                   </>
                 )}
@@ -537,7 +538,7 @@ export const ResourceOptimizationPage: React.FC = () => {
 
         {/* Main Content Area */}
         {isLoadingDemand && !demandDetail ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="bg-white rounded-xl border border-[#D9E1EA] p-12 text-center shadow-2xs">
             <LoadingState message="Loading predicted crime demands..." />
           </div>
         ) : viewMode === 'ALLOCATION_RESULTS' && optimizationResult ? (
@@ -545,51 +546,51 @@ export const ResourceOptimizationPage: React.FC = () => {
           /* RESULTS VIEW: Full-Width Section 3 (Optimized Resource Allocation)*/
           /* Displayed only after successful optimization                      */
           /* ================================================================ */
-          <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-base font-bold text-[#0B1F3A]">Optimized Resource Allocation</h2>
+          <div className="bg-white rounded-xl shadow-2xs border border-[#D9E1EA] overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#D9E1EA] bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h2 className="text-sm sm:text-base font-bold text-[#0B1F3A]">Optimized Resource Allocation</h2>
               <button
                 type="button"
                 onClick={() => setViewMode('CRIME_ANALYSIS')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0B1F3A] bg-white hover:bg-[#F4F7FA] border border-[#D9E1EA] rounded-lg shadow-2xs transition-colors cursor-pointer"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-slate-600" />
+                <ArrowLeft className="h-3.5 w-3.5 text-[#1769AA]" />
                 <span>Back to Crime Analysis</span>
               </button>
             </div>
 
             {optimizedAllocations.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500">
+              <div className="p-8 text-center text-xs text-[#5D6878]">
                 No resource pools currently have active demand for this district and period.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                  <thead className="bg-[#F8FAFC] border-b border-[#D9E1EA] text-[#5D6878] font-bold uppercase tracking-wider text-[10px]">
                     <tr>
-                      <th className="px-5 py-3">Resource Pool</th>
-                      <th className="px-5 py-3 text-right">Required</th>
-                      <th className="px-5 py-3 text-right">Available</th>
-                      <th className="px-5 py-3 text-right">Recommended Allocation</th>
-                      <th className="px-5 py-3 text-right">Shortage / Remaining</th>
+                      <th className="px-4 py-2.5">Resource Pool</th>
+                      <th className="px-4 py-2.5 text-right">Required</th>
+                      <th className="px-4 py-2.5 text-right">Available</th>
+                      <th className="px-4 py-2.5 text-right">Recommended Allocation</th>
+                      <th className="px-4 py-2.5 text-right">Shortage / Remaining</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#E2E8F0]">
                     {optimizedAllocations.map((item) => {
                       const Icon = item.icon;
                       const isShortage = item.shortage > 0;
 
                       return (
-                        <tr key={item.category} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={item.category} className="hover:bg-[#F8FAFC] transition-colors">
                           {/* Col 1: Resource Pool */}
-                          <td className="px-5 py-3">
+                          <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2.5">
-                              <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
+                              <div className="p-1.5 rounded-lg bg-[#EAF3FA] text-[#1769AA] shrink-0">
                                 <Icon className="h-4 w-4" />
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900">{item.name}</div>
-                                <div className="text-[10px] text-slate-500 font-medium">
+                                <div className="font-semibold text-[#0B1F3A]">{item.name}</div>
+                                <div className="text-[10px] text-[#5D6878] font-normal">
                                   Unit: {item.unit}
                                 </div>
                               </div>
@@ -597,37 +598,37 @@ export const ResourceOptimizationPage: React.FC = () => {
                           </td>
 
                           {/* Col 2: Required */}
-                          <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                          <td className="px-4 py-2.5 text-right font-semibold text-[#0B1F3A]">
                             {item.required.toLocaleString()}{' '}
-                            <span className="text-slate-500 font-normal text-[11px]">
+                            <span className="text-[#5D6878] font-normal text-[11px]">
                               {item.unit}
                             </span>
                           </td>
 
                           {/* Col 3: Available */}
-                          <td className="px-5 py-3 text-right font-mono text-slate-700">
+                          <td className="px-4 py-2.5 text-right text-[#5D6878]">
                             {item.available.toLocaleString()}{' '}
-                            <span className="text-slate-500 font-normal text-[11px]">
+                            <span className="text-[#5D6878] font-normal text-[11px]">
                               {item.unit}
                             </span>
                           </td>
 
                           {/* Col 4: Recommended Allocation */}
-                          <td className="px-5 py-3 text-right font-mono font-black text-[#1769AA]">
+                          <td className="px-4 py-2.5 text-right font-semibold text-[#1769AA]">
                             {item.recommended.toLocaleString()}{' '}
-                            <span className="text-slate-500 font-normal text-[11px]">
+                            <span className="text-[#5D6878] font-normal text-[11px]">
                               {item.unit}
                             </span>
                           </td>
 
                           {/* Col 5: Shortage / Remaining */}
-                          <td className="px-5 py-3 text-right">
+                          <td className="px-4 py-2.5 text-right">
                             {isShortage ? (
-                              <span className="inline-flex items-center gap-1 font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              <span className="inline-flex items-center gap-1 font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                                 {item.shortage.toLocaleString()} Shortfall
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 0 (Fully Covered)
                               </span>
                             )}
@@ -645,11 +646,11 @@ export const ResourceOptimizationPage: React.FC = () => {
           /* INITIAL VIEW: Side-by-side (LEFT: Predicted Crimes, RIGHT: Mapping)*/
           /* Normal browser scrolling (no nested internal scrollbars)         */
           /* ================================================================ */
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
             {/* LEFT PANEL — Predicted Crimes */}
-            <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
-                <h2 className="text-base font-bold text-[#0B1F3A]">Predicted Crimes</h2>
+            <div className="bg-white rounded-xl shadow-2xs border border-[#D9E1EA] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#D9E1EA] bg-[#F8FAFC]">
+                <h2 className="text-sm sm:text-base font-bold text-[#0B1F3A]">Predicted Crimes</h2>
               </div>
 
               {positiveCrimes.length === 0 ? (
@@ -662,13 +663,13 @@ export const ResourceOptimizationPage: React.FC = () => {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#D9E1EA] text-[#5D6878] font-bold uppercase tracking-wider text-[10px]">
                       <tr>
-                        <th className="px-5 py-3">Crime Type</th>
-                        <th className="px-5 py-3 text-right">Predicted Incidents</th>
+                        <th className="px-4 py-2.5">Crime Type</th>
+                        <th className="px-4 py-2.5 text-right">Predicted Incidents</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#E2E8F0]">
                       {positiveCrimes.map((c) => {
                         const isSelected = selectedCrime?.crime_type_id === c.crime_type_id;
                         return (
@@ -677,14 +678,14 @@ export const ResourceOptimizationPage: React.FC = () => {
                             onClick={() => setSelectedCrimeId(c.crime_type_id)}
                             className={`cursor-pointer transition-colors ${
                               isSelected
-                                ? 'bg-blue-50/80 border-l-4 border-l-[#1769AA] font-bold text-[#0B1F3A]'
-                                : 'hover:bg-slate-50/80 text-slate-800'
+                                ? 'bg-blue-50/80 border-l-4 border-l-[#1769AA] font-semibold text-[#0B1F3A]'
+                                : 'hover:bg-[#F8FAFC] text-[#0B1F3A]'
                             }`}
                           >
-                            <td className="px-5 py-3">
-                              <span className="font-semibold text-slate-900">{c.crime_name}</span>
+                            <td className="px-4 py-2.5">
+                              <span className="font-semibold text-[#0B1F3A]">{c.crime_name}</span>
                             </td>
-                            <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                            <td className="px-4 py-2.5 text-right font-semibold text-[#0B1F3A]">
                               {c.predicted_count.toFixed(3)}
                             </td>
                           </tr>
@@ -697,45 +698,45 @@ export const ResourceOptimizationPage: React.FC = () => {
             </div>
 
             {/* RIGHT PANEL — Crime-wise Resource Mapping */}
-            <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50">
-                <h2 className="text-base font-bold text-[#0B1F3A]">Crime-wise Resource Mapping</h2>
+            <div className="bg-white rounded-xl shadow-2xs border border-[#D9E1EA] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#D9E1EA] bg-[#F8FAFC]">
+                <h2 className="text-sm sm:text-base font-bold text-[#0B1F3A]">Crime-wise Resource Mapping</h2>
               </div>
 
               {!selectedCrime || crimeSpecificMappings.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500">
+                <div className="p-8 text-center text-xs text-[#5D6878]">
                   Select a predicted crime to view resource requirements.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#0B1F3A]/5 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#D9E1EA] text-[#5D6878] font-bold uppercase tracking-wider text-[10px]">
                       <tr>
-                        <th className="px-5 py-3">Resource Pool</th>
-                        <th className="px-5 py-3 text-right">Calculated Demand</th>
+                        <th className="px-4 py-2.5">Resource Pool</th>
+                        <th className="px-4 py-2.5 text-right">Calculated Demand</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#E2E8F0]">
                       {crimeSpecificMappings.map((m) => {
                         const Icon = m.icon;
                         return (
-                          <tr key={m.poolKey} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="px-5 py-3">
+                          <tr key={m.poolKey} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-lg bg-blue-50 text-[#1769AA] shrink-0">
+                                <div className="p-1.5 rounded-lg bg-[#EAF3FA] text-[#1769AA] shrink-0">
                                   <Icon className="h-4 w-4" />
                                 </div>
                                 <div>
-                                  <div className="font-bold text-slate-900">{m.name}</div>
-                                  <div className="text-[10px] text-slate-500 font-medium">
+                                  <div className="font-semibold text-[#0B1F3A]">{m.name}</div>
+                                  <div className="text-[10px] text-[#5D6878] font-normal">
                                     Unit: {m.unit}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-3 text-right font-mono font-bold text-slate-900">
+                            <td className="px-4 py-2.5 text-right font-semibold text-[#0B1F3A]">
                               {m.demand.toFixed(3)}{' '}
-                              <span className="text-slate-500 font-normal text-[11px]">
+                              <span className="text-[#5D6878] font-normal text-[11px]">
                                 {m.unit}
                               </span>
                             </td>
