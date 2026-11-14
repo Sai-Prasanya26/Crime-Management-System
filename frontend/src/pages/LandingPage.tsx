@@ -26,26 +26,6 @@ export const LandingPage: React.FC = () => {
     // Row 1
     {
       number: '01',
-      title: 'Crime Risk Assessment',
-      description:
-        'Assess jurisdiction-level risk using composite crime volume, severity, trends and population indicators.',
-      icon: ShieldAlert,
-      image: '/images/risk-assessment.jpg',
-      link: '/risk',
-      actionText: 'Assess Risk',
-    },
-    {
-      number: '02',
-      title: 'Crime Predictions',
-      description:
-        'Forecast future crime volumes and incident likelihoods using machine learning models.',
-      icon: Activity,
-      image: '/images/crime-predictions.jpg',
-      link: '/predictions',
-      actionText: 'View Predictions',
-    },
-    {
-      number: '03',
       title: 'Crime Analytics',
       description:
         'Analyse crime incidents across categories, types, jurisdictions, demographics, weapons and time periods.',
@@ -55,7 +35,7 @@ export const LandingPage: React.FC = () => {
       actionText: 'View Crime Analytics',
     },
     {
-      number: '04',
+      number: '02',
       title: 'Geographic Intelligence',
       description:
         'Explore crime distribution across states and districts with geographic and population-based context.',
@@ -64,9 +44,8 @@ export const LandingPage: React.FC = () => {
       link: '/districts',
       actionText: 'Explore Jurisdictions',
     },
-    // Row 2
     {
-      number: '05',
+      number: '03',
       title: 'Crime Trends',
       description:
         'Track longitudinal patterns, seasonal crime fluctuations and historical multi-year trends.',
@@ -74,6 +53,27 @@ export const LandingPage: React.FC = () => {
       image: '/images/crime-trends.jpg',
       link: '/trends',
       actionText: 'View Crime Trends',
+    },
+    {
+      number: '04',
+      title: 'Crime Risk Assessment',
+      description:
+        'Assess jurisdiction-level risk using composite crime volume, severity, trends and population indicators.',
+      icon: ShieldAlert,
+      image: '/images/risk-assessment.jpg',
+      link: '/risk',
+      actionText: 'Assess Risk',
+    },
+    // Row 2
+    {
+      number: '05',
+      title: 'Crime Predictions',
+      description:
+        'Forecast future crime volumes and incident likelihoods using machine learning models.',
+      icon: Activity,
+      image: '/images/crime-predictions.jpg',
+      link: '/predictions',
+      actionText: 'View Predictions',
     },
     {
       number: '06',

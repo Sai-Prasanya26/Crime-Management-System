@@ -383,13 +383,6 @@ export const ResourceOptimizationPage: React.FC = () => {
   return (
     <DashboardLayout hideSidebar icon={Sliders} title="Resource Optimization">
       <div className="space-y-4 sm:space-y-5">
-        {/* Page Title */}
-        <div className="border-b border-[#D9E1EA] pb-3">
-          <h1 className="text-lg sm:text-xl font-bold text-[#0B1F3A] tracking-tight">
-            Resource Optimization
-          </h1>
-        </div>
-
         {/* Top Selectors & Action Bar */}
         <div className="bg-white rounded-xl shadow-2xs border border-[#D9E1EA] p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">

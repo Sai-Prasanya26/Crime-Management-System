@@ -10,18 +10,18 @@ ARTIFACT_DIR = r"C:\Users\saipr.SAIPRASANYA.000\.gemini\antigravity\brain\1040a3
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 USER_DATA_DIR = r"C:\Users\saipr.SAIPRASANYA.000\AppData\Local\Temp\chrome_debug_home_reorder_resource_typography"
 
-SHOT_HOME_REORDERED = os.path.join(ARTIFACT_DIR, "home_8_modules_reordered.png")
-SHOT_RESOURCE_TYPO = os.path.join(ARTIFACT_DIR, "resource_optimization_typography_matched.png")
+SHOT_HOME_FINAL = os.path.join(ARTIFACT_DIR, "home_8_modules_final_order.png")
+SHOT_RESOURCE_NO_DUP = os.path.join(ARTIFACT_DIR, "resource_optimization_no_duplicate_heading.png")
 SHOT_RESOURCE_RESULTS_TYPO = os.path.join(ARTIFACT_DIR, "resource_optimization_results_typography_matched.png")
 
 EXPECTED_NEW_ORDER = [
     # Row 1
-    {"index": 1, "title": "Crime Risk Assessment", "expected_route": "/risk", "img_sub": "risk-assessment"},
-    {"index": 2, "title": "Crime Predictions", "expected_route": "/predictions", "img_sub": "crime-predictions"},
-    {"index": 3, "title": "Crime Analytics", "expected_route": "/analytics", "img_sub": "crime-analytics"},
-    {"index": 4, "title": "Geographic Intelligence", "expected_route": "/districts", "img_sub": "geographic-intelligence"},
+    {"index": 1, "title": "Crime Analytics", "expected_route": "/analytics", "img_sub": "crime-analytics"},
+    {"index": 2, "title": "Geographic Intelligence", "expected_route": "/districts", "img_sub": "geographic-intelligence"},
+    {"index": 3, "title": "Crime Trends", "expected_route": "/trends", "img_sub": "crime-trends"},
+    {"index": 4, "title": "Crime Risk Assessment", "expected_route": "/risk", "img_sub": "risk-assessment"},
     # Row 2
-    {"index": 5, "title": "Crime Trends", "expected_route": "/trends", "img_sub": "crime-trends"},
+    {"index": 5, "title": "Crime Predictions", "expected_route": "/predictions", "img_sub": "crime-predictions"},
     {"index": 6, "title": "Resource Allocation", "expected_route": "/resources", "img_sub": "resource-optimization"},
     {"index": 7, "title": "Budget Analysis", "expected_route": "/budget", "img_sub": "budget-analysis"},
     {"index": 8, "title": "Reports", "expected_route": "/reports", "img_sub": "intelligence-reports"},
@@ -142,9 +142,9 @@ async def run_verification():
             await call("Runtime.evaluate", {"expression": "document.getElementById('modules').scrollIntoView({behavior: 'instant', block: 'start'})"})
             await asyncio.sleep(0.5)
             shot_home = await call("Page.captureScreenshot", {"format": "png"})
-            with open(SHOT_HOME_REORDERED, "wb") as f:
+            with open(SHOT_HOME_FINAL, "wb") as f:
                 f.write(base64.b64decode(shot_home["data"]))
-            print(f"[Screenshot] Saved reordered home grid to {SHOT_HOME_REORDERED}", flush=True)
+            print(f"[Screenshot] Saved final home grid to {SHOT_HOME_FINAL}", flush=True)
 
             # -------------------------------------------------------------
             # PART 2: RESOURCE OPTIMIZATION TYPOGRAPHY & BUTTON VERIFICATION
@@ -164,7 +164,14 @@ async def run_verification():
 
             eval_res_opt_js = """
             (() => {
-                const titleEl = document.querySelector('h1');
+                const allH1s = Array.from(document.querySelectorAll('h1')).map(h => ({
+                    text: h.innerText.trim(),
+                    isHeader: !!h.closest('header'),
+                    fontSize: window.getComputedStyle(h).fontSize,
+                    fontWeight: window.getComputedStyle(h).fontWeight,
+                    color: window.getComputedStyle(h).color
+                }));
+                const headerH1 = document.querySelector('header h1');
                 const btnEl = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Optimize Resources'));
                 const labels = Array.from(document.querySelectorAll('label')).map(l => ({
                     text: l.innerText.trim(),
@@ -190,12 +197,8 @@ async def run_verification():
                 const playIcon = btnEl ? btnEl.querySelector('svg') : null;
 
                 return {
-                    title: {
-                        text: titleEl ? titleEl.innerText.trim() : null,
-                        fontSize: titleEl ? window.getComputedStyle(titleEl).fontSize : null,
-                        fontWeight: titleEl ? window.getComputedStyle(titleEl).fontWeight : null,
-                        color: titleEl ? window.getComputedStyle(titleEl).color : null,
-                    },
+                    allH1s,
+                    headerTitle: headerH1 ? headerH1.innerText.trim() : null,
                     button: {
                         found: !!btnEl,
                         text: btnEl ? btnEl.innerText.trim() : null,
@@ -214,27 +217,30 @@ async def run_verification():
             """
             typo_res = (await call("Runtime.evaluate", {"expression": eval_res_opt_js, "returnByValue": True}))["result"]["value"]
             print("[Check 2] Resource Optimization Page Typography Inspection:", flush=True)
-            print(f"  Title: '{typo_res['title']['text']}' | size={typo_res['title']['fontSize']}, weight={typo_res['title']['fontWeight']}, color={typo_res['title']['color']}", flush=True)
+            print(f"  All H1 elements: {typo_res['allH1s']}", flush=True)
+            print(f"  Sticky Header Title: '{typo_res['headerTitle']}'", flush=True)
             print(f"  Optimize Button: '{typo_res['button']['text']}' | bg={typo_res['button']['bgColor']}, text={typo_res['button']['textColor']}, icon={typo_res['button']['hasPlayIcon']}", flush=True)
             print(f"  Labels: count={len(typo_res['labels'])}, sample={typo_res['labels'][0]}", flush=True)
             print(f"  Headings: {typo_res['sectionHeadings']}", flush=True)
             print(f"  Table Thead: {typo_res['theadCols']}", flush=True)
 
             # Assertions
+            # Exactly 1 H1 element must exist (the sticky header title)
+            assert len(typo_res["allH1s"]) == 1, f"Expected exactly 1 H1 (sticky header title), found {len(typo_res['allH1s'])}: {typo_res['allH1s']}"
+            assert typo_res["allH1s"][0]["isHeader"] == True, "The single H1 is not in the sticky header"
+            assert typo_res["headerTitle"] == "Resource Optimization", f"Unexpected header title: {typo_res['headerTitle']}"
+
             # Button must be blue #1769AA (rgb(23, 105, 170)), text white (rgb(255, 255, 255))
             assert typo_res["button"]["found"] == True, "Optimize Resources button not found"
             assert "23, 105, 170" in typo_res["button"]["bgColor"], f"Button is not #1769AA blue: {typo_res['button']['bgColor']}"
             assert "255, 255, 255" in typo_res["button"]["textColor"], f"Button text is not white: {typo_res['button']['textColor']}"
             assert typo_res["button"]["hasPlayIcon"] == True, "Button does not have play icon"
 
-            # Title weight must be 700 (bold), NOT 900 (black)
-            assert int(typo_res["title"]["fontWeight"]) <= 700, f"Title font weight is excessively bold: {typo_res['title']['fontWeight']}"
-
-            # Capture screenshot of initial Resource Optimization page
+            # Capture screenshot of initial Resource Optimization page without duplicate heading
             shot_opt = await call("Page.captureScreenshot", {"format": "png"})
-            with open(SHOT_RESOURCE_TYPO, "wb") as f:
+            with open(SHOT_RESOURCE_NO_DUP, "wb") as f:
                 f.write(base64.b64decode(shot_opt["data"]))
-            print(f"[Screenshot] Saved resource optimization typography to {SHOT_RESOURCE_TYPO}", flush=True)
+            print(f"[Screenshot] Saved resource optimization without duplicate heading to {SHOT_RESOURCE_NO_DUP}", flush=True)
 
             # -------------------------------------------------------------
             # PART 3: CLICK "OPTIMIZE RESOURCES" & VERIFY RESULTS TYPOGRAPHY
