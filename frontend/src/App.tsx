@@ -98,6 +98,11 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/optimization" element={<Navigate to="/resources" replace />} />
+          <Route path="/resource-optimization" element={<Navigate to="/resources" replace />} />
+          <Route path="/budget-intelligence" element={<Navigate to="/budget" replace />} />
+          <Route path="/risk-assessment" element={<Navigate to="/risk" replace />} />
+          <Route path="/crime-analytics" element={<Navigate to="/analytics" replace />} />
 
           {/* Admin Protected Route (Requires ADMIN Role) */}
           <Route

@@ -5,9 +5,11 @@ import {
   LockKeyhole,
   BarChart3,
   MapPinned,
-  ShieldAlert,
   TrendingUp,
-  CarFront,
+  Activity,
+  ShieldAlert,
+  Sliders,
+  BadgeDollarSign,
   FileText,
   ShieldCheck,
 } from 'lucide-react';
@@ -19,8 +21,9 @@ import UserAccountMenu from '../components/layout/UserAccountMenu';
 export const LandingPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
 
-  // 6 Primary Operational Modules strictly mapped to the actual Crime Management System
+  // Exactly 8 Primary Operational Modules in two rows of 4 cards on desktop
   const capabilityModules = [
+    // Row 1
     {
       number: '01',
       title: 'Crime Analytics',
@@ -43,9 +46,9 @@ export const LandingPage: React.FC = () => {
     },
     {
       number: '03',
-      title: 'Crime Trends & Forecasting',
+      title: 'Crime Trends',
       description:
-        'Analyse historical crime trends and support future crime forecasting using temporal patterns.',
+        'Track longitudinal patterns, seasonal crime fluctuations and historical multi-year trends.',
       icon: TrendingUp,
       image: '/images/crime-trends.jpg',
       link: '/trends',
@@ -53,29 +56,50 @@ export const LandingPage: React.FC = () => {
     },
     {
       number: '04',
+      title: 'Crime Predictions',
+      description:
+        'Forecast future crime volumes and incident likelihoods using machine learning models.',
+      icon: Activity,
+      image: '/images/crime-predictions.jpg',
+      link: '/predictions',
+      actionText: 'View Predictions',
+    },
+    // Row 2
+    {
+      number: '05',
       title: 'Crime Risk Assessment',
       description:
-        'Assess jurisdiction-level risk using crime volume, severity, trends and population-based indicators.',
+        'Assess jurisdiction-level risk using composite crime volume, severity, trends and population indicators.',
       icon: ShieldAlert,
       image: '/images/risk-assessment.jpg',
       link: '/risk',
       actionText: 'Assess Risk',
     },
     {
-      number: '05',
-      title: 'Resource Optimization',
+      number: '06',
+      title: 'Resource Allocation',
       description:
         'Compare available resources with recommended requirements and identify operational shortfalls.',
-      icon: CarFront,
+      icon: Sliders,
       image: '/images/resource-optimization.jpg',
       link: '/resources',
       actionText: 'Optimize Resources',
     },
     {
-      number: '06',
-      title: 'Budget & Intelligence Reports',
+      number: '07',
+      title: 'Budget Analysis',
       description:
-        'Estimate resource costs and generate structured intelligence, risk, resource and executive reports.',
+        'Analyze departmental expenditures, operational costs and fiscal allocations by jurisdiction.',
+      icon: BadgeDollarSign,
+      image: '/images/budget-analysis.jpg',
+      link: '/budget',
+      actionText: 'Analyze Budget',
+    },
+    {
+      number: '08',
+      title: 'Reports',
+      description:
+        'Generate structured intelligence, risk, resource and executive management reports.',
       icon: FileText,
       image: '/images/intelligence-reports.jpg',
       link: '/reports',
@@ -182,7 +206,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 3. CORE INTELLIGENCE CAPABILITIES (6 Real Photograph-Topped Modules) */}
+        {/* 3. CORE INTELLIGENCE CAPABILITIES (8 Real Photograph-Topped Modules in 4x2 Grid) */}
         <section id="modules" className="py-10 sm:py-14 lg:py-16 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-left mb-6 sm:mb-9">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#1769AA]">
@@ -196,7 +220,7 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
             {capabilityModules.map((module) => {
               const Icon = module.icon;
               return (
@@ -204,14 +228,14 @@ export const LandingPage: React.FC = () => {
                   key={module.number}
                   to={module.link}
                   aria-label={`Open ${module.title}`}
-                  className="group rounded-[10px] border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-2xs w-full min-h-[390px] sm:min-h-[415px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/40 focus:ring-offset-2 block text-left"
+                  className="group rounded-[10px] border border-[#D9E1EA] bg-white overflow-hidden flex flex-col justify-between hover:border-[#1769AA] hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-2xs w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1769AA]/40 focus:ring-offset-2 block text-left"
                 >
                   {/* Top Real Photograph */}
-                  <div className="relative h-[200px] sm:h-[220px] md:h-[230px] w-full overflow-hidden bg-[#0B1F3A] shrink-0">
+                  <div className="relative h-[160px] sm:h-[175px] w-full overflow-hidden bg-[#0B1F3A] shrink-0">
                     <img
                       src={module.image}
                       alt={module.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.01]"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       onError={(e) => {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
@@ -225,19 +249,19 @@ export const LandingPage: React.FC = () => {
                         <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-[#EAF3FA] text-[#1769AA] flex items-center justify-center shrink-0 group-hover:bg-[#1769AA] group-hover:text-white transition-colors duration-200">
                           <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                         </div>
-                        <h3 className="text-[16px] sm:text-[18px] font-bold text-[#0B1F3A] leading-tight group-hover:text-[#1769AA] transition-colors">
+                        <h3 className="text-[15.5px] sm:text-[16.5px] font-bold text-[#0B1F3A] leading-tight group-hover:text-[#1769AA] transition-colors">
                           {module.title}
                         </h3>
                       </div>
-                      <p className="text-[13px] sm:text-[14px] text-[#5D6878] mt-2 sm:mt-2.5 leading-relaxed">
+                      <p className="text-[12.5px] sm:text-[13px] text-[#5D6878] mt-2.5 leading-relaxed">
                         {module.description}
                       </p>
                     </div>
 
                     <div className="pt-3 sm:pt-3.5 border-t border-[#D9E1EA] mt-4">
-                      <div className="text-[13px] sm:text-[13.5px] font-semibold text-[#1769AA] group-hover:text-[#0B1F3A] flex items-center justify-between transition-colors">
+                      <div className="text-[12.5px] sm:text-[13px] font-semibold text-[#1769AA] group-hover:text-[#0B1F3A] flex items-center justify-between transition-colors">
                         <span>{module.actionText}</span>
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                       </div>
                     </div>
                   </div>
