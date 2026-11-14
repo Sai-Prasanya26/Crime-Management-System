@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Activity,
   Layers,
-  ShieldAlert,
+  Users,
   AlertTriangle,
   CheckCircle2,
-  ArrowRight,
+  FileText,
   HeartPulse,
 } from 'lucide-react';
 import {
@@ -81,24 +80,7 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
   // 1. Resource Pools State (10 canonical pools)
   const [resourcePools, setResourcePools] = useState<ResourcePoolItem[]>([]);
 
-  // 2. Risk State
-  const [riskData, setRiskData] = useState<{
-    criticalCount: number;
-    highCount: number;
-    moderateCount: number;
-    lowCount: number;
-    totalAssessed: number;
-    topCriticalDistricts: Array<{ district: string; state: string; score: number }>;
-  }>({
-    criticalCount: 0,
-    highCount: 0,
-    moderateCount: 0,
-    lowCount: 0,
-    totalAssessed: 0,
-    topCriticalDistricts: [],
-  });
-
-  // 3. Budget Overview State
+  // 2. Budget Overview State
   const [budgetData, setBudgetData] = useState<{
     policeExpenditure: number | null;
     availableBudget: number | null;
@@ -124,11 +106,16 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
   // 4. Operational Alerts State
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
 
-  // Currency Formatter in INR (₹)
+  // Clean INR Currency Formatter (Handles Lakhs, Crores, and Multi-Lakh Crores)
   const formatINR = useCallback((val: number | null | undefined): string => {
     if (val === null || val === undefined || isNaN(val)) return 'Not Available';
     const absVal = Math.abs(val);
     if (absVal === 0) return '₹0';
+    if (absVal >= 100000000000) {
+      // 10,000 Cr+ -> format with Indian comma grouping in Crores
+      const cr = val / 10000000;
+      return `₹${cr.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr`;
+    }
     if (absVal >= 10000000) {
       return `₹${(val / 10000000).toFixed(2)} Cr`;
     }
@@ -179,25 +166,13 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
       ]);
 
       // -----------------------------------------------------------------------
-      // Process Risk Assessment
+      // Process Risk Assessment (Used for Operational Alerts)
       // -----------------------------------------------------------------------
-      let critical = 0;
-      let high = 0;
-      let moderate = 0;
-      let low = 0;
-      let totalDistricts = 0;
       const criticalDistricts: Array<{ district: string; state: string; score: number }> = [];
 
       if (riskRes.status === 'fulfilled') {
         const val = riskRes.value as any;
         if ('risk_level_distribution' in val && val.risk_level_distribution) {
-          const dist = val.risk_level_distribution;
-          critical = dist.CRITICAL || 0;
-          high = dist.HIGH || 0;
-          moderate = dist.MODERATE || 0;
-          low = dist.LOW || 0;
-          totalDistricts = critical + high + moderate + low;
-
           (val.top_risk_districts || [])
             .filter((d: any) => d.risk_level === 'CRITICAL')
             .forEach((d: any) => {
@@ -208,36 +183,18 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
               });
             });
         } else if ('items' in val && Array.isArray(val.items)) {
-          const items = val.items;
-          totalDistricts = items.length;
-          items.forEach((item: any) => {
+          val.items.forEach((item: any) => {
             const lvl = (item.risk_level || '').toUpperCase();
             if (lvl === 'CRITICAL') {
-              critical++;
               criticalDistricts.push({
                 district: item.district_name || 'District',
                 state: item.state_name || 'State',
                 score: Number(item.overall_risk_score) || 0,
               });
-            } else if (lvl === 'HIGH') {
-              high++;
-            } else if (lvl === 'MODERATE') {
-              moderate++;
-            } else if (lvl === 'LOW') {
-              low++;
             }
           });
         }
       }
-
-      setRiskData({
-        criticalCount: critical,
-        highCount: high,
-        moderateCount: moderate,
-        lowCount: low,
-        totalAssessed: totalDistricts,
-        topCriticalDistricts: criticalDistricts.slice(0, 5),
-      });
 
       // -----------------------------------------------------------------------
       // Process Resource Pools (10 Canonical Pools)
@@ -357,7 +314,7 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
       });
 
       // -----------------------------------------------------------------------
-      // Process Operational Alerts (Real backend data only)
+      // Process Operational Alerts (Only genuine critical alerts)
       // -----------------------------------------------------------------------
       const compiledAlerts: AlertItem[] = [];
 
@@ -439,6 +396,40 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
     [resourcePools]
   );
 
+  // Determine if inventory scale difference warrants balanced logarithmic display
+  const maxPoolValue = useMemo(() => {
+    let max = 0;
+    resourcePools.forEach((p) => {
+      if (p.required > max) max = p.required;
+      if (p.available > max) max = p.available;
+      if (p.allocated > max) max = p.allocated;
+    });
+    return max;
+  }, [resourcePools]);
+
+  const useLogScale = maxPoolValue > 500;
+
+  // Chart data: uses logarithmic bar lengths when inventory exceeds 500 so small bars remain visible
+  // Actual values remain untouched and are rendered in tooltips and the summary table.
+  const chartData = useMemo(() => {
+    return resourcePools.map((p) => {
+      if (useLogScale) {
+        return {
+          ...p,
+          chartRequired: p.required > 0 ? Math.log10(p.required + 1) : 0,
+          chartAvailable: p.available > 0 ? Math.log10(p.available + 1) : 0,
+          chartAllocated: p.allocated > 0 ? Math.log10(p.allocated + 1) : 0,
+        };
+      }
+      return {
+        ...p,
+        chartRequired: p.required,
+        chartAvailable: p.available,
+        chartAllocated: p.allocated,
+      };
+    });
+  }, [resourcePools, useLogScale]);
+
   // Donut Chart Data for Budget CAPEX vs OPEX
   const donutData = useMemo(() => {
     const capex = budgetData.capex || 0;
@@ -461,175 +452,162 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
   }, [budgetData.capex, budgetData.opex, budgetData.maintenance]);
 
   return (
-    <div className="mt-8 pt-5 border-t border-[#D9E1EA] space-y-5">
+    <div className="mt-8 pt-5 border-t border-[#D9E1EA] space-y-4">
       {/* ==================================================================== */}
-      {/* 1. SECTION HEADER WITH CLEAN NAVIGATION CONTROLS                    */}
+      {/* 1. SECTION HEADER (Clean, simple, no navigation buttons, no fluff)   */}
       {/* ==================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9E1EA] pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded bg-blue-50 text-[#1769AA]">
-            <Activity className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-[#0B1F3A]">
-              Resource Operations Overview
-            </h2>
-            <div className="text-[11px] text-[#5D6878]">
-              Tactical Resource Optimization, Capacity Constraints & Fiscal Intelligence (November 2026)
-            </div>
-          </div>
+      <div className="flex items-center gap-2.5 border-b border-[#D9E1EA] pb-3">
+        <div className="p-1.5 rounded-md bg-[#EAF3FA] text-[#1769AA]">
+          <Activity className="h-4 w-4" />
         </div>
-
-        {/* Compact Navigation Links */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            to="/resources"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#1769AA] bg-white border border-[#D9E1EA] rounded hover:bg-blue-50 transition-colors shadow-2xs"
-          >
-            <span>View Resource Optimization</span>
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-          <Link
-            to="/budget"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#1769AA] bg-white border border-[#D9E1EA] rounded hover:bg-blue-50 transition-colors shadow-2xs"
-          >
-            <span>View Budget Intelligence</span>
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-          <Link
-            to="/reports"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#1769AA] bg-white border border-[#D9E1EA] rounded hover:bg-blue-50 transition-colors shadow-2xs"
-          >
-            <span>View Reports</span>
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
+        <h2 className="text-base font-bold text-[#0B1F3A]">
+          Resource Operations Overview
+        </h2>
       </div>
 
       {loading ? (
-        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 text-center text-xs text-[#5D6878]">
+        <div className="rounded-lg border border-[#D9E1EA] bg-white p-8 text-center text-xs text-[#5D6878] shadow-2xs">
           <Activity className="h-5 w-5 text-[#1769AA] animate-spin mx-auto mb-2" />
           Aggregating live operational optimization and fiscal intelligence...
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-900">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-900 shadow-2xs">
           {error}
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* ================================================================ */}
-          {/* 2. RESOURCE OPTIMIZATION SUMMARY: 4 COMPACT KPI CARDS            */}
+          {/* 2. FOUR COMPACT RESOURCE KPI CARDS (Dashboard StatCard styling)  */}
           {/* ================================================================ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Card 1: Resources Required */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#5D6878]">
-                <span>Resources Required</span>
-                <Layers className="h-3.5 w-3.5 text-[#1769AA]" />
+            {/* Card 1: Active Resource Pools */}
+            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                  Active Resource Pools
+                </p>
+                <div className="rounded p-1.5 shrink-0 bg-[#EAF3FA] text-[#1769AA]">
+                  <Layers className="h-4 w-4" />
+                </div>
               </div>
-              <div className="text-xl font-bold text-[#0B1F3A] mt-1">
-                {personnelPool ? `${personnelPool.required.toLocaleString()} Officers` : `${activePoolsCount} Active Pools`}
-              </div>
-              <div className="text-[11px] text-[#5D6878] mt-1 pt-1 border-t border-slate-100 flex items-center justify-between">
-                <span>Mobility: {mobilityPool ? `${mobilityPool.required.toLocaleString()} Vehicles` : '—'}</span>
-                <span className="font-medium text-blue-700">{activePoolsCount} Pools Active</span>
-              </div>
-            </div>
-
-            {/* Card 2: Resources Allocated */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#5D6878]">
-                <span>Resources Allocated</span>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              </div>
-              <div className="text-xl font-bold text-[#0B1F3A] mt-1">
-                {personnelPool ? `${personnelPool.allocated.toLocaleString()} Officers` : 'Allocated'}
-              </div>
-              <div className="text-[11px] text-[#5D6878] mt-1 pt-1 border-t border-slate-100 flex items-center justify-between">
-                <span>Mobility: {mobilityPool ? `${mobilityPool.allocated.toLocaleString()} Vehicles` : '—'}</span>
-                <span className="font-semibold text-emerald-700">Recommended Allocation</span>
+              <div className="mt-1">
+                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+                  {activePoolsCount} / 10
+                </h3>
+                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                  {10 - activePoolsCount === 0 ? 'All 10 standard pools active' : `${activePoolsCount} operational pools active`}
+                </p>
               </div>
             </div>
 
-            {/* Card 3: Resource Shortages */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#5D6878]">
-                <span>Resource Shortages</span>
-                <AlertTriangle className={`h-3.5 w-3.5 ${poolsWithShortages.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`} />
+            {/* Card 2: Resources Required */}
+            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                  Resources Required
+                </p>
+                <div className="rounded p-1.5 shrink-0 bg-slate-100 text-[#0B1F3A]">
+                  <Users className="h-4 w-4" />
+                </div>
               </div>
-              <div className="text-xl font-bold mt-1">
-                {poolsWithShortages.length > 0 ? (
-                  <span className="text-rose-600">{poolsWithShortages.length} Pools with Shortage</span>
-                ) : (
-                  <span className="text-emerald-700">0 Shortages</span>
-                )}
-              </div>
-              <div className="text-[11px] text-[#5D6878] mt-1 pt-1 border-t border-slate-100 truncate">
-                {poolsWithShortages.length > 0
-                  ? `${poolsWithShortages.map((p) => `${p.displayName} (-${p.shortage} ${p.unit})`).join(', ')}`
-                  : 'All Standing Resource Pools Met'}
+              <div className="mt-1">
+                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+                  {personnelPool ? `${personnelPool.required.toLocaleString()} Officers` : '0 Required'}
+                </h3>
+                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                  {mobilityPool ? `${mobilityPool.required.toLocaleString()} Vehicles` : '—'} · {resourcePools.filter((p) => p.required > 0).length} pools with demand
+                </p>
               </div>
             </div>
 
-            {/* Card 4: Critical Risk Districts */}
-            <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#5D6878]">
-                <span>Critical Risk Districts</span>
-                <ShieldAlert className="h-3.5 w-3.5 text-red-600" />
+            {/* Card 3: Resources Allocated */}
+            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                  Resources Allocated
+                </p>
+                <div className="rounded p-1.5 shrink-0 bg-emerald-50 text-[#16845B]">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
               </div>
-              <div className="text-xl font-bold text-red-700 mt-1">
-                {riskData.criticalCount} Critical
+              <div className="mt-1">
+                <h3 className="text-[22px] sm:text-[24px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+                  {personnelPool ? `${personnelPool.allocated.toLocaleString()} Officers` : '0 Allocated'}
+                </h3>
+                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                  {mobilityPool ? `${mobilityPool.allocated.toLocaleString()} Vehicles` : '—'} · Recommended Allocation
+                </p>
               </div>
-              <div className="text-[11px] text-[#5D6878] mt-1 pt-1 border-t border-slate-100 flex items-center justify-between">
-                <span>{riskData.highCount} High Risk</span>
-                <span>{riskData.totalAssessed} Districts Assessed</span>
+            </div>
+
+            {/* Card 4: Resource Shortages */}
+            <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-white p-3.5 shadow-2xs hover:border-[#1769AA]/40 transition-colors min-h-[96px]">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                  Resource Shortages
+                </p>
+                <div className={`rounded p-1.5 shrink-0 ${poolsWithShortages.length > 0 ? 'bg-red-50 text-[#C53B3B]' : 'bg-emerald-50 text-[#16845B]'}`}>
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-1">
+                <h3 className={`text-[22px] sm:text-[24px] font-bold tracking-tight leading-none ${poolsWithShortages.length > 0 ? 'text-[#C53B3B]' : 'text-[#16845B]'}`}>
+                  {poolsWithShortages.length === 0 ? '0 Shortages' : `${poolsWithShortages.length} ${poolsWithShortages.length === 1 ? 'Pool' : 'Pools'}`}
+                </h3>
+                <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                  {poolsWithShortages.length === 0
+                    ? 'All standing demand fully covered'
+                    : poolsWithShortages.map((p) => p.displayName).slice(0, 2).join(', ') + (poolsWithShortages.length > 2 ? ` +${poolsWithShortages.length - 2} more` : '')}
+                </p>
               </div>
             </div>
           </div>
 
           {/* ================================================================ */}
-          {/* 3. RESOURCE ALLOCATION ANALYSIS & RECOMMENDATION SUMMARY          */}
+          {/* 3. RESOURCE ALLOCATION ANALYSIS CHART & RESOURCE SUMMARY TABLE   */}
           {/* ================================================================ */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
             {/* Left: Grouped Bar Chart (Resource Allocation Analysis) */}
-            <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs flex flex-col justify-between">
+            <div className="lg:col-span-7 rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#0B1F3A]">
-                      Resource Allocation Analysis
-                    </h3>
-                    <div className="text-[11px] text-[#5D6878]">
-                      Comparison of Required, Available and Recommended Allocation across 10 Pools
-                    </div>
-                  </div>
-                  {/* Legend Indicator */}
-                  <div className="flex items-center gap-3 text-[11px] font-medium text-slate-700">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-2xs bg-[#F59E0B]" />
+                  <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
+                    Resource Allocation Analysis
+                  </h3>
+                  {/* Clean, Simple Legend */}
+                  <div className="flex items-center gap-3 text-[11px] font-medium text-[#5D6878]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-[#F59E0B]" />
                       <span>Required</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-2xs bg-[#0B1F3A]" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-[#0B1F3A]" />
                       <span>Available</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-2xs bg-[#10B981]" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-[#10B981]" />
                       <span>Allocated</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Horizontal Grouped Bar Chart */}
-                <div className="h-[360px] w-full">
+                <div className="h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       layout="vertical"
-                      data={resourcePools}
-                      margin={{ top: 5, right: 20, left: 15, bottom: 5 }}
+                      data={chartData}
+                      margin={{ top: 5, right: 15, left: 5, bottom: 5 }}
                     >
                       <XAxis
                         type="number"
+                        domain={useLogScale ? [0, 'dataMax'] : [0, 'auto']}
+                        ticks={useLogScale ? [0, 1, 2, 3, 4, 5, 6] : undefined}
+                        tickFormatter={
+                          useLogScale
+                            ? (v) => (v === 0 ? '0' : v === 1 ? '10' : v === 2 ? '100' : v === 3 ? '1K' : v === 4 ? '10K' : v === 5 ? '100K' : '1M+')
+                            : (v) => Number(v).toLocaleString()
+                        }
                         tick={{ fontSize: 10, fill: '#5D6878' }}
                         axisLine={{ stroke: '#D9E1EA' }}
                         tickLine={false}
@@ -637,7 +615,7 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                       <YAxis
                         type="category"
                         dataKey="displayName"
-                        width={105}
+                        width={95}
                         tick={{ fontSize: 11, fill: '#0B1F3A', fontWeight: 500 }}
                         axisLine={{ stroke: '#D9E1EA' }}
                         tickLine={false}
@@ -651,56 +629,56 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                           fontSize: '0.75rem',
                           boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                         }}
-                        formatter={(val: any, name: any, item: any) => [
-                          `${Number(val).toLocaleString()} ${item.payload.unit}`,
-                          name,
-                        ]}
+                        formatter={(_val: any, name: any, item: any) => {
+                          const rawVal =
+                            name === 'Required'
+                              ? item.payload.required
+                              : name === 'Available'
+                              ? item.payload.available
+                              : item.payload.allocated;
+                          return [`${Number(rawVal).toLocaleString()} ${item.payload.unit}`, name];
+                        }}
                         labelFormatter={(label: any) => {
                           const pool = resourcePools.find((p) => p.displayName === label);
                           return pool ? `${pool.name} (${pool.unit})` : label;
                         }}
                       />
                       <Bar
-                        dataKey="required"
+                        dataKey="chartRequired"
                         name="Required"
                         fill="#F59E0B"
-                        barSize={6}
+                        barSize={7}
                         radius={[0, 2, 2, 0]}
                       />
                       <Bar
-                        dataKey="available"
+                        dataKey="chartAvailable"
                         name="Available"
                         fill="#0B1F3A"
-                        barSize={6}
+                        barSize={7}
                         radius={[0, 2, 2, 0]}
                       />
                       <Bar
-                        dataKey="allocated"
-                        name="Recommended"
+                        dataKey="chartAllocated"
+                        name="Allocated"
                         fill="#10B981"
-                        barSize={6}
+                        barSize={7}
                         radius={[0, 2, 2, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-
-              <div className="text-[10px] text-[#5D6878] mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>* Emergency EMS Ambulances administered under Health Dept. partnership.</span>
-                <span>All units strictly evaluated under standing capacity.</span>
-              </div>
             </div>
 
-            {/* Right: Recommendation Summary Table */}
-            <div className="lg:col-span-5 rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs flex flex-col justify-between">
+            {/* Right: Resource Summary Table */}
+            <div className="lg:col-span-5 rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                  <h3 className="text-sm font-bold text-[#0B1F3A]">
-                    Recommendation Summary
+                  <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
+                    Resource Summary
                   </h3>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                    10 Standard Pools
+                  <span className="text-[10px] font-semibold text-[#5D6878]">
+                    10 Resource Pools
                   </span>
                 </div>
 
@@ -708,45 +686,44 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-[#D9E1EA] text-[10px] font-bold text-[#5D6878] uppercase">
-                        <th className="py-1.5 px-1.5">Resource Pool</th>
-                        <th className="py-1.5 px-1 text-right">Avail</th>
-                        <th className="py-1.5 px-1 text-right">Req</th>
-                        <th className="py-1.5 px-1 text-right">Alloc</th>
-                        <th className="py-1.5 px-1.5 text-right">Shortage</th>
+                        <th className="py-1 px-1.5">Resource Pool</th>
+                        <th className="py-1 px-1 text-right">Required</th>
+                        <th className="py-1 px-1 text-right">Available</th>
+                        <th className="py-1 px-1 text-right">Allocated</th>
+                        <th className="py-1 px-1.5 text-right">Shortage</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {resourcePools.map((p) => (
                         <tr key={p.poolKey} className="hover:bg-slate-50/70">
-                          <td className="py-1.5 px-1.5 font-medium text-[#0B1F3A]">
+                          <td className="py-1 px-1.5 font-medium text-[#0B1F3A]">
                             <div className="flex items-center gap-1">
-                              <span className="truncate max-w-[110px]" title={p.name}>
+                              <span className="truncate max-w-[105px]" title={p.name}>
                                 {p.displayName}
                               </span>
                               {p.isPartner && (
-                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+                                <span className="text-[9px] font-bold text-[#1769AA] bg-blue-50 px-1 rounded border border-blue-200">
                                   Health
                                 </span>
                               )}
                             </div>
-                            <div className="text-[9px] text-[#5D6878]">{p.unit}</div>
                           </td>
-                          <td className="py-1.5 px-1 text-right text-slate-700">
-                            {p.available.toLocaleString()}
-                          </td>
-                          <td className="py-1.5 px-1 text-right font-medium text-slate-800">
+                          <td className="py-1 px-1 text-right font-medium text-[#0B1F3A]">
                             {p.required.toLocaleString()}
                           </td>
-                          <td className="py-1.5 px-1 text-right font-semibold text-emerald-700">
+                          <td className="py-1 px-1 text-right text-[#5D6878]">
+                            {p.available.toLocaleString()}
+                          </td>
+                          <td className="py-1 px-1 text-right font-semibold text-emerald-700">
                             {p.allocated.toLocaleString()}
                           </td>
-                          <td className="py-1.5 px-1.5 text-right">
+                          <td className="py-1 px-1.5 text-right font-medium">
                             {p.shortage > 0 ? (
-                              <span className="font-bold text-rose-600 bg-rose-50 px-1 py-0.5 rounded text-[10px]">
+                              <span className="text-[#C53B3B] font-bold">
                                 -{p.shortage.toLocaleString()}
                               </span>
                             ) : (
-                              <span className="text-slate-400">0</span>
+                              <span className="text-[#7C8796]">0</span>
                             )}
                           </td>
                         </tr>
@@ -755,95 +732,110 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                   </table>
                 </div>
               </div>
-
-              <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] flex items-center justify-between text-[#5D6878]">
-                <span>Coverage Status:</span>
-                <span className="font-semibold text-emerald-700">
-                  {poolsWithShortages.length === 0 ? '100% Demand Met (0 Shortages)' : `${poolsWithShortages.length} Shortfalls Identified`}
-                </span>
-              </div>
             </div>
           </div>
 
           {/* ================================================================ */}
-          {/* 4. BUDGET OVERVIEW SECTION                                       */}
+          {/* 4. BUDGET OVERVIEW (3 KPI cards, Donut chart, Separate Partner)  */}
           {/* ================================================================ */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-2.5">
-              <div>
-                <h3 className="text-sm font-bold text-[#0B1F3A]">
-                  Budget Overview
-                </h3>
-                <div className="text-[11px] text-[#5D6878]">
-                  Police Department Fiscal Analysis & Expenditure Proportions (FY 2026-27)
-                </div>
-              </div>
-              <div className="text-xs text-[#5D6878]">
-                Formula: Budget Balance = Available Budget − Total Police Cost
-              </div>
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs space-y-3.5">
+            <div className="border-b border-slate-100 pb-2">
+              <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
+                Budget Overview
+              </h3>
             </div>
 
-            {/* 3 Top Budget Metric Cards */}
+            {/* 3 Compact Budget Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded border border-[#D9E1EA] bg-slate-50/60 p-3">
-                <div className="text-[11px] font-bold text-[#5D6878] uppercase">
-                  Estimated Police Expenditure
+              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                    Estimated Police Expenditure
+                  </p>
+                  <div className="rounded p-1.5 shrink-0 bg-slate-200/70 text-[#0B1F3A]">
+                    <FileText className="h-4 w-4" />
+                  </div>
                 </div>
-                <div className="text-xl font-bold text-[#0B1F3A] mt-1">
-                  {formatINR(budgetData.policeExpenditure)}
-                </div>
-                <div className="text-[10px] text-[#5D6878] mt-1 pt-1 border-t border-slate-200">
-                  Gross Police Operational Requirement
-                </div>
-              </div>
-
-              <div className="rounded border border-[#D9E1EA] bg-slate-50/60 p-3">
-                <div className="text-[11px] font-bold text-[#5D6878] uppercase">
-                  Available Budget
-                </div>
-                <div className="text-xl font-bold text-[#0B1F3A] mt-1">
-                  {budgetData.hasBudgetConfigured ? formatINR(budgetData.availableBudget) : 'Not Available'}
-                </div>
-                <div className="text-[10px] text-[#5D6878] mt-1 pt-1 border-t border-slate-200">
-                  {budgetData.hasBudgetConfigured ? 'Sanctioned Statutory Allocation' : 'Budget allocation not configured'}
+                <div className="mt-1">
+                  <h4 className="text-[20px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+                    {formatINR(budgetData.policeExpenditure)}
+                  </h4>
+                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                    Total departmental requirement
+                  </p>
                 </div>
               </div>
 
-              <div className="rounded border border-[#D9E1EA] bg-slate-50/60 p-3">
-                <div className="text-[11px] font-bold text-[#5D6878] uppercase">
-                  Budget Surplus / Deficit
+              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                    Available Budget
+                  </p>
+                  <div className="rounded p-1.5 shrink-0 bg-[#EAF3FA] text-[#1769AA]">
+                    <Layers className="h-4 w-4" />
+                  </div>
                 </div>
-                <div className={`text-xl font-bold mt-1 ${
-                  !budgetData.hasBudgetConfigured
-                    ? 'text-slate-500'
-                    : budgetData.balanceStatus === 'SURPLUS'
-                    ? 'text-emerald-700'
-                    : 'text-rose-600'
-                }`}>
-                  {!budgetData.hasBudgetConfigured
-                    ? 'Not Available'
-                    : budgetData.budgetBalance !== null
-                    ? (budgetData.budgetBalance >= 0 ? `+${formatINR(budgetData.budgetBalance)} Surplus` : `-${formatINR(Math.abs(budgetData.budgetBalance))} Deficit`)
-                    : 'Not Available'}
+                <div className="mt-1">
+                  <h4 className="text-[20px] font-bold tracking-tight text-[#0B1F3A] leading-none">
+                    {budgetData.hasBudgetConfigured ? formatINR(budgetData.availableBudget) : 'Not Available'}
+                  </h4>
+                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                    {budgetData.hasBudgetConfigured ? 'Sanctioned statutory allocation' : 'Budget allocation not configured'}
+                  </p>
                 </div>
-                <div className="text-[10px] text-[#5D6878] mt-1 pt-1 border-t border-slate-200">
-                  {!budgetData.hasBudgetConfigured
-                    ? 'Financial records pending sanction entry'
-                    : budgetData.balanceStatus === 'SURPLUS'
-                    ? 'Operating within sanctioned limits'
-                    : 'Requires supplementary grant appropriation'}
+              </div>
+
+              <div className="flex flex-col justify-between rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] p-3 shadow-2xs">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5D6878] truncate">
+                    Budget Surplus / Deficit
+                  </p>
+                  <div className={`rounded p-1.5 shrink-0 ${
+                    !budgetData.hasBudgetConfigured
+                      ? 'bg-slate-200/70 text-[#0B1F3A]'
+                      : budgetData.balanceStatus === 'SURPLUS'
+                      ? 'bg-emerald-50 text-[#16845B]'
+                      : 'bg-red-50 text-[#C53B3B]'
+                  }`}>
+                    {budgetData.balanceStatus === 'SURPLUS' ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+                <div className="mt-1">
+                  <h4 className={`text-[20px] font-bold tracking-tight leading-none ${
+                    !budgetData.hasBudgetConfigured
+                      ? 'text-[#0B1F3A]'
+                      : budgetData.balanceStatus === 'SURPLUS'
+                      ? 'text-[#16845B]'
+                      : 'text-[#C53B3B]'
+                  }`}>
+                    {!budgetData.hasBudgetConfigured
+                      ? 'Not Available'
+                      : budgetData.budgetBalance !== null
+                      ? budgetData.budgetBalance >= 0
+                        ? `+${formatINR(budgetData.budgetBalance)}`
+                        : `-${formatINR(Math.abs(budgetData.budgetBalance))}`
+                      : 'Not Available'}
+                  </h4>
+                  <p className="mt-1 text-[11px] text-[#7C8796] truncate leading-tight">
+                    {!budgetData.hasBudgetConfigured
+                      ? 'Awaiting financial sanction entry'
+                      : budgetData.balanceStatus === 'SURPLUS'
+                      ? 'Operating within sanctioned limits'
+                      : 'Projected operating shortfall'}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Split: Donut Chart (CAPEX / OPEX / Maintenance) + Cost Breakdown + Partner Agency Line */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-2">
-              {/* Donut Chart (Proportions) */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 rounded border border-slate-100 bg-[#F8FAFC]">
-                <div className="text-xs font-bold text-[#0B1F3A] mb-1">
-                  Expenditure Profile (CAPEX vs OPEX)
-                </div>
-                <div className="h-[180px] w-full relative">
+            {/* Donut Chart (CAPEX / OPEX / Maintenance) + Cost Breakdown + Partner Agency Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-1">
+              {/* Donut Chart */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
+                <div className="h-[150px] w-full relative">
                   {donutData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -853,8 +845,8 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          innerRadius={45}
-                          outerRadius={68}
+                          innerRadius={40}
+                          outerRadius={62}
                           paddingAngle={3}
                         >
                           {donutData.map((entry, index) => (
@@ -885,8 +877,8 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                     </div>
                   )}
                 </div>
-                {/* Proportions Indicator */}
-                <div className="flex items-center gap-3 text-[10px] font-semibold mt-1">
+                {/* Donut Legend */}
+                <div className="flex items-center gap-3 text-[10px] font-medium text-[#5D6878] mt-1">
                   <div className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-[#4F46E5]" />
                     <span>CAPEX</span>
@@ -902,56 +894,53 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                 </div>
               </div>
 
-              {/* Cost Breakdown Cards & Partner Agency Notice */}
-              <div className="lg:col-span-7 space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                  <div className="p-2.5 rounded border border-slate-100 bg-white">
-                    <div className="flex items-center gap-1 font-semibold text-slate-700">
-                      <span className="w-2 h-2 rounded-full bg-indigo-600" />
-                      <span>CAPEX (Procurement)</span>
+              {/* Cost Breakdown Cards & Partner Agency Row */}
+              <div className="lg:col-span-7 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
+                      <span className="w-2 h-2 rounded-full bg-[#4F46E5]" />
+                      <span>CAPEX</span>
                     </div>
-                    <div className="font-bold text-slate-900 mt-1">
+                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
                       {formatINR(budgetData.capex)}
                     </div>
-                    <div className="text-[10px] text-[#5D6878]">Equipment & Hardware</div>
+                    <div className="text-[10px] text-[#7C8796]">Procurement</div>
                   </div>
 
-                  <div className="p-2.5 rounded border border-slate-100 bg-white">
-                    <div className="flex items-center gap-1 font-semibold text-slate-700">
-                      <span className="w-2 h-2 rounded-full bg-blue-600" />
-                      <span>OPEX (Operations)</span>
+                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
+                      <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
+                      <span>OPEX</span>
                     </div>
-                    <div className="font-bold text-slate-900 mt-1">
+                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
                       {formatINR(budgetData.opex)}
                     </div>
-                    <div className="text-[10px] text-[#5D6878]">Staffing & Operational</div>
+                    <div className="text-[10px] text-[#7C8796]">Operations</div>
                   </div>
 
-                  <div className="p-2.5 rounded border border-slate-100 bg-white">
-                    <div className="flex items-center gap-1 font-semibold text-slate-700">
-                      <span className="w-2 h-2 rounded-full bg-teal-600" />
+                  <div className="p-2.5 rounded-lg border border-slate-100 bg-[#F8FAFC]">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#0B1F3A]">
+                      <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
                       <span>Maintenance</span>
                     </div>
-                    <div className="font-bold text-slate-900 mt-1">
+                    <div className="font-bold text-[#0B1F3A] mt-1 text-sm">
                       {formatINR(budgetData.maintenance)}
                     </div>
-                    <div className="text-[10px] text-[#5D6878]">Fleet & Facility AMC</div>
+                    <div className="text-[10px] text-[#7C8796]">Routine AMC</div>
                   </div>
                 </div>
 
-                {/* Partner Agency Strict Isolation Callout */}
-                <div className="p-3 rounded border border-amber-200 bg-amber-50/40 text-xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                      <HeartPulse className="h-3.5 w-3.5 text-amber-700" />
-                      <span>Partner Agency Cost (Health Dept. Ambulances & EMTs)</span>
-                    </div>
-                    <div className="font-bold text-amber-900">
-                      {formatINR(budgetData.partnerExpenditure)}
-                    </div>
+                {/* Partner Agency Cost (Separate, Unobtrusive Row) */}
+                <div className="p-2.5 rounded-lg border border-[#D9E1EA] bg-[#F8FAFC] text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="h-3.5 w-3.5 text-[#1769AA]" />
+                    <span className="font-semibold text-[#0B1F3A]">
+                      Partner Agency Cost (Health Dept. Ambulances &amp; EMTs)
+                    </span>
                   </div>
-                  <div className="text-[11px] text-amber-800 mt-1">
-                    Emergency medical services are separately administered by the Department of Health. Strictly isolated from Police Department expenditure and budget balance calculations.
+                  <div className="font-bold text-[#0B1F3A] text-sm">
+                    {formatINR(budgetData.partnerExpenditure)}
                   </div>
                 </div>
               </div>
@@ -959,14 +948,14 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
           </div>
 
           {/* ================================================================ */}
-          {/* 5. OPERATIONAL ALERTS PANEL                                       */}
+          {/* 5. OPERATIONAL ALERTS (Compact, real alerts only)                */}
           {/* ================================================================ */}
-          <div className="rounded-lg border border-[#D9E1EA] bg-white p-4 shadow-2xs space-y-2.5">
+          <div className="rounded-lg border border-[#D9E1EA] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-[#0B1F3A]">
+              <h3 className="text-xs sm:text-sm font-bold text-[#0B1F3A]">
                 Operational Alerts
               </h3>
-              <span className="text-[10px] text-[#5D6878]">
+              <span className="text-[10px] font-semibold text-[#5D6878]">
                 {alerts.length} Active System Alerts
               </span>
             </div>
@@ -976,18 +965,18 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                 {alerts.map((al) => (
                   <div
                     key={al.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 text-xs first:pt-1 last:pb-1"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-1.5 text-xs first:pt-0.5 last:pb-0.5"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                           al.category === 'CRITICAL RISK'
-                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            ? 'bg-red-50 text-[#C53B3B] border border-red-200'
                             : al.category === 'RESOURCE SHORTAGE'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            ? 'bg-amber-50 text-[#C98512] border border-amber-200'
                             : al.category === 'BUDGET DEFICIT'
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                            : 'bg-slate-100 text-slate-800 border border-slate-200'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}
                       >
                         {al.category}
@@ -1001,9 +990,9 @@ export const OperationsOverviewSection: React.FC<OperationsOverviewSectionProps>
                 ))}
               </div>
             ) : (
-              <div className="py-3 text-center text-xs text-emerald-700 bg-emerald-50/50 rounded border border-emerald-100 flex items-center justify-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>All operational resource allocations, risk parameters and budget constraints are within nominal thresholds.</span>
+              <div className="py-2.5 px-3 text-center text-xs text-emerald-800 bg-emerald-50/50 rounded-lg border border-emerald-100 flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>All operational allocations, risk parameters and budgets are within nominal thresholds.</span>
               </div>
             )}
           </div>
